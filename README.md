@@ -1,36 +1,47 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Food Truck Charlotte
 
-## Getting Started
+Food Truck Charlotte is a community-powered local media, discovery, and booking-intent website for the Charlotte food truck scene.
 
-First, run the development server:
+## Stack
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+- Next.js (App Router) + TypeScript
+- Tailwind CSS
+- Local mock data (no database in v1)
+- Ready to deploy on Vercel
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Local Development
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+1. Install dependencies:
+   ```bash
+   npm install
+   ```
+2. Start the dev server:
+   ```bash
+   npm run dev
+   ```
+3. Open the app:
+   - [http://localhost:3000](http://localhost:3000)
+   - If port 3000 is in use, Next.js will choose another port.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Project Structure
 
-## Learn More
+- `app/` route pages and layout
+- `components/` reusable UI building blocks
+- `data/` mock truck and event datasets
+- `lib/` shared helpers and types
 
-To learn more about Next.js, take a look at the following resources:
+## Included Launch Basics
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- Page-level metadata for SEO
+- Open Graph + Twitter preview image route (`app/opengraph-image.tsx`)
+- Crawl files: `app/sitemap.ts` and `app/robots.ts`
+- Responsive mobile-first layouts and forms
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Vercel Deployment
 
-## Deploy on Vercel
+1. Push this repo to GitHub.
+2. Import the project into [Vercel](https://vercel.com/new).
+3. Use default Next.js settings.
+4. Deploy.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+No environment variables are required for the current version.

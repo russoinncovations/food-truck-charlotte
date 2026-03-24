@@ -1,65 +1,126 @@
-import Image from "next/image";
+import type { Metadata } from "next";
+import { CtaButton } from "@/components/cta-button";
+import { EventCard } from "@/components/event-card";
+import { FilterChips } from "@/components/filter-chips";
+import { SectionHeader } from "@/components/section-header";
+import { TruckCard } from "@/components/truck-card";
+import { trucks } from "@/data/trucks";
+import { featuredEvents, featuredTrucks, getTruckNames } from "@/lib/data-access";
+
+const cuisineFilters = [...new Set(trucks.map((truck) => truck.cuisine))];
+
+export const metadata: Metadata = {
+  title: "Find Food Trucks. Discover Events. Book a Truck.",
+  description:
+    "Charlotte's trusted guide to food truck discovery, local events, and straightforward booking inquiries.",
+};
 
 export default function Home() {
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
+    <div className="space-y-16 md:space-y-20">
+      <section className="rounded-3xl border border-[#1E1E1E]/8 bg-[#fffdfa] p-6 shadow-[0_12px_32px_rgba(30,30,30,0.04)] md:p-11">
+        <p className="mb-4 text-[11px] font-semibold uppercase tracking-[0.24em] text-[#D97A2B]">Charlotte Local Guide</p>
+        <h1 className="max-w-4xl text-3xl font-semibold tracking-tight text-[#1E1E1E] md:text-[3.4rem] md:leading-[1.05]">
+          Charlotte&apos;s Most Trusted Way to Find Food Trucks, Discover Events, and Book with Confidence.
+        </h1>
+        <p className="mt-4 max-w-2xl text-base leading-7 text-[#1E1E1E]/75">
+          Built from one of Charlotte&apos;s largest food truck communities, Food Truck Charlotte helps neighbors, hosts,
+          and truck owners connect through clear local information and practical inquiry tools.
+        </p>
+        <div className="mt-7 flex flex-wrap gap-3">
+          <CtaButton href="/find-food-trucks">Find Food Trucks</CtaButton>
+          <CtaButton href="/book-a-truck" variant="secondary">
+            Book a Truck
+          </CtaButton>
+        </div>
+        <p className="mt-6 text-[15px] leading-7 text-[#1E1E1E]/68">
+          Community-backed by a large Charlotte food truck network with on-the-ground local insight.
+        </p>
+      </section>
+
+      <section className="space-y-7">
+        <SectionHeader
+          eyebrow="Featured Trucks"
+          title="Curated Charlotte Trucks Locals Recommend"
+          description="A trusted mix of neighborhood favorites and event-ready trucks with strong service reputations across Charlotte."
         />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+        <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+          {featuredTrucks.map((truck) => (
+            <TruckCard key={truck.slug} truck={truck} />
+          ))}
+        </div>
+      </section>
+
+      <section className="rounded-2xl border border-[#1E1E1E]/8 bg-[#fffdfa] p-6 md:p-7">
+        <SectionHeader
+          eyebrow="How It Works"
+          title="Simple by Design, Reliable in Practice"
+          description="This is a local guide first. You can find trucks, track events, and submit inquiries without the clutter of a full marketplace app."
+        />
+        <div className="mt-7 grid gap-4 md:grid-cols-3">
+          {[
+            "Browse by cuisine, service area, and event fit.",
+            "See where local trucks are serving this week.",
+            "Share one inquiry to start your booking process.",
+          ].map((step) => (
+            <div key={step} className="rounded-xl border border-[#1E1E1E]/8 bg-white p-4 text-[15px] leading-7 text-[#1E1E1E]/82">
+              {step}
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="space-y-4">
+        <SectionHeader title="Browse by Cuisine" description="Start with what sounds good, then narrow by truck and area." />
+        <FilterChips filters={cuisineFilters} />
+      </section>
+
+      <section className="space-y-7">
+        <SectionHeader
+          eyebrow="Featured Events"
+          title="Featured Charlotte Food Truck Happenings"
+          description="From neighborhood gatherings to brewery nights and school events, these are standout local happenings worth planning around."
+        />
+        <div className="grid gap-5 md:grid-cols-2">
+          {featuredEvents.map((event) => (
+            <EventCard key={event.id} event={event} featuredNames={getTruckNames(event.featuredTruckSlugs)} />
+          ))}
+        </div>
+      </section>
+
+      <section className="grid gap-5 md:grid-cols-2">
+        <div className="rounded-2xl border border-[#1E1E1E]/8 bg-[#fffdfa] p-6">
+          <h3 className="text-xl font-semibold text-[#1E1E1E]">For Trucks</h3>
+          <p className="mt-3 text-[15px] leading-7 text-[#1E1E1E]/80">
+            Get seen by people in Charlotte who are actively looking for trucks and planning real events.
           </p>
+          <div className="mt-6">
+            <CtaButton href="/for-trucks">Join the Directory</CtaButton>
+          </div>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+        <div className="rounded-2xl border border-[#1E1E1E]/8 bg-[#fffdfa] p-6">
+          <h3 className="text-xl font-semibold text-[#1E1E1E]">For Venues & Hosts</h3>
+          <p className="mt-3 text-[15px] leading-7 text-[#1E1E1E]/80">
+            Planning an event? Share your details and we&apos;ll help point you toward the right local trucks.
+          </p>
+          <div className="mt-6">
+            <CtaButton href="/for-venues">Host Inquiry</CtaButton>
+          </div>
         </div>
-      </main>
+      </section>
+
+      <section className="rounded-2xl border border-[#1E1E1E]/8 bg-[#fffdfa] p-6 md:p-7">
+        <SectionHeader
+          eyebrow="Community"
+          title="Built From a Real Charlotte Community"
+          description="Food Truck Charlotte grew from one of the city&apos;s largest food truck Facebook communities. That foundation gives this brand stronger local relationships, better ground-level awareness, and real trust."
+        />
+        <div className="mt-5">
+          <CtaButton href="/community" variant="secondary">
+            Join the Community
+          </CtaButton>
+        </div>
+      </section>
     </div>
   );
 }
