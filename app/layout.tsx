@@ -17,6 +17,10 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   metadataBase: new URL(site.url),
+  icons: {
+    icon: "/icon.png",
+    shortcut: "/favicon.ico",
+  },
   title: {
     default: "Food Truck Charlotte | Food Trucks, Events, and Booking Inquiries",
     template: "%s | Food Truck Charlotte",
