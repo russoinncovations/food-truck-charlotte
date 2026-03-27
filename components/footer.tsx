@@ -14,7 +14,7 @@ export function Footer() {
           </p>
         </div>
         <div className="grid grid-cols-2 gap-4 text-[15px]">
-          <Link href="/community" className="text-[#1E1E1E]/75 hover:text-[#1E1E1E]">
+          <Link href="/about" className="text-[#1E1E1E]/75 hover:text-[#1E1E1E]">
             About
           </Link>
           <Link href="/book-a-truck" className="text-[#1E1E1E]/75 hover:text-[#1E1E1E]">

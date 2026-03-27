@@ -6,7 +6,7 @@ const navLinks = [
   { href: "/book-a-truck", label: "Request a Truck" },
   { href: "/for-trucks", label: "For Vendors" },
   { href: "/for-venues", label: "For Venues" },
-  { href: "/community", label: "Community" },
+  { href: "/about", label: "Community" },
 ];
 
 export function Navbar() {

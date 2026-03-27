@@ -120,7 +120,7 @@ export default function Home() {
           description="Food Truck Charlotte grew from one of the city&apos;s largest food truck Facebook communities. That foundation gives this brand stronger local relationships, better ground-level awareness, and real trust."
         />
         <div className="mt-5">
-          <CtaButton href="/community" variant="secondary">
+          <CtaButton href="/about" variant="secondary">
             Join the Community
           </CtaButton>
         </div>

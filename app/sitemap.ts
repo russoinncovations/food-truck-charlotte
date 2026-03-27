@@ -10,7 +10,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     "/book-a-truck",
     "/for-trucks",
     "/for-venues",
-    "/community",
+    "/about",
   ];
 
   const staticEntries = staticRoutes.map((route) => ({

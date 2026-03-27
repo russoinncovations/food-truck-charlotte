@@ -49,7 +49,7 @@ export default async function TruckPage({ params }: TruckPageProps) {
             Book This Truck
           </Link>
           <Link
-            href="/community"
+            href="/about"
             className="inline-flex rounded-full border border-[#1E1E1E]/25 px-6 py-3 text-sm font-semibold text-[#1E1E1E] hover:bg-[#1E1E1E]/5"
           >
             Join the Community
