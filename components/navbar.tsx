@@ -4,7 +4,7 @@ const navLinks = [
   { href: "/find-food-trucks", label: "Find Food Vendors" },
   { href: "/events", label: "Events" },
   { href: "/book-a-truck", label: "Request a Truck" },
-  { href: "/for-trucks", label: "For Trucks" },
+  { href: "/for-trucks", label: "For Vendors" },
   { href: "/for-venues", label: "For Venues" },
   { href: "/community", label: "Community" },
 ];

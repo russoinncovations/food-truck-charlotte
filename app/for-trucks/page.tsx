@@ -3,7 +3,7 @@ import { ForTrucksForm } from "@/components/forms/for-trucks-form";
 import { SectionHeader } from "@/components/section-header";
 
 export const metadata: Metadata = {
-  title: "For Food Vendor Owners",
+  title: "For Food Vendors",
   description:
     "Join Food Truck Charlotte to increase local visibility, receive qualified inquiries, and grow through trusted community reach.",
 };
@@ -12,8 +12,8 @@ export default function ForTrucksPage() {
   return (
     <div className="space-y-10 md:space-y-12">
       <SectionHeader
-        eyebrow="For Trucks"
-        title="Grow Your Visibility with Food Truck Charlotte"
+        eyebrow="For Vendors"
+        title="Whether you run a truck, cart, or tent — list free and get found by Charlotte."
         description="Join a Charlotte-first guide built from real community relationships, and get discovered by people actively planning where to eat and who to book."
       />
 

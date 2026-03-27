@@ -18,7 +18,12 @@ export const bookATruckSchema = z.object({
   notes: optionalStr,
 });
 
+const vendorTypeEnum = z.enum(["food_truck", "food_cart", "tent_pop_up"]);
+
 export const forTrucksSchema = z.object({
+  vendorTypes: z
+    .array(vendorTypeEnum)
+    .min(1, "Please select your vendor type."),
   truckName: z.string().trim().min(1, "Truck name is required."),
   contactName: z.string().trim().min(1, "Contact name is required."),
   email: z.string().trim().email("Please enter a valid email address."),

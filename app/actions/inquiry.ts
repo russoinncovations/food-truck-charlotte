@@ -1,6 +1,7 @@
 "use server";
 
 import { sendInquiryEmail } from "@/lib/inquiry-email";
+import { supabase } from "@/lib/supabase";
 import {
   bookATruckSchema,
   firstZodError,
@@ -20,6 +21,41 @@ function pickFormData(formData: FormData, keys: readonly string[]): Record<strin
     out[key] = typeof v === "string" ? v : "";
   }
   return out;
+}
+
+function pickVendorTypes(formData: FormData): string[] {
+  return formData.getAll("vendorType").filter((v): v is string => typeof v === "string");
+}
+
+async function saveInquiryToSupabase(payload: {
+  type: "book_a_truck" | "for_trucks" | "for_venues";
+  name: string;
+  email: string;
+  message: string;
+  vendor_type?: string | null;
+}) {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
+  if (!url || !key) {
+    return;
+  }
+
+  const row = {
+    type: payload.type,
+    name: payload.name,
+    email: payload.email,
+    message: payload.message,
+    vendor_type: payload.vendor_type ?? null,
+  };
+
+  try {
+    const { error } = await supabase.from("inquiries").insert(row);
+    if (error) {
+      console.error("[inquiries] Supabase insert failed:", error.message);
+    }
+  } catch (e) {
+    console.error("[inquiries] Supabase insert error:", e);
+  }
 }
 
 export async function submitBookATruck(
@@ -66,6 +102,12 @@ export async function submitBookATruck(
   if (!result.ok) {
     return { error: result.error };
   }
+  await saveInquiryToSupabase({
+    type: "book_a_truck",
+    name: d.name,
+    email: d.email,
+    message: body,
+  });
   return { success: true };
 }
 
@@ -73,26 +115,37 @@ export async function submitForTrucks(
   _prevState: InquiryFormState | undefined,
   formData: FormData,
 ): Promise<InquiryFormState> {
-  const raw = pickFormData(formData, [
-    "truckName",
-    "contactName",
-    "email",
-    "phone",
-    "cuisine",
-    "serviceArea",
-    "instagram",
-    "website",
-    "description",
-  ]);
+  const raw = {
+    ...pickFormData(formData, [
+      "truckName",
+      "contactName",
+      "email",
+      "phone",
+      "cuisine",
+      "serviceArea",
+      "instagram",
+      "website",
+      "description",
+    ]),
+    vendorTypes: pickVendorTypes(formData),
+  };
   const parsed = forTrucksSchema.safeParse(raw);
   if (!parsed.success) {
     return { error: firstZodError(parsed.error) };
   }
 
   const d = parsed.data;
+  const vendorTypeLabels: Record<(typeof d.vendorTypes)[number], string> = {
+    food_truck: "Food Truck",
+    food_cart: "Food Cart",
+    tent_pop_up: "Tent / Pop-Up",
+  };
+  const vendorTypeLine = d.vendorTypes.map((v) => vendorTypeLabels[v]).join(", ");
+
   const body = [
     "Food Truck Charlotte — Join the Directory",
     "",
+    `Vendor type(s): ${vendorTypeLine}`,
     `Truck name: ${d.truckName}`,
     `Contact name: ${d.contactName}`,
     `Email: ${d.email}`,
@@ -113,6 +166,13 @@ export async function submitForTrucks(
   if (!result.ok) {
     return { error: result.error };
   }
+  await saveInquiryToSupabase({
+    type: "for_trucks",
+    name: d.truckName,
+    email: d.email,
+    message: body,
+    vendor_type: vendorTypeLine,
+  });
   return { success: true };
 }
 
@@ -160,5 +220,11 @@ export async function submitForVenues(
   if (!result.ok) {
     return { error: result.error };
   }
+  await saveInquiryToSupabase({
+    type: "for_venues",
+    name: d.venueName,
+    email: d.email,
+    message: body,
+  });
   return { success: true };
 }
