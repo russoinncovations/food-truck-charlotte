@@ -5,6 +5,7 @@ export const trucks: FoodTruck[] = [
     slug: "queen-city-tacos",
     name: "Queen City Tacos",
     cuisine: "Tacos",
+    vendor_type: "truck",
     description: "Street-style tacos with bold salsas and house-pickled toppings.",
     serviceArea: "Uptown, South End, NoDa",
     shortBio:
@@ -17,6 +18,7 @@ export const trucks: FoodTruck[] = [
     slug: "carolina-smash-co",
     name: "Carolina Smash Co.",
     cuisine: "Burgers",
+    vendor_type: "truck",
     description: "Crispy-edge smash burgers, loaded fries, and classic shakes.",
     serviceArea: "Plaza Midwood, University City, Matthews",
     shortBio:
@@ -29,6 +31,7 @@ export const trucks: FoodTruck[] = [
     slug: "smoke-ring-charlotte",
     name: "Smoke Ring Charlotte",
     cuisine: "BBQ",
+    vendor_type: "truck",
     description: "Slow-smoked brisket, pulled pork, and signature Carolina sides.",
     serviceArea: "South Charlotte, Ballantyne, Pineville",
     shortBio:
@@ -40,6 +43,7 @@ export const trucks: FoodTruck[] = [
     slug: "sweet-route-desserts",
     name: "Sweet Route Desserts",
     cuisine: "Desserts",
+    vendor_type: "cart_tent",
     description: "Gourmet cookies, mini cheesecakes, and rotating seasonal sweets.",
     serviceArea: "Dilworth, Myers Park, SouthPark",
     shortBio:
@@ -51,6 +55,7 @@ export const trucks: FoodTruck[] = [
     slug: "clt-wing-lab",
     name: "CLT Wing Lab",
     cuisine: "Wings",
+    vendor_type: "truck",
     description: "Crispy wings with house-made sauces from mild honey to blazing hot.",
     serviceArea: "NoDa, Camp North End, Concord",
     shortBio:
@@ -62,6 +67,7 @@ export const trucks: FoodTruck[] = [
     slug: "island-lane-eats",
     name: "Island Lane Eats",
     cuisine: "Caribbean",
+    vendor_type: "truck",
     description: "Jerk chicken, plantains, and island bowls with vibrant spices.",
     serviceArea: "East Charlotte, Mint Hill, Harrisburg",
     shortBio:
@@ -73,6 +79,7 @@ export const trucks: FoodTruck[] = [
     slug: "uptown-soul-kitchen",
     name: "Uptown Soul Kitchen",
     cuisine: "Soul Food",
+    vendor_type: "truck",
     description: "Classic soul plates with modern portions and Southern hospitality.",
     serviceArea: "Uptown, West Charlotte, Huntersville",
     shortBio:
@@ -84,6 +91,7 @@ export const trucks: FoodTruck[] = [
     slug: "morning-bell-coffee",
     name: "Morning Bell Coffee",
     cuisine: "Coffee",
+    vendor_type: "cart_tent",
     description: "Specialty coffee, cold brew, and pastry pairings for morning crowds.",
     serviceArea: "Uptown, South End, Fort Mill",
     shortBio:

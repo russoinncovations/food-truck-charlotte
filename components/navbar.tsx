@@ -1,9 +1,9 @@
 import Link from "next/link";
 
 const navLinks = [
-  { href: "/find-food-trucks", label: "Find Food Trucks" },
+  { href: "/find-food-trucks", label: "Find Food Vendors" },
   { href: "/events", label: "Events" },
-  { href: "/book-a-truck", label: "Book a Truck" },
+  { href: "/book-a-truck", label: "Request a Truck" },
   { href: "/for-trucks", label: "For Trucks" },
   { href: "/for-venues", label: "For Venues" },
   { href: "/community", label: "Community" },

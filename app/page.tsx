@@ -21,22 +21,26 @@ export default function Home() {
       <section className="rounded-3xl border border-[#1E1E1E]/8 bg-[#fffdfa] p-6 shadow-[0_12px_32px_rgba(30,30,30,0.04)] md:p-11">
         <p className="mb-4 text-[11px] font-semibold uppercase tracking-[0.24em] text-[#D97A2B]">Charlotte Local Guide</p>
         <h1 className="max-w-4xl text-3xl font-semibold tracking-tight text-[#1E1E1E] md:text-[3.4rem] md:leading-[1.05]">
-          Charlotte&apos;s Most Trusted Way to Find Food Trucks, Discover Events, and Book with Confidence.
+          Find Charlotte Food Trucks. Free to List. Free to Find.
         </h1>
         <p className="mt-4 max-w-2xl text-base leading-7 text-[#1E1E1E]/75">
-          Built from one of Charlotte&apos;s largest food truck communities, Food Truck Charlotte helps neighbors, hosts,
-          and truck owners connect through clear local information and practical inquiry tools.
+          Built from Charlotte&apos;s largest food truck community — 35,000+ members strong. This is a free local guide first.
+          Trucks list free while we build this together.
         </p>
         <div className="mt-7 flex flex-wrap gap-3">
           <CtaButton href="/find-food-trucks">Find Food Trucks</CtaButton>
           <CtaButton href="/book-a-truck" variant="secondary">
-            Book a Truck
+            Request a Truck
           </CtaButton>
         </div>
         <p className="mt-6 text-[15px] leading-7 text-[#1E1E1E]/68">
           Community-backed by a large Charlotte food truck network with on-the-ground local insight.
         </p>
       </section>
+
+      <div style={{ borderTop: '1px solid #e5e0d8', borderBottom: '1px solid #e5e0d8', padding: '12px 0', textAlign: 'center', fontSize: '0.75rem', letterSpacing: '0.05em', color: '#6b6560' }}>
+        35,000+ community members <span style={{ color: '#c2601f' }}>·</span> Charlotte-based since 2014 <span style={{ color: '#c2601f' }}>·</span> Free to list
+      </div>
 
       <section className="space-y-7">
         <SectionHeader

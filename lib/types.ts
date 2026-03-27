@@ -8,10 +8,13 @@ export type Cuisine =
   | "Soul Food"
   | "Coffee";
 
+export type VendorType = "truck" | "cart_tent";
+
 export type FoodTruck = {
   slug: string;
   name: string;
   cuisine: Cuisine;
+  vendor_type: VendorType;
   description: string;
   serviceArea: string;
   shortBio: string;
