@@ -2,6 +2,15 @@ import { getSupabase } from "@/lib/supabase";
 import { parseForTrucksInquiryMessage } from "@/lib/parse-for-trucks-inquiry";
 import { AddToDirectoryForm } from "./add-to-directory-form";
 
+function vendorDescriptionFromMessage(message: string): string {
+  const lines = message.split("\n");
+  const line = lines.find((l) => l.startsWith("Vendor description:"));
+  if (!line) return "";
+  const v = line.slice("Vendor description:".length).trim();
+  if (!v || v === "—" || v === "-") return "";
+  return v;
+}
+
 export const metadata = {
   title: "Admin — Directory inquiries",
 };
@@ -46,6 +55,7 @@ export default async function AdminTrucksPage() {
         <ul className="space-y-4">
           {list.map((row) => {
             const parsed = parseForTrucksInquiryMessage(row.message ?? "");
+            const vendorDescription = vendorDescriptionFromMessage(row.message ?? "");
             const websiteDisplay =
               (row.website ?? "").trim() || parsed.websiteFromMessage || "—";
             return (
@@ -71,8 +81,8 @@ export default async function AdminTrucksPage() {
                   {parsed.serviceAreas || "—"}
                 </p>
                 <p className="mb-1">
-                  <span className="text-neutral-500">Description:</span>{" "}
-                  {parsed.whatYouServe || "—"}
+                  <span className="text-neutral-500">Vendor description:</span>{" "}
+                  {vendorDescription || "—"}
                 </p>
                 <p className="mb-1">
                   <span className="text-neutral-500">Instagram:</span>{" "}

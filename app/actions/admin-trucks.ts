@@ -24,6 +24,19 @@ function inquiryVendorTypeToTruck(value: string | null): "truck" | "cart_tent" {
   return "truck";
 }
 
+function messageLine(message: string, prefix: string): string {
+  const lines = message.split("\n");
+  const line = lines.find((l) => l.startsWith(prefix));
+  if (!line) return "";
+  return line.slice(prefix.length).trim();
+}
+
+function cleanMessageValue(value: string): string {
+  const t = value.trim();
+  if (!t || t === "—" || t === "-") return "";
+  return t;
+}
+
 export type AddTruckFromInquiryState = { ok?: boolean; error?: string };
 
 export async function addTruckFromInquiry(
@@ -66,9 +79,11 @@ export async function addTruckFromInquiry(
     return { error: "Inquiry has no email (required for directory upsert)." };
   }
 
-  const parsed = parseForTrucksInquiryMessage(inquiry.message ?? "");
+  const msg = inquiry.message ?? "";
+  const parsed = parseForTrucksInquiryMessage(msg);
   const cuisine = parsed.whatYouServe || null;
-  const description = parsed.whatYouServe || null;
+  const vendor_description = cleanMessageValue(messageLine(msg, "Vendor description:")) || null;
+  const description = vendor_description;
   const service_areas = parsed.serviceAreas || null;
   const instagram = parsed.instagram || null;
   const websiteRaw = (inquiry.website ?? "").trim() || parsed.websiteFromMessage || null;
@@ -80,7 +95,8 @@ export async function addTruckFromInquiry(
     slug = `${slug}-${inquiryId.slice(0, 8)}`;
   }
 
-  const vendor_type = inquiryVendorTypeToTruck(inquiry.vendor_type);
+  const vendorTypeFromMessage = messageLine(msg, "Vendor type(s):");
+  const vendor_type = inquiryVendorTypeToTruck(vendorTypeFromMessage || null);
   const photo_url = (inquiry.photo_url ?? "").trim() || null;
   const catering = parsed.cateringYes;
 
