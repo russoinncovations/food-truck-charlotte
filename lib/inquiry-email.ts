@@ -12,9 +12,9 @@ export function getInquiryConfig() {
   return { to, from, configured: Boolean(process.env.RESEND_API_KEY && to) };
 }
 
-/** From address for auto-replies to submitters. Override with `RESEND_CONFIRMATION_FROM` (e.g. onboarding@resend.dev until domain is verified). */
+/** From address for auto-replies to submitters. */
 export function getConfirmationFromEmail(): string {
-  return process.env.RESEND_CONFIRMATION_FROM?.trim() || "noreply@foodtruckclt.com";
+  return "noreply@foodtruckclt.com";
 }
 
 export type InquiryConfirmation =
