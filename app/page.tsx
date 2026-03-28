@@ -6,7 +6,8 @@ import { SectionHeader } from "@/components/section-header";
 import { TruckCard } from "@/components/truck-card";
 import { trucks } from "@/data/trucks";
 import { featuredTrucks } from "@/lib/data-access";
-import { fetchUpcomingEventsFromSupabase } from "@/lib/events-directory";
+import { toEventListItems } from "@/lib/events-directory";
+import { supabase } from "@/lib/supabase";
 
 const cuisineFilters = [...new Set(trucks.map((truck) => truck.cuisine))];
 
@@ -17,7 +18,17 @@ export const metadata: Metadata = {
 };
 
 export default async function Home() {
-  const upcomingHomeEvents = await fetchUpcomingEventsFromSupabase(2);
+  const { data: events } = supabase
+    ? await supabase
+        .from("events")
+        .select("*")
+        .eq("active", true)
+        .gte("date", new Date().toISOString().split("T")[0])
+        .order("date", { ascending: true })
+        .limit(2)
+    : { data: null };
+
+  const eventListItems = toEventListItems(events);
 
   return (
     <div className="space-y-16 md:space-y-20">
@@ -82,7 +93,7 @@ export default async function Home() {
         <FilterChips filters={cuisineFilters} />
       </section>
 
-      {upcomingHomeEvents.length > 0 ? (
+      {eventListItems.length > 0 ? (
         <section className="space-y-7">
           <SectionHeader
             eyebrow="Featured Events"
@@ -90,7 +101,7 @@ export default async function Home() {
             description="From neighborhood gatherings to brewery nights and school events, these are standout local happenings worth planning around."
           />
           <div className="grid gap-5 md:grid-cols-2">
-            {upcomingHomeEvents.map((event) => (
+            {eventListItems.map((event) => (
               <EventCard key={event.id} event={event} />
             ))}
           </div>

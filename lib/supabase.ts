@@ -18,3 +18,6 @@ export function getSupabase(): SupabaseClient | null {
   cached = createClient(url, key);
   return cached;
 }
+
+/** Same client as {@link getSupabase}; `null` when env is not configured. */
+export const supabase = getSupabase();

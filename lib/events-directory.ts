@@ -112,6 +112,14 @@ export async function fetchActiveEventsFromSupabase(
   return (data as EventsRow[]).map(mapRow);
 }
 
+/** Map raw `events` rows from Supabase into {@link EventListItem} for cards. */
+export function toEventListItems(rows: unknown): EventListItem[] {
+  if (!Array.isArray(rows) || rows.length === 0) {
+    return [];
+  }
+  return rows.map((row) => mapRow(row as EventsRow));
+}
+
 /**
  * Next upcoming active events (date on or after today), soonest first.
  * Equivalent to: active = true and date >= current_date (local Charlotte calendar day), order by date asc, limit n.
