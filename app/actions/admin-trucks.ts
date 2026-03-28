@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { parseForTrucksInquiryMessage } from "@/lib/parse-for-trucks-inquiry";
 import { getSupabase } from "@/lib/supabase";
 
 function slugify(name: string): string {
@@ -51,7 +52,7 @@ export async function addTruckFromInquiry(
   if (inquiry.type !== "for_trucks") {
     return { error: "Not a directory inquiry." };
   }
-  if (inquiry.processed) {
+  if (inquiry.processed === true) {
     return { error: "Already processed." };
   }
 
@@ -60,36 +61,54 @@ export async function addTruckFromInquiry(
     return { error: "Inquiry has no truck name." };
   }
 
+  const email = (inquiry.email ?? "").trim();
+  if (!email) {
+    return { error: "Inquiry has no email (required for directory upsert)." };
+  }
+
+  const parsed = parseForTrucksInquiryMessage(inquiry.message ?? "");
+  const cuisine = parsed.whatYouServe || null;
+  const description = parsed.whatYouServe || null;
+  const service_areas = parsed.serviceAreas || null;
+  const instagram = parsed.instagram || null;
+  const websiteRaw = (inquiry.website ?? "").trim() || parsed.websiteFromMessage || null;
+  const website = websiteRaw && websiteRaw !== "—" ? websiteRaw : null;
+
   let slug = slugify(name);
-  const { data: existing } = await client.from("trucks").select("slug").eq("slug", slug).maybeSingle();
-  if (existing) {
+  const { data: slugRow } = await client.from("trucks").select("slug,email").eq("slug", slug).maybeSingle();
+  if (slugRow && slugRow.email !== email) {
     slug = `${slug}-${inquiryId.slice(0, 8)}`;
   }
 
   const vendor_type = inquiryVendorTypeToTruck(inquiry.vendor_type);
-  const email = (inquiry.email ?? "").trim();
+  const photo_url = (inquiry.photo_url ?? "").trim() || null;
+  const catering = parsed.cateringYes;
 
-  const inq = inquiry as typeof inquiry & { website?: string | null; photo_url?: string | null };
-
-  const { error: insertErr } = await client.from("trucks").insert({
+  const payload = {
     name,
     slug,
-    email: email || null,
+    cuisine,
+    description,
+    service_areas,
+    instagram,
+    website,
+    email,
     vendor_type,
     active: true,
-    description: (inquiry.message ?? "").trim() || null,
-    website: (inq.website ?? "").trim() || null,
-    photo_url: (inq.photo_url ?? "").trim() || null,
-  });
+    catering,
+    photo_url,
+  };
 
-  if (insertErr) {
-    return { error: insertErr.message };
+  const { error: upsertErr } = await client.from("trucks").upsert(payload, { onConflict: "email" });
+
+  if (upsertErr) {
+    return { error: upsertErr.message };
   }
 
   const { error: updateErr } = await client.from("inquiries").update({ processed: true }).eq("id", inquiryId);
 
   if (updateErr) {
-    return { error: `Truck created but failed to mark inquiry processed: ${updateErr.message}` };
+    return { error: `Truck saved but failed to mark inquiry processed: ${updateErr.message}` };
   }
 
   revalidatePath("/admin/trucks");
