@@ -41,6 +41,14 @@ function rowToListItem(row: TrucksRow): FoodTruckListItem {
   };
 }
 
+/** Map raw `trucks` rows from Supabase into {@link FoodTruckListItem} for cards. */
+export function toTruckListItems(rows: unknown): FoodTruckListItem[] {
+  if (!Array.isArray(rows) || rows.length === 0) {
+    return [];
+  }
+  return rows.map((row) => rowToListItem(row as TrucksRow));
+}
+
 /**
  * Fetches active trucks from Supabase (featured first, then oldest first).
  * Returns [] if the client is not configured, the query fails, or there are no rows (caller uses static fallback when empty).

@@ -5,8 +5,8 @@ import { FilterChips } from "@/components/filter-chips";
 import { SectionHeader } from "@/components/section-header";
 import { TruckCard } from "@/components/truck-card";
 import { trucks } from "@/data/trucks";
-import { featuredTrucks } from "@/lib/data-access";
 import { toEventListItems } from "@/lib/events-directory";
+import { toTruckListItems } from "@/lib/trucks-directory";
 import { supabase } from "@/lib/supabase";
 
 const cuisineFilters = [...new Set(trucks.map((truck) => truck.cuisine))];
@@ -28,7 +28,17 @@ export default async function Home() {
         .limit(2)
     : { data: null };
 
+  const { data: homeTrucks } = supabase
+    ? await supabase
+        .from("trucks")
+        .select("*")
+        .eq("active", true)
+        .order("created_at", { ascending: true })
+        .limit(3)
+    : { data: null };
+
   const eventListItems = toEventListItems(events);
+  const homeTruckItems = toTruckListItems(homeTrucks);
 
   return (
     <div className="space-y-16 md:space-y-20">
@@ -56,18 +66,20 @@ export default async function Home() {
         35,000+ community members <span style={{ color: '#c2601f' }}>·</span> Charlotte-based since 2014 <span style={{ color: '#c2601f' }}>·</span> Free to list
       </div>
 
-      <section className="space-y-7">
-        <SectionHeader
-          eyebrow="Featured Trucks"
-          title="Curated Charlotte Trucks Locals Recommend"
-          description="A trusted mix of neighborhood favorites and event-ready trucks with strong service reputations across Charlotte."
-        />
-        <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
-          {featuredTrucks.map((truck) => (
-            <TruckCard key={truck.slug} truck={truck} />
-          ))}
-        </div>
-      </section>
+      {homeTruckItems.length > 0 ? (
+        <section className="space-y-7">
+          <SectionHeader
+            eyebrow="Featured Trucks"
+            title="Curated Charlotte Trucks Locals Recommend"
+            description="A trusted mix of neighborhood favorites and event-ready trucks with strong service reputations across Charlotte."
+          />
+          <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+            {homeTruckItems.map((truck) => (
+              <TruckCard key={truck.slug} truck={truck} />
+            ))}
+          </div>
+        </section>
+      ) : null}
 
       <section className="rounded-2xl border border-[#1E1E1E]/8 bg-[#fffdfa] p-6 md:p-7">
         <SectionHeader
