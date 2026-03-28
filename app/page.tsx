@@ -6,7 +6,7 @@ import { SectionHeader } from "@/components/section-header";
 import { TruckCard } from "@/components/truck-card";
 import { trucks } from "@/data/trucks";
 import { featuredTrucks } from "@/lib/data-access";
-import { fetchActiveEventsFromSupabase } from "@/lib/events-directory";
+import { fetchUpcomingEventsFromSupabase } from "@/lib/events-directory";
 
 const cuisineFilters = [...new Set(trucks.map((truck) => truck.cuisine))];
 
@@ -17,7 +17,7 @@ export const metadata: Metadata = {
 };
 
 export default async function Home() {
-  const featuredEvents = await fetchActiveEventsFromSupabase({ featuredOnly: true, limit: 8 });
+  const upcomingHomeEvents = await fetchUpcomingEventsFromSupabase(2);
 
   return (
     <div className="space-y-16 md:space-y-20">
@@ -82,18 +82,20 @@ export default async function Home() {
         <FilterChips filters={cuisineFilters} />
       </section>
 
-      <section className="space-y-7">
-        <SectionHeader
-          eyebrow="Featured Events"
-          title="Featured Charlotte Food Truck Happenings"
-          description="From neighborhood gatherings to brewery nights and school events, these are standout local happenings worth planning around."
-        />
-        <div className="grid gap-5 md:grid-cols-2">
-          {featuredEvents.map((event) => (
-            <EventCard key={event.id} event={event} />
-          ))}
-        </div>
-      </section>
+      {upcomingHomeEvents.length > 0 ? (
+        <section className="space-y-7">
+          <SectionHeader
+            eyebrow="Featured Events"
+            title="Featured Charlotte Food Truck Happenings"
+            description="From neighborhood gatherings to brewery nights and school events, these are standout local happenings worth planning around."
+          />
+          <div className="grid gap-5 md:grid-cols-2">
+            {upcomingHomeEvents.map((event) => (
+              <EventCard key={event.id} event={event} />
+            ))}
+          </div>
+        </section>
+      ) : null}
 
       <section className="grid gap-5 md:grid-cols-2">
         <div className="rounded-2xl border border-[#1E1E1E]/8 bg-[#fffdfa] p-6">

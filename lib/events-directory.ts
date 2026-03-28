@@ -48,6 +48,16 @@ function buildTimeRange(start: string | null, end: string | null): string | null
   return null;
 }
 
+/** Calendar date in America/New_York (Charlotte), YYYY-MM-DD — aligns with local “today” for filtering. */
+function charlotteDateTodayIso(): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/New_York",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+}
+
 function mapRow(row: EventsRow): EventListItem {
   return {
     id: row.id,
@@ -92,6 +102,38 @@ export async function fetchActiveEventsFromSupabase(
 
   if (error) {
     console.error("[events] Supabase fetch failed:", error.message);
+    return [];
+  }
+
+  if (!data?.length) {
+    return [];
+  }
+
+  return (data as EventsRow[]).map(mapRow);
+}
+
+/**
+ * Next upcoming active events (date on or after today), soonest first.
+ * Equivalent to: active = true and date >= current_date (local Charlotte calendar day), order by date asc, limit n.
+ */
+export async function fetchUpcomingEventsFromSupabase(limit: number): Promise<EventListItem[]> {
+  const supabase = getSupabase();
+  if (!supabase || limit < 1) {
+    return [];
+  }
+
+  const today = charlotteDateTodayIso();
+
+  const { data, error } = await supabase
+    .from("events")
+    .select("*")
+    .eq("active", true)
+    .gte("date", today)
+    .order("date", { ascending: true })
+    .limit(limit);
+
+  if (error) {
+    console.error("[events] Supabase upcoming fetch failed:", error.message);
     return [];
   }
 
