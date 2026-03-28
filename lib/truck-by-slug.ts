@@ -12,6 +12,7 @@ export type TruckDetailRow = {
   instagram: string | null;
   email: string | null;
   photo_url: string | null;
+  catering: boolean | null;
 };
 
 function normalizeVendorType(value: string | null | undefined): VendorType {
@@ -30,6 +31,7 @@ export type TruckDetail = {
   website: string | null;
   instagram: string | null;
   email: string | null;
+  catering: boolean;
 };
 
 function mapRow(row: TruckDetailRow): TruckDetail {
@@ -44,6 +46,7 @@ function mapRow(row: TruckDetailRow): TruckDetail {
     website: row.website?.trim() || null,
     instagram: row.instagram?.trim() || null,
     email: row.email?.trim() || null,
+    catering: row.catering === true,
     ...(photo ? { photoUrl: photo } : {}),
   };
 }
