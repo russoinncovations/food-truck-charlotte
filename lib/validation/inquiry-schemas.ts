@@ -24,15 +24,20 @@ export const forTrucksSchema = z.object({
   vendorTypes: z
     .array(vendorTypeEnum)
     .min(1, "Please select your vendor type."),
-  truckName: z.string().trim().min(1, "Truck name is required."),
-  contactName: z.string().trim().min(1, "Contact name is required."),
+  truckName: z.string().trim().min(1, "Truck / vendor name is required."),
   email: z.string().trim().email("Please enter a valid email address."),
-  phone: optionalStr,
-  cuisine: z.string().trim().min(1, "Cuisine is required."),
-  serviceArea: z.string().trim().min(1, "Service area is required."),
+  whatYouServe: z
+    .string()
+    .trim()
+    .min(1, "Please describe what you serve.")
+    .max(160, "Please keep this to 160 characters or less."),
+  serviceArea: z.string().trim().min(1, "Please list the neighborhoods or areas you serve."),
+  catering: z
+    .string()
+    .refine((v) => v === "yes" || v === "no", {
+      message: "Please choose whether you offer catering.",
+    }),
   instagram: optionalStr,
-  website: optionalStr,
-  description: optionalStr,
 });
 
 export const forVenuesSchema = z.object({

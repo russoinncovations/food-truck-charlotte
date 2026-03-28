@@ -53,22 +53,71 @@ export function ForTrucksForm() {
         </fieldset>
       </div>
 
-      <FormField label="Truck Name" name="truckName" placeholder="Your truck's public name" required />
-      <FormField label="Owner / Contact Name" name="contactName" placeholder="Best point of contact" required />
+      <FormField
+        label="Truck / Vendor Name"
+        name="truckName"
+        placeholder="Your public business name"
+        required
+      />
       <FormField label="Email" name="email" type="email" placeholder="name@email.com" required />
-      <FormField label="Phone" name="phone" type="tel" placeholder="(704) 555-0123" />
-      <FormField label="Cuisine" name="cuisine" placeholder="Ex: Tacos, BBQ, Caribbean" required />
-      <FormField label="Service Area" name="serviceArea" placeholder="Ex: Uptown, South End, NoDa" required />
-      <FormField label="Instagram" name="instagram" placeholder="@yourtruckname" />
-      <FormField label="Website" name="website" placeholder="https://yourtruck.com" />
+
       <div className="md:col-span-2">
         <FormField
-          label="Short Description"
-          name="description"
+          label="What do you serve?"
+          name="whatYouServe"
           as="textarea"
-          placeholder="Tell Charlotte what makes your menu and service style stand out."
+          placeholder="e.g. Street-style tacos with bold salsas and house-pickled toppings"
+          required
+          maxLength={160}
+          helpText="One sentence, max 160 characters."
         />
       </div>
+
+      <div className="md:col-span-2">
+        <FormField
+          label="What neighborhoods or areas do you serve?"
+          name="serviceArea"
+          placeholder="e.g. South End, NoDa, Uptown, Matthews"
+          required
+        />
+      </div>
+
+      <div className="md:col-span-2">
+        <fieldset className="min-w-0 border-0 p-0">
+          <legend className="text-[15px] font-medium text-[#1E1E1E]">Do you offer catering?</legend>
+          <div className="mt-2 space-y-3 rounded-xl border border-[#1E1E1E]/15 bg-[#fffdf9] px-4 py-3">
+            <label className="flex cursor-pointer items-start gap-3 text-[15px] font-normal text-[#1E1E1E]">
+              <input
+                type="radio"
+                name="catering"
+                value="yes"
+                required
+                className="mt-1 h-4 w-4 shrink-0 border-[#1E1E1E]/25 accent-[#D97A2B] focus:outline-none focus:ring-2 focus:ring-[#D97A2B]"
+              />
+              <span>Yes</span>
+            </label>
+            <label className="flex cursor-pointer items-start gap-3 text-[15px] font-normal text-[#1E1E1E]">
+              <input
+                type="radio"
+                name="catering"
+                value="no"
+                className="mt-1 h-4 w-4 shrink-0 border-[#1E1E1E]/25 accent-[#D97A2B] focus:outline-none focus:ring-2 focus:ring-[#D97A2B]"
+              />
+              <span>No</span>
+            </label>
+          </div>
+        </fieldset>
+      </div>
+
+      <div className="md:col-span-2">
+        <FormField
+          label="Instagram (optional)"
+          name="instagram"
+          placeholder="@yourtruckname"
+          required={false}
+        />
+      </div>
+
       <SubmitButton isPending={isPending}>Join the Directory</SubmitButton>
     </form>
   );

@@ -23,8 +23,8 @@ function rowToListItem(row: TrucksRow): FoodTruckListItem {
     name: row.name,
     cuisine: (row.cuisine ?? "").trim() || "General",
     vendor_type: normalizeVendorType(row.vendor_type),
-    description: (row.description ?? "").trim() || "—",
-    serviceArea: (row.service_areas ?? "").trim() || "—",
+    description: (row.description ?? "").trim(),
+    serviceArea: (row.service_areas ?? "").trim(),
     ...(photoUrl ? { photoUrl } : {}),
   };
 }

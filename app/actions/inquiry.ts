@@ -117,14 +117,11 @@ export async function submitForTrucks(
   const raw = {
     ...pickFormData(formData, [
       "truckName",
-      "contactName",
       "email",
-      "phone",
-      "cuisine",
+      "whatYouServe",
       "serviceArea",
+      "catering",
       "instagram",
-      "website",
-      "description",
     ]),
     vendorTypes: pickVendorTypes(formData),
   };
@@ -145,17 +142,12 @@ export async function submitForTrucks(
     "Food Truck Charlotte — Join the Directory",
     "",
     `Vendor type(s): ${vendorTypeLine}`,
-    `Truck name: ${d.truckName}`,
-    `Contact name: ${d.contactName}`,
+    `Truck / vendor name: ${d.truckName}`,
     `Email: ${d.email}`,
-    `Phone: ${d.phone ?? "—"}`,
-    `Cuisine: ${d.cuisine}`,
-    `Service area: ${d.serviceArea}`,
+    `What you serve: ${d.whatYouServe}`,
+    `Service areas: ${d.serviceArea}`,
+    `Catering: ${d.catering === "yes" ? "Yes" : "No"}`,
     `Instagram: ${d.instagram ?? "—"}`,
-    `Website: ${d.website ?? "—"}`,
-    "",
-    "Description:",
-    d.description ?? "—",
   ].join("\n");
 
   const result = await sendInquiryEmail(

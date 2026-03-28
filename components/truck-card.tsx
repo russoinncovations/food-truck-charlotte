@@ -23,16 +23,18 @@ export function TruckCard({ truck }: TruckCardProps) {
       ) : null}
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <span className="rounded-full border border-[#1E1E1E]/12 bg-[#f9f4ec] px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-[#1E1E1E]/70">
-          Charlotte Pick
+          {truck.vendor_type === "cart_tent" ? "CART & TENT" : "FOOD TRUCK"}
         </span>
         <span className="rounded-full border border-[#D97A2B]/30 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-[#8f4f1c]">
           {truck.cuisine}
         </span>
       </div>
       <h3 className="mb-2 text-[1.35rem] leading-tight font-semibold text-[#1E1E1E]">{truck.name}</h3>
-      <p className="mb-4 text-[15px] leading-7 text-[#1E1E1E]/80">{truck.description}</p>
+      <p className="mb-4 text-[15px] leading-7 text-[#1E1E1E]/80">
+        {truck.description.trim() ? truck.description : "—"}
+      </p>
       <p className="mb-5 text-[15px] text-[#1E1E1E]/70">
-        <span className="font-medium">Service Area:</span> {truck.serviceArea}
+        <span className="font-medium">Service Area:</span> {truck.serviceArea.trim() ? truck.serviceArea : "—"}
       </p>
       <Link
         href={`/trucks/${truck.slug}`}
