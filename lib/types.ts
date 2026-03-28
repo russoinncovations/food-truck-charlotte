@@ -10,6 +10,18 @@ export type Cuisine =
 
 export type VendorType = "truck" | "cart_tent";
 
+/** Fields needed for directory cards (static data or Supabase). */
+export type FoodTruckListItem = {
+  slug: string;
+  name: string;
+  cuisine: string;
+  vendor_type: VendorType;
+  description: string;
+  serviceArea: string;
+  /** Optional hero image (e.g. Supabase `photo_url`). */
+  photoUrl?: string;
+};
+
 export type FoodTruck = {
   slug: string;
   name: string;

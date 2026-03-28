@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
+import { trucks as staticTrucks } from "@/data/trucks";
 import { FindFoodTrucksContent } from "@/components/find-food-trucks-content";
 import { SectionHeader } from "@/components/section-header";
-import { trucks } from "@/data/trucks";
+import { fetchDirectoryTrucksFromSupabase } from "@/lib/trucks-directory";
+import type { FoodTruckListItem } from "@/lib/types";
 
-const cuisines = [...new Set(trucks.map((truck) => truck.cuisine))];
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Find Food Vendors in Charlotte",
@@ -11,7 +13,15 @@ export const metadata: Metadata = {
     "Browse Charlotte food vendors by cuisine and service area to find trusted local favorites for everyday stops and events.",
 };
 
-export default function FindFoodTrucksPage() {
+export default async function FindFoodTrucksPage() {
+  const fromSupabase = await fetchDirectoryTrucksFromSupabase();
+  const trucks: FoodTruckListItem[] =
+    fromSupabase.length > 0 ? fromSupabase : staticTrucks;
+
+  const cuisines = [...new Set(trucks.map((truck) => truck.cuisine))].sort((a, b) =>
+    a.localeCompare(b),
+  );
+
   return (
     <div className="space-y-10 md:space-y-12">
       <SectionHeader

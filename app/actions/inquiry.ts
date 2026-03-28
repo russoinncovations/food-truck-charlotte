@@ -1,7 +1,7 @@
 "use server";
 
 import { sendInquiryEmail } from "@/lib/inquiry-email";
-import { supabase } from "@/lib/supabase";
+import { getSupabase } from "@/lib/supabase";
 import {
   bookATruckSchema,
   firstZodError,
@@ -34,9 +34,8 @@ async function saveInquiryToSupabase(payload: {
   message: string;
   vendor_type?: string | null;
 }) {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
-  if (!url || !key) {
+  const client = getSupabase();
+  if (!client) {
     return;
   }
 
@@ -49,7 +48,7 @@ async function saveInquiryToSupabase(payload: {
   };
 
   try {
-    const { error } = await supabase.from("inquiries").insert(row);
+    const { error } = await client.from("inquiries").insert(row);
     if (error) {
       console.error("[inquiries] Supabase insert failed:", error.message);
     }

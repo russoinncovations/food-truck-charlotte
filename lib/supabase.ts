@@ -1,6 +1,20 @@
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
-export const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-);
+let cached: SupabaseClient | null | undefined;
+
+/**
+ * Shared Supabase client. Returns null when URL/key are not configured (e.g. local build without .env).
+ */
+export function getSupabase(): SupabaseClient | null {
+  if (cached !== undefined) {
+    return cached;
+  }
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
+  if (!url || !key) {
+    cached = null;
+    return null;
+  }
+  cached = createClient(url, key);
+  return cached;
+}

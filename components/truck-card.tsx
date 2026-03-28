@@ -1,13 +1,26 @@
+import Image from "next/image";
 import Link from "next/link";
-import type { FoodTruck } from "@/lib/types";
+import type { FoodTruckListItem } from "@/lib/types";
 
 type TruckCardProps = {
-  truck: FoodTruck;
+  truck: FoodTruckListItem;
 };
 
 export function TruckCard({ truck }: TruckCardProps) {
   return (
     <article className="rounded-2xl border border-[#1E1E1E]/10 bg-[#fffdfa] p-5 shadow-[0_8px_24px_rgba(30,30,30,0.04)]">
+      {truck.photoUrl ? (
+        <div className="relative mb-4 aspect-[16/10] w-full overflow-hidden rounded-xl border border-[#1E1E1E]/10">
+          <Image
+            src={truck.photoUrl}
+            alt={`${truck.name} photo`}
+            fill
+            className="object-cover"
+            sizes="(max-width: 768px) 100vw, 33vw"
+            unoptimized
+          />
+        </div>
+      ) : null}
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <span className="rounded-full border border-[#1E1E1E]/12 bg-[#f9f4ec] px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-[#1E1E1E]/70">
           Charlotte Pick

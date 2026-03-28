@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { FilterChips } from "@/components/filter-chips";
 import { TruckCard } from "@/components/truck-card";
-import type { FoodTruck, VendorType } from "@/lib/types";
+import type { FoodTruckListItem, VendorType } from "@/lib/types";
 
 type VendorFilter = "all" | VendorType;
 
@@ -21,7 +21,7 @@ function vendorChipClass(active: boolean) {
 }
 
 type FindFoodTrucksContentProps = {
-  trucks: FoodTruck[];
+  trucks: FoodTruckListItem[];
   cuisines: string[];
 };
 
