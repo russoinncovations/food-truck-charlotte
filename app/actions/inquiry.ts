@@ -102,6 +102,7 @@ export async function submitBookATruck(
   const result = await sendInquiryEmail(
     `[Food Truck Charlotte] Book a Truck — ${d.name}`,
     body,
+    { type: "book_a_truck", submitterEmail: d.email, name: d.name },
   );
   if (!result.ok) {
     return { error: result.error };
@@ -176,6 +177,7 @@ export async function submitForTrucks(
   const result = await sendInquiryEmail(
     `[Food Truck Charlotte] Join Directory — ${d.truckName}`,
     body,
+    { type: "for_trucks", submitterEmail: d.email, truckName: d.truckName },
   );
   if (!result.ok) {
     return { error: result.error };
@@ -232,6 +234,7 @@ export async function submitForVenues(
   const result = await sendInquiryEmail(
     `[Food Truck Charlotte] Host inquiry — ${d.venueName}`,
     body,
+    { type: "for_venues", submitterEmail: d.email, venueName: d.venueName },
   );
   if (!result.ok) {
     return { error: result.error };
