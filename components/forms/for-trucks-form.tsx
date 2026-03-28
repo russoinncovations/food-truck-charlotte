@@ -12,7 +12,12 @@ export function ForTrucksForm() {
   const [state, formAction, isPending] = useActionState(submitForTrucks, initialState);
 
   return (
-    <form action={formAction} method="post" className="grid gap-4 rounded-2xl border border-[#1E1E1E]/8 bg-[#fffdfa] p-5 md:grid-cols-2 md:p-6">
+    <form
+      action={formAction}
+      method="post"
+      encType="multipart/form-data"
+      className="grid gap-4 rounded-2xl border border-[#1E1E1E]/8 bg-[#fffdfa] p-5 md:grid-cols-2 md:p-6"
+    >
       <div className="md:col-span-2">
         <FormStatus state={state} />
       </div>
@@ -116,6 +121,31 @@ export function ForTrucksForm() {
           placeholder="@yourtruckname"
           required={false}
         />
+      </div>
+
+      <div className="md:col-span-2">
+        <FormField
+          label="Website (optional)"
+          name="website"
+          type="text"
+          placeholder="https://yoursite.com"
+          required={false}
+        />
+      </div>
+
+      <div className="md:col-span-2">
+        <label className="block text-[15px] font-medium text-[#1E1E1E]">
+          Upload a photo of your truck, cart, or tent (optional)
+          <input
+            type="file"
+            name="photo"
+            accept="image/jpeg,image/png"
+            className="mt-2 block w-full cursor-pointer rounded-xl border border-[#1E1E1E]/15 bg-[#fffdf9] px-4 py-3 text-[15px] text-[#1E1E1E] outline-none file:mr-4 file:rounded-lg file:border-0 file:bg-[#f9f4ec] file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-[#1E1E1E] focus:ring-2 focus:ring-[#D97A2B]"
+          />
+        </label>
+        <span className="mt-1 block text-[13px] font-normal leading-5 text-[#1E1E1E]/60">
+          JPEG or PNG, max 5MB
+        </span>
       </div>
 
       <SubmitButton isPending={isPending}>Join the Directory</SubmitButton>

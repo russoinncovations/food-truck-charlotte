@@ -2,6 +2,7 @@
 
 import { sendInquiryEmail } from "@/lib/inquiry-email";
 import { getSupabase } from "@/lib/supabase";
+import { uploadVendorListingPhoto } from "@/lib/upload-vendor-photo";
 import {
   bookATruckSchema,
   firstZodError,
@@ -33,6 +34,8 @@ async function saveInquiryToSupabase(payload: {
   email: string;
   message: string;
   vendor_type?: string | null;
+  website?: string | null;
+  photo_url?: string | null;
 }) {
   const client = getSupabase();
   if (!client) {
@@ -45,6 +48,8 @@ async function saveInquiryToSupabase(payload: {
     email: payload.email,
     message: payload.message,
     vendor_type: payload.vendor_type ?? null,
+    website: payload.website ?? null,
+    photo_url: payload.photo_url ?? null,
   };
 
   try {
@@ -122,6 +127,7 @@ export async function submitForTrucks(
       "serviceArea",
       "catering",
       "instagram",
+      "website",
     ]),
     vendorTypes: pickVendorTypes(formData),
   };
@@ -131,6 +137,21 @@ export async function submitForTrucks(
   }
 
   const d = parsed.data;
+  const client = getSupabase();
+
+  const photoField = formData.get("photo");
+  let photoUrl: string | null = null;
+  if (photoField instanceof File && photoField.size > 0) {
+    if (!client) {
+      return { error: "Cannot upload photo: storage is not configured." };
+    }
+    const uploaded = await uploadVendorListingPhoto(client, photoField);
+    if ("error" in uploaded) {
+      return { error: uploaded.error };
+    }
+    photoUrl = uploaded.publicUrl;
+  }
+
   const vendorTypeLabels: Record<(typeof d.vendorTypes)[number], string> = {
     food_truck: "Food Truck",
     food_cart: "Food Cart",
@@ -148,6 +169,8 @@ export async function submitForTrucks(
     `Service areas: ${d.serviceArea}`,
     `Catering: ${d.catering === "yes" ? "Yes" : "No"}`,
     `Instagram: ${d.instagram ?? "—"}`,
+    `Website: ${d.website ?? "—"}`,
+    `Photo URL: ${photoUrl ?? "—"}`,
   ].join("\n");
 
   const result = await sendInquiryEmail(
@@ -163,6 +186,8 @@ export async function submitForTrucks(
     email: d.email,
     message: body,
     vendor_type: vendorTypeLine,
+    website: d.website ?? null,
+    photo_url: photoUrl,
   });
   return { success: true };
 }

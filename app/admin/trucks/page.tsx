@@ -19,7 +19,7 @@ export default async function AdminTrucksPage() {
 
   const { data: rows, error } = await client
     .from("inquiries")
-    .select("id, name, email, vendor_type, message, processed, created_at")
+    .select("id, name, email, vendor_type, message, processed, created_at, website, photo_url")
     .eq("type", "for_trucks")
     .order("processed", { ascending: true })
     .order("created_at", { ascending: false });
@@ -64,6 +64,21 @@ export default async function AdminTrucksPage() {
               <p className="mb-1">
                 <span className="text-neutral-500">Vendor type:</span> {row.vendor_type || "—"}
               </p>
+              {row.website ? (
+                <p className="mb-1">
+                  <span className="text-neutral-500">Website:</span>{" "}
+                  <a href={row.website.startsWith("http") ? row.website : `https://${row.website}`} className="text-blue-700 underline" target="_blank" rel="noreferrer">
+                    {row.website}
+                  </a>
+                </p>
+              ) : null}
+              {row.photo_url ? (
+                <p className="mb-2">
+                  <span className="mb-1 block text-neutral-600">Photo</span>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={row.photo_url} alt="" className="max-h-40 rounded border border-neutral-200" />
+                </p>
+              ) : null}
               <p className="mb-3 text-neutral-500">
                 <span className="block text-neutral-600">Message / notes</span>
                 <span className="mt-1 block whitespace-pre-wrap break-words text-neutral-800">

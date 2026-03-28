@@ -41,7 +41,7 @@ export async function addTruckFromInquiry(
 
   const { data: inquiry, error: fetchErr } = await client
     .from("inquiries")
-    .select("id, type, name, email, vendor_type, message, processed")
+    .select("id, type, name, email, vendor_type, message, processed, website, photo_url")
     .eq("id", inquiryId)
     .maybeSingle();
 
@@ -69,6 +69,8 @@ export async function addTruckFromInquiry(
   const vendor_type = inquiryVendorTypeToTruck(inquiry.vendor_type);
   const email = (inquiry.email ?? "").trim();
 
+  const inq = inquiry as typeof inquiry & { website?: string | null; photo_url?: string | null };
+
   const { error: insertErr } = await client.from("trucks").insert({
     name,
     slug,
@@ -76,6 +78,8 @@ export async function addTruckFromInquiry(
     vendor_type,
     active: true,
     description: (inquiry.message ?? "").trim() || null,
+    website: (inq.website ?? "").trim() || null,
+    photo_url: (inq.photo_url ?? "").trim() || null,
   });
 
   if (insertErr) {

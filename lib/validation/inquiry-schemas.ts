@@ -38,6 +38,7 @@ export const forTrucksSchema = z.object({
       message: "Please choose whether you offer catering.",
     }),
   instagram: optionalStr,
+  website: optionalStr,
 });
 
 export const forVenuesSchema = z.object({
