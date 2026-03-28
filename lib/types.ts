@@ -20,6 +20,8 @@ export type FoodTruckListItem = {
   serviceArea: string;
   /** Optional hero image (e.g. Supabase `photo_url`). */
   photoUrl?: string;
+  /** From Supabase `catering`; omit/false = no badge on directory card. */
+  catering?: boolean;
 };
 
 export type FoodTruck = {
@@ -33,6 +35,7 @@ export type FoodTruck = {
   menuHighlights: string[];
   eventTypesServed: string[];
   featured?: boolean;
+  catering?: boolean;
 };
 
 export type TruckEvent = {

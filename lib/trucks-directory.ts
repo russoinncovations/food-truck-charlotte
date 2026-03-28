@@ -9,6 +9,7 @@ type TrucksRow = {
   description: string | null;
   service_areas: string | null;
   photo_url: string | null;
+  catering: boolean | null;
 };
 
 function normalizeVendorType(value: string | null | undefined): VendorType {
@@ -26,6 +27,7 @@ function rowToListItem(row: TrucksRow): FoodTruckListItem {
     description: (row.description ?? "").trim(),
     serviceArea: (row.service_areas ?? "").trim(),
     ...(photoUrl ? { photoUrl } : {}),
+    ...(row.catering === true ? { catering: true } : {}),
   };
 }
 

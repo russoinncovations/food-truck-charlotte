@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { FilterChips } from "@/components/filter-chips";
-import { TruckCard } from "@/components/truck-card";
+import { DirectoryTruckCard } from "@/components/directory-truck-card";
 import type { FoodTruckListItem, VendorType } from "@/lib/types";
 
 type VendorFilter = "all" | VendorType;
@@ -69,7 +69,7 @@ export function FindFoodTrucksContent({ trucks, cuisines }: FindFoodTrucksConten
 
       <section className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
         {filteredTrucks.map((truck) => (
-          <TruckCard key={truck.slug} truck={truck} />
+          <DirectoryTruckCard key={truck.slug} truck={truck} />
         ))}
       </section>
     </>
