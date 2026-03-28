@@ -22,6 +22,9 @@ export type FoodTruckListItem = {
   photoUrl?: string;
   /** From Supabase `catering`; omit/false = no badge on directory card. */
   catering?: boolean;
+  instagram?: string | null;
+  facebook?: string | null;
+  website?: string | null;
 };
 
 export type FoodTruck = {

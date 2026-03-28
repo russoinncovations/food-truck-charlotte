@@ -10,6 +10,10 @@ type TrucksRow = {
   service_areas: string | null;
   photo_url: string | null;
   catering: boolean | null;
+  instagram: string | null;
+  website: string | null;
+  /** Present when `facebook` column exists on `trucks`. */
+  facebook?: string | null;
 };
 
 function normalizeVendorType(value: string | null | undefined): VendorType {
@@ -19,6 +23,9 @@ function normalizeVendorType(value: string | null | undefined): VendorType {
 
 function rowToListItem(row: TrucksRow): FoodTruckListItem {
   const photoUrl = (row.photo_url ?? "").trim();
+  const instagram = row.instagram?.trim() || null;
+  const facebook = row.facebook?.trim() || null;
+  const website = row.website?.trim() || null;
   return {
     slug: row.slug,
     name: row.name,
@@ -28,6 +35,9 @@ function rowToListItem(row: TrucksRow): FoodTruckListItem {
     serviceArea: (row.service_areas ?? "").trim(),
     ...(photoUrl ? { photoUrl } : {}),
     ...(row.catering === true ? { catering: true } : {}),
+    ...(instagram ? { instagram } : {}),
+    ...(facebook ? { facebook } : {}),
+    ...(website ? { website } : {}),
   };
 }
 

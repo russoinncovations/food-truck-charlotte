@@ -13,13 +13,68 @@ function serviceAreaParts(serviceArea: string): string[] {
     .filter(Boolean);
 }
 
+function nameInitial(name: string): string {
+  const t = name.trim();
+  if (!t) return "?";
+  return t.charAt(0).toUpperCase();
+}
+
+function instagramHref(raw: string): string {
+  const t = raw.trim();
+  if (t.startsWith("http")) return t;
+  return `https://instagram.com/${t.replace(/^@/, "")}`;
+}
+
+function facebookHref(raw: string): string {
+  const t = raw.trim();
+  if (t.startsWith("http")) return t;
+  return `https://facebook.com/${t.replace(/^@/, "")}`;
+}
+
+function websiteHref(raw: string): string {
+  const t = raw.trim();
+  if (t.startsWith("http")) return t;
+  return `https://${t}`;
+}
+
+function InstagramIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+      <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z" />
+    </svg>
+  );
+}
+
+function FacebookIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+      <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
+    </svg>
+  );
+}
+
+function WebsiteIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+      <circle cx="12" cy="12" r="10" />
+      <path d="M2 12h20M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z" />
+    </svg>
+  );
+}
+
+const iconLinkClass =
+  "text-[#9ca3af] transition-colors hover:text-[#D97A2B] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#D97A2B]";
+
 export function DirectoryTruckCard({ truck }: DirectoryTruckCardProps) {
   const desc = truck.description.trim();
-  const areas = serviceAreaParts(truck.serviceArea);
+  const areas = serviceAreaParts(truck.serviceArea).slice(0, 2);
+  const ig = truck.instagram?.trim();
+  const fb = truck.facebook?.trim();
+  const web = truck.website?.trim();
 
   return (
-    <article className="flex h-full flex-col overflow-hidden rounded-2xl border border-[#1E1E1E]/10 bg-[#fffdfa] shadow-[0_8px_24px_rgba(30,30,30,0.04)]">
-      <div className="relative h-[180px] w-full shrink-0 overflow-hidden rounded-t-xl">
+    <article className="flex h-full flex-col overflow-hidden rounded-xl bg-white shadow-sm transition-all duration-200 hover:scale-[1.01] hover:shadow-md">
+      <div className="relative h-[200px] w-full shrink-0 overflow-hidden">
         {truck.photoUrl ? (
           <Image
             src={truck.photoUrl}
@@ -30,57 +85,83 @@ export function DirectoryTruckCard({ truck }: DirectoryTruckCardProps) {
             unoptimized
           />
         ) : (
-          <div
-            className="flex h-full w-full items-center justify-center bg-gradient-to-b from-[#c2601f] to-[#3d1f0a]"
-            aria-hidden
-          >
-            <span className="text-5xl leading-none text-white">🚚</span>
+          <div className="flex h-full w-full items-center justify-center bg-[#faf7f2]" aria-hidden>
+            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-[#c2601f]">
+              <span className="text-[32px] font-bold leading-none text-white">{nameInitial(truck.name)}</span>
+            </div>
           </div>
         )}
-      </div>
-
-      <div className="flex flex-1 flex-col p-5">
-        <div className="mb-3 flex flex-wrap items-center gap-2">
-          <span className="rounded-full border border-[#1E1E1E]/12 bg-[#f9f4ec] px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-[#1E1E1E]/70">
-            {truck.vendor_type === "cart_tent" ? "CART & TENT" : "FOOD TRUCK"}
-          </span>
-          <span className="rounded-full border border-[#D97A2B]/30 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-[#8f4f1c]">
+        <div className="absolute left-3 top-3 z-10">
+          <span
+            className="inline-block rounded-full border border-[#1E1E1E]/10 bg-white px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-[#D97A2B] shadow-sm"
+            style={{ fontVariant: "small-caps" }}
+          >
             {truck.cuisine}
           </span>
-          {truck.catering === true ? (
-            <span className="rounded-full border border-emerald-600/25 bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-800">
-              ✓ Catering Available
-            </span>
-          ) : null}
         </div>
+      </div>
 
-        <h3 className="text-xl font-semibold leading-tight tracking-tight text-[#1E1E1E]">{truck.name}</h3>
+      <div className="flex flex-1 flex-col px-5 pb-4 pt-4">
+        <h3 className="text-[18px] font-bold leading-snug text-[#1a1a1a]">{truck.name}</h3>
 
         {desc ? (
-          <p className="mt-2 line-clamp-2 text-[15px] leading-6 text-[#1E1E1E]/60">{desc}</p>
+          <p className="mt-2 line-clamp-2 text-[14px] leading-snug text-[#6b6560]">{desc}</p>
         ) : null}
 
         {areas.length > 0 ? (
-          <div className="mt-3 flex flex-wrap gap-1.5">
-            {areas.map((area) => (
-              <span
-                key={area}
-                className="rounded-full border border-[#D97A2B]/35 bg-[#fff4ea] px-2.5 py-0.5 text-[11px] font-medium text-[#8f4f1c]"
-              >
-                {area}
-              </span>
-            ))}
-          </div>
+          <p className="mt-2 text-[12px] font-medium text-[#c2601f]">{areas.join(" · ")}</p>
         ) : null}
 
-        <div className="mt-auto pt-5">
-          <Link
-            href={`/trucks/${truck.slug}`}
-            className="flex w-full items-center justify-center rounded-full bg-[#D97A2B] px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#c76e25]"
-          >
-            View Truck
-          </Link>
+        {truck.catering === true ? (
+          <p className="mt-2 flex items-center gap-1.5 text-[11px] font-medium text-emerald-700">
+            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-600" aria-hidden />
+            Catering
+          </p>
+        ) : null}
+      </div>
+
+      <div className="mt-auto flex items-center justify-between gap-3 border-t border-[#1E1E1E]/10 px-5 py-4">
+        <div className="flex min-h-5 flex-wrap items-center gap-3">
+          {ig ? (
+            <a
+              href={instagramHref(ig)}
+              target="_blank"
+              rel="noreferrer"
+              className={iconLinkClass}
+              aria-label={`${truck.name} on Instagram`}
+            >
+              <InstagramIcon className="h-5 w-5" />
+            </a>
+          ) : null}
+          {fb ? (
+            <a
+              href={facebookHref(fb)}
+              target="_blank"
+              rel="noreferrer"
+              className={iconLinkClass}
+              aria-label={`${truck.name} on Facebook`}
+            >
+              <FacebookIcon className="h-5 w-5" />
+            </a>
+          ) : null}
+          {web ? (
+            <a
+              href={websiteHref(web)}
+              target="_blank"
+              rel="noreferrer"
+              className={iconLinkClass}
+              aria-label={`${truck.name} website`}
+            >
+              <WebsiteIcon className="h-5 w-5" />
+            </a>
+          ) : null}
         </div>
+        <Link
+          href={`/trucks/${truck.slug}`}
+          className="shrink-0 rounded-full border border-[#D97A2B] px-3 py-1.5 text-xs font-semibold text-[#D97A2B] transition-colors hover:bg-[#fff4ea]"
+        >
+          View Truck
+        </Link>
       </div>
     </article>
   );
