@@ -41,12 +41,14 @@ export type FoodTruck = {
   catering?: boolean;
 };
 
-export type TruckEvent = {
+/** Public event row for listing (from Supabase `events` or formatted for UI). */
+export type EventListItem = {
   id: string;
   title: string;
-  date: string;
-  location: string;
-  featuredTruckSlugs: string[];
+  formattedDate: string;
+  timeRange: string | null;
+  locationName: string;
+  address: string;
   description: string;
-  featured?: boolean;
+  featured: boolean;
 };

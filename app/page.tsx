@@ -5,7 +5,8 @@ import { FilterChips } from "@/components/filter-chips";
 import { SectionHeader } from "@/components/section-header";
 import { TruckCard } from "@/components/truck-card";
 import { trucks } from "@/data/trucks";
-import { featuredEvents, featuredTrucks, getTruckNames } from "@/lib/data-access";
+import { featuredTrucks } from "@/lib/data-access";
+import { fetchActiveEventsFromSupabase } from "@/lib/events-directory";
 
 const cuisineFilters = [...new Set(trucks.map((truck) => truck.cuisine))];
 
@@ -15,7 +16,9 @@ export const metadata: Metadata = {
     "Charlotte's trusted guide to food truck discovery, local events, and straightforward booking inquiries.",
 };
 
-export default function Home() {
+export default async function Home() {
+  const featuredEvents = await fetchActiveEventsFromSupabase({ featuredOnly: true, limit: 8 });
+
   return (
     <div className="space-y-16 md:space-y-20">
       <section className="rounded-3xl border border-[#1E1E1E]/8 bg-[#fffdfa] p-6 shadow-[0_12px_32px_rgba(30,30,30,0.04)] md:p-11">
@@ -87,7 +90,7 @@ export default function Home() {
         />
         <div className="grid gap-5 md:grid-cols-2">
           {featuredEvents.map((event) => (
-            <EventCard key={event.id} event={event} featuredNames={getTruckNames(event.featuredTruckSlugs)} />
+            <EventCard key={event.id} event={event} />
           ))}
         </div>
       </section>

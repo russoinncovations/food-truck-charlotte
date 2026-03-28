@@ -1,4 +1,3 @@
-import { events } from "@/data/events";
 import { trucks } from "@/data/trucks";
 
 export function getTruckBySlug(slug: string) {
@@ -12,4 +11,3 @@ export function getTruckNames(slugs: string[]) {
 }
 
 export const featuredTrucks = trucks.filter((truck) => truck.featured);
-export const featuredEvents = events.filter((event) => event.featured);
