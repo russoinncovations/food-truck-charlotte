@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { getSupabase } from "@/lib/supabase";
 import { parseForTrucksInquiryMessage } from "@/lib/parse-for-trucks-inquiry";
 import { AddToDirectoryForm } from "./add-to-directory-form";
@@ -11,13 +12,50 @@ function vendorDescriptionFromMessage(message: string): string {
   return v;
 }
 
+type InquiryTab = "trucks" | "venues" | "bookings";
+
+const TAB_QUERY: Record<InquiryTab, string> = {
+  trucks: "trucks",
+  venues: "venues",
+  bookings: "bookings",
+};
+
+const TAB_TYPE: Record<InquiryTab, "for_trucks" | "for_venues" | "book_a_truck"> = {
+  trucks: "for_trucks",
+  venues: "for_venues",
+  bookings: "book_a_truck",
+};
+
+function tabFromSearch(tabParam: string | undefined): InquiryTab {
+  if (tabParam === TAB_QUERY.venues) return "venues";
+  if (tabParam === TAB_QUERY.bookings) return "bookings";
+  return "trucks";
+}
+
+function tabLinkClass(active: boolean) {
+  return [
+    "rounded-t px-3 py-2 text-sm font-medium",
+    active
+      ? "border border-b-0 border-neutral-300 bg-white text-neutral-900"
+      : "border border-transparent text-neutral-600 hover:text-neutral-900",
+  ].join(" ");
+}
+
 export const metadata = {
-  title: "Admin — Directory inquiries",
+  title: "Admin — Inquiries",
 };
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminTrucksPage() {
+export default async function AdminTrucksPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ tab?: string }>;
+}) {
+  const { tab: tabParam } = await searchParams;
+  const activeTab = tabFromSearch(tabParam);
+  const inquiryType = TAB_TYPE[activeTab];
+
   const client = getSupabase();
   if (!client) {
     return (
@@ -29,8 +67,10 @@ export default async function AdminTrucksPage() {
 
   const { data: rows, error } = await client
     .from("inquiries")
-    .select("id, name, email, vendor_type, message, processed, created_at, website, photo_url")
-    .eq("type", "for_trucks")
+    .select(
+      "id, type, name, email, vendor_type, message, processed, created_at, website, photo_url, vendor_description",
+    )
+    .eq("type", inquiryType)
     .or("processed.eq.false,processed.is.null")
     .order("created_at", { ascending: false });
 
@@ -43,19 +83,46 @@ export default async function AdminTrucksPage() {
   }
 
   const list = rows ?? [];
+  const basePath = "/admin/trucks";
 
   return (
     <div className="mx-auto max-w-3xl p-6 font-sans text-sm text-neutral-800">
-      <h1 className="mb-1 text-lg font-semibold">Directory inquiries (for trucks)</h1>
-      <p className="mb-6 text-neutral-600">Unprocessed only · internal use only</p>
+      <h1 className="mb-1 text-lg font-semibold">Inquiries</h1>
+      <p className="mb-4 text-neutral-600">Unprocessed only · internal use only</p>
+
+      <nav className="mb-4 flex flex-wrap gap-1 border-b border-neutral-300">
+        <Link
+          href={`${basePath}?tab=${TAB_QUERY.trucks}`}
+          className={tabLinkClass(activeTab === "trucks")}
+        >
+          Truck Requests
+        </Link>
+        <Link
+          href={`${basePath}?tab=${TAB_QUERY.venues}`}
+          className={tabLinkClass(activeTab === "venues")}
+        >
+          Venue Requests
+        </Link>
+        <Link
+          href={`${basePath}?tab=${TAB_QUERY.bookings}`}
+          className={tabLinkClass(activeTab === "bookings")}
+        >
+          Booking Requests
+        </Link>
+      </nav>
 
       {list.length === 0 ? (
         <p className="text-neutral-500">No pending inquiries.</p>
-      ) : (
+      ) : activeTab === "trucks" ? (
         <ul className="space-y-4">
           {list.map((row) => {
             const parsed = parseForTrucksInquiryMessage(row.message ?? "");
-            const vendorDescription = vendorDescriptionFromMessage(row.message ?? "");
+            const vendorDescriptionCol = (
+              (row as { vendor_description?: string | null }).vendor_description ?? ""
+            ).trim();
+            const vendorDescriptionFallback = vendorDescriptionFromMessage(row.message ?? "");
+            const vendorDescriptionDisplay =
+              vendorDescriptionCol || vendorDescriptionFallback || "—";
             const websiteDisplay =
               (row.website ?? "").trim() || parsed.websiteFromMessage || "—";
             return (
@@ -82,7 +149,7 @@ export default async function AdminTrucksPage() {
                 </p>
                 <p className="mb-1">
                   <span className="text-neutral-500">Vendor description:</span>{" "}
-                  {vendorDescription || "—"}
+                  {vendorDescriptionDisplay}
                 </p>
                 <p className="mb-1">
                   <span className="text-neutral-500">Instagram:</span>{" "}
@@ -125,6 +192,31 @@ export default async function AdminTrucksPage() {
               </li>
             );
           })}
+        </ul>
+      ) : (
+        <ul className="space-y-4">
+          {list.map((row) => (
+            <li
+              key={row.id}
+              className="rounded border border-neutral-300 bg-white p-4 shadow-sm"
+            >
+              <p className="mb-1">
+                <span className="text-neutral-500">Name:</span> {row.name || "—"}
+              </p>
+              <p className="mb-1">
+                <span className="text-neutral-500">Email:</span> {row.email || "—"}
+              </p>
+              <p className="mb-1">
+                <span className="mb-1 block text-neutral-500">Message</span>
+                <span className="mt-1 block whitespace-pre-wrap break-words text-neutral-800">
+                  {row.message || "—"}
+                </span>
+              </p>
+              <p className="text-xs text-neutral-400">
+                {row.created_at ? new Date(row.created_at).toLocaleString() : ""}
+              </p>
+            </li>
+          ))}
         </ul>
       )}
     </div>

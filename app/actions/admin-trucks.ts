@@ -55,7 +55,9 @@ export async function addTruckFromInquiry(
 
   const { data: inquiry, error: fetchErr } = await client
     .from("inquiries")
-    .select("id, type, name, email, vendor_type, message, processed, website, photo_url")
+    .select(
+      "id, type, name, email, vendor_type, message, processed, website, photo_url, vendor_description",
+    )
     .eq("id", inquiryId)
     .maybeSingle();
 
@@ -82,8 +84,12 @@ export async function addTruckFromInquiry(
   const msg = inquiry.message ?? "";
   const parsed = parseForTrucksInquiryMessage(msg);
   const cuisine = parsed.whatYouServe || null;
-  const vendor_description = cleanMessageValue(messageLine(msg, "Vendor description:")) || null;
-  const description = vendor_description;
+  const vendorDescriptionCol = cleanMessageValue(
+    ((inquiry as { vendor_description?: string | null }).vendor_description ?? "").trim(),
+  );
+  const vendorDescriptionFromMessage =
+    cleanMessageValue(messageLine(msg, "Vendor description:")) || null;
+  const description = vendorDescriptionCol || vendorDescriptionFromMessage;
   const service_areas = parsed.serviceAreas || null;
   const instagram = parsed.instagram || null;
   const websiteRaw = (inquiry.website ?? "").trim() || parsed.websiteFromMessage || null;
