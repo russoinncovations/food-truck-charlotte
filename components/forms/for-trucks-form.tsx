@@ -80,6 +80,18 @@ export function ForTrucksForm() {
 
       <div className="md:col-span-2">
         <FormField
+          label="Describe your business"
+          name="vendorDescription"
+          as="textarea"
+          placeholder="Tell us about your food truck in 2-3 sentences"
+          required
+          maxLength={500}
+          helpText="Max 500 characters."
+        />
+      </div>
+
+      <div className="md:col-span-2">
+        <FormField
           label="What neighborhoods or areas do you serve?"
           name="serviceArea"
           placeholder="e.g. South End, NoDa, Uptown, Matthews"
