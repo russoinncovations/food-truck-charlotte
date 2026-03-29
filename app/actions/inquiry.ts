@@ -28,6 +28,18 @@ function pickVendorTypes(formData: FormData): string[] {
   return formData.getAll("vendorType").filter((v): v is string => typeof v === "string");
 }
 
+/** First non-empty trimmed string from FormData for any of the given field names. */
+function optionalFormString(formData: FormData, ...names: string[]): string | null {
+  for (const name of names) {
+    const v = formData.get(name);
+    if (typeof v === "string") {
+      const t = v.trim();
+      if (t) return t;
+    }
+  }
+  return null;
+}
+
 async function saveInquiryToSupabase(payload: {
   type: "book_a_truck" | "for_trucks" | "for_venues";
   name: string;
@@ -36,6 +48,11 @@ async function saveInquiryToSupabase(payload: {
   vendor_type?: string | null;
   website?: string | null;
   photo_url?: string | null;
+  vendor_description?: string | null;
+  instagram?: string | null;
+  phone?: string | null;
+  contact_name?: string | null;
+  service_areas?: string | null;
 }) {
   const client = getSupabase();
   if (!client) {
@@ -50,6 +67,11 @@ async function saveInquiryToSupabase(payload: {
     vendor_type: payload.vendor_type ?? null,
     website: payload.website ?? null,
     photo_url: payload.photo_url ?? null,
+    vendor_description: payload.vendor_description ?? null,
+    instagram: payload.instagram ?? null,
+    phone: payload.phone ?? null,
+    contact_name: payload.contact_name ?? null,
+    service_areas: payload.service_areas ?? null,
   };
 
   try {
@@ -112,6 +134,7 @@ export async function submitBookATruck(
     name: d.name,
     email: d.email,
     message: body,
+    phone: d.phone ?? null,
   });
   return { success: true };
 }
@@ -182,6 +205,18 @@ export async function submitForTrucks(
   if (!result.ok) {
     return { error: result.error };
   }
+
+  const vendorDescriptionExplicit = optionalFormString(
+    formData,
+    "vendorDescription",
+    "vendor_description",
+  );
+  const vendorDescription =
+    vendorDescriptionExplicit ?? (d.whatYouServe.trim() ? d.whatYouServe : null);
+
+  const contactName = optionalFormString(formData, "contactName", "contact_name");
+  const phone = optionalFormString(formData, "phone", "phoneNumber");
+
   await saveInquiryToSupabase({
     type: "for_trucks",
     name: d.truckName,
@@ -190,6 +225,11 @@ export async function submitForTrucks(
     vendor_type: vendorTypeLine,
     website: d.website ?? null,
     photo_url: photoUrl,
+    vendor_description: vendorDescription,
+    instagram: d.instagram ?? null,
+    phone,
+    contact_name: contactName,
+    service_areas: d.serviceArea,
   });
   return { success: true };
 }
@@ -244,6 +284,8 @@ export async function submitForVenues(
     name: d.venueName,
     email: d.email,
     message: body,
+    contact_name: d.contactName,
+    phone: d.phone ?? null,
   });
   return { success: true };
 }
