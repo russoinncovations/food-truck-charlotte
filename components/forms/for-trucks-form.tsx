@@ -80,6 +80,18 @@ export function ForTrucksForm() {
 
       <div className="md:col-span-2">
         <FormField
+          label="Vendor description"
+          name="vendorDescription"
+          as="textarea"
+          placeholder="Tell hosts and customers about your setup, specialties, and what makes you a great fit for events."
+          required
+          maxLength={2000}
+          helpText="Shown on your listing when you’re added to the directory."
+        />
+      </div>
+
+      <div className="md:col-span-2">
+        <FormField
           label="What neighborhoods or areas do you serve?"
           name="serviceArea"
           placeholder="e.g. South End, NoDa, Uptown, Matthews"

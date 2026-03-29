@@ -31,6 +31,11 @@ export const forTrucksSchema = z.object({
     .trim()
     .min(1, "Please describe what you serve.")
     .max(160, "Please keep this to 160 characters or less."),
+  vendorDescription: z
+    .string()
+    .trim()
+    .min(1, "Please add a short description of your business.")
+    .max(2000, "Please keep this to 2000 characters or less."),
   serviceArea: z.string().trim().min(1, "Please list the neighborhoods or areas you serve."),
   catering: z
     .string()

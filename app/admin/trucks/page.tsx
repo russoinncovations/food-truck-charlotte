@@ -1,12 +1,19 @@
 import { getSupabase } from "@/lib/supabase";
-import { parseForTrucksInquiryMessage } from "@/lib/parse-for-trucks-inquiry";
 import { AddToDirectoryForm } from "./add-to-directory-form";
 
-function vendorDescriptionFromMessage(message: string): string {
-  const lines = message.split("\n");
-  const line = lines.find((l) => l.startsWith("Vendor description:"));
+/** Must match `submitForTrucks` / admin-trucks `MSG` prefixes. */
+const MSG = {
+  whatYouServe: "What you serve:",
+  vendorDescription: "Vendor description:",
+  serviceAreas: "Service areas:",
+  instagram: "Instagram:",
+  website: "Website:",
+} as const;
+
+function forTrucksLine(message: string, prefix: string): string {
+  const line = message.split("\n").find((l) => l.startsWith(prefix));
   if (!line) return "";
-  const v = line.slice("Vendor description:".length).trim();
+  const v = line.slice(prefix.length).trim();
   if (!v || v === "—" || v === "-") return "";
   return v;
 }
@@ -29,7 +36,9 @@ export default async function AdminTrucksPage() {
 
   const { data: rows, error } = await client
     .from("inquiries")
-    .select("id, name, email, vendor_type, message, processed, created_at, website, photo_url")
+    .select(
+      "id, name, email, vendor_type, message, processed, created_at, website, photo_url, vendor_description",
+    )
     .eq("type", "for_trucks")
     .or("processed.eq.false,processed.is.null")
     .order("created_at", { ascending: false });
@@ -54,10 +63,17 @@ export default async function AdminTrucksPage() {
       ) : (
         <ul className="space-y-4">
           {list.map((row) => {
-            const parsed = parseForTrucksInquiryMessage(row.message ?? "");
-            const vendorDescription = vendorDescriptionFromMessage(row.message ?? "");
-            const websiteDisplay =
-              (row.website ?? "").trim() || parsed.websiteFromMessage || "—";
+            const m = row.message ?? "";
+            const whatYouServe = forTrucksLine(m, MSG.whatYouServe);
+            const vendorDescriptionCol = ((row as { vendor_description?: string | null }).vendor_description ?? "")
+              .trim();
+            const vendorDescription =
+              vendorDescriptionCol && vendorDescriptionCol !== "—"
+                ? vendorDescriptionCol
+                : forTrucksLine(m, MSG.vendorDescription);
+            const serviceArea = forTrucksLine(m, MSG.serviceAreas);
+            const instagram = forTrucksLine(m, MSG.instagram);
+            const websiteDisplay = (row.website ?? "").trim() || forTrucksLine(m, MSG.website) || "—";
             return (
               <li
                 key={row.id}
@@ -73,20 +89,16 @@ export default async function AdminTrucksPage() {
                   <span className="text-neutral-500">Email:</span> {row.email || "—"}
                 </p>
                 <p className="mb-1">
-                  <span className="text-neutral-500">Cuisine:</span>{" "}
-                  {parsed.whatYouServe || "—"}
+                  <span className="text-neutral-500">Cuisine:</span> {whatYouServe || "—"}
                 </p>
                 <p className="mb-1">
-                  <span className="text-neutral-500">Service areas:</span>{" "}
-                  {parsed.serviceAreas || "—"}
+                  <span className="text-neutral-500">Service areas:</span> {serviceArea || "—"}
                 </p>
                 <p className="mb-1">
-                  <span className="text-neutral-500">Vendor description:</span>{" "}
-                  {vendorDescription || "—"}
+                  <span className="text-neutral-500">Vendor description:</span> {vendorDescription || "—"}
                 </p>
                 <p className="mb-1">
-                  <span className="text-neutral-500">Instagram:</span>{" "}
-                  {parsed.instagram || "—"}
+                  <span className="text-neutral-500">Instagram:</span> {instagram || "—"}
                 </p>
                 <p className="mb-1">
                   <span className="text-neutral-500">Website:</span>{" "}
