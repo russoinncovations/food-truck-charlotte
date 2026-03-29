@@ -36,8 +36,6 @@ async function saveInquiryToSupabase(payload: {
   vendor_type?: string | null;
   website?: string | null;
   photo_url?: string | null;
-  /** Written to `public.inquiries.vendor_description` for `for_trucks` only. */
-  vendorDescription?: string | null;
 }) {
   const client = getSupabase();
   if (!client) {
@@ -52,9 +50,6 @@ async function saveInquiryToSupabase(payload: {
     vendor_type: payload.vendor_type ?? null,
     website: payload.website ?? null,
     photo_url: payload.photo_url ?? null,
-    ...(payload.type === "for_trucks"
-      ? { vendor_description: payload.vendorDescription ?? null }
-      : {}),
   };
 
   try {
@@ -125,18 +120,16 @@ export async function submitForTrucks(
   _prevState: InquiryFormState | undefined,
   formData: FormData,
 ): Promise<InquiryFormState> {
-  const picked = pickFormData(formData, [
-    "truckName",
-    "email",
-    "whatYouServe",
-    "vendorDescription",
-    "serviceArea",
-    "catering",
-    "instagram",
-    "website",
-  ]);
   const raw = {
-    ...picked,
+    ...pickFormData(formData, [
+      "truckName",
+      "email",
+      "whatYouServe",
+      "serviceArea",
+      "catering",
+      "instagram",
+      "website",
+    ]),
     vendorTypes: pickVendorTypes(formData),
   };
   const parsed = forTrucksSchema.safeParse(raw);
@@ -174,7 +167,6 @@ export async function submitForTrucks(
     `Truck / vendor name: ${d.truckName}`,
     `Email: ${d.email}`,
     `What you serve: ${d.whatYouServe}`,
-    `Vendor description: ${d.vendorDescription}`,
     `Service areas: ${d.serviceArea}`,
     `Catering: ${d.catering === "yes" ? "Yes" : "No"}`,
     `Instagram: ${d.instagram ?? "—"}`,
@@ -198,7 +190,6 @@ export async function submitForTrucks(
     vendor_type: vendorTypeLine,
     website: d.website ?? null,
     photo_url: photoUrl,
-    vendorDescription: d.vendorDescription,
   });
   return { success: true };
 }

@@ -1,26 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { parseForTrucksInquiryMessage } from "@/lib/parse-for-trucks-inquiry";
 import { getSupabase } from "@/lib/supabase";
-
-/** Line prefixes in `inquiries.message` for `for_trucks` — must match `submitForTrucks` in inquiry.ts. */
-const MSG = {
-  vendorTypes: "Vendor type(s):",
-  whatYouServe: "What you serve:",
-  vendorDescription: "Vendor description:",
-  serviceAreas: "Service areas:",
-  catering: "Catering:",
-  instagram: "Instagram:",
-  website: "Website:",
-} as const;
-
-function forTrucksLine(message: string, prefix: string): string {
-  const line = message.split("\n").find((l) => l.startsWith(prefix));
-  if (!line) return "";
-  const v = line.slice(prefix.length).trim();
-  if (!v || v === "—" || v === "-") return "";
-  return v;
-}
 
 function slugify(name: string): string {
   const base = name
@@ -42,6 +24,19 @@ function inquiryVendorTypeToTruck(value: string | null): "truck" | "cart_tent" {
   return "truck";
 }
 
+function messageLine(message: string, prefix: string): string {
+  const lines = message.split("\n");
+  const line = lines.find((l) => l.startsWith(prefix));
+  if (!line) return "";
+  return line.slice(prefix.length).trim();
+}
+
+function cleanMessageValue(value: string): string {
+  const t = value.trim();
+  if (!t || t === "—" || t === "-") return "";
+  return t;
+}
+
 export type AddTruckFromInquiryState = { ok?: boolean; error?: string };
 
 export async function addTruckFromInquiry(
@@ -60,7 +55,7 @@ export async function addTruckFromInquiry(
 
   const { data: inquiry, error: fetchErr } = await client
     .from("inquiries")
-    .select("id, type, name, email, vendor_type, message, processed, website, photo_url, vendor_description")
+    .select("id, type, name, email, vendor_type, message, processed, website, photo_url")
     .eq("id", inquiryId)
     .maybeSingle();
 
@@ -85,25 +80,14 @@ export async function addTruckFromInquiry(
   }
 
   const msg = inquiry.message ?? "";
-  const cuisine = forTrucksLine(msg, MSG.whatYouServe) || null;
-  const descriptionFromColumn = ((inquiry as { vendor_description?: string | null }).vendor_description ?? "")
-    .trim();
-  const descriptionFromMessage = forTrucksLine(msg, MSG.vendorDescription);
-  const description =
-    descriptionFromColumn && descriptionFromColumn !== "—"
-      ? descriptionFromColumn
-      : descriptionFromMessage || null;
-  const service_areas = forTrucksLine(msg, MSG.serviceAreas) || null;
-  const instagram = forTrucksLine(msg, MSG.instagram) || null;
-
-  const websiteCol = (inquiry.website ?? "").trim();
-  const websiteMsg = forTrucksLine(msg, MSG.website);
-  const website =
-    websiteCol && websiteCol !== "—"
-      ? websiteCol
-      : websiteMsg && websiteMsg !== "—"
-        ? websiteMsg
-        : null;
+  const parsed = parseForTrucksInquiryMessage(msg);
+  const cuisine = parsed.whatYouServe || null;
+  const vendor_description = cleanMessageValue(messageLine(msg, "Vendor description:")) || null;
+  const description = vendor_description;
+  const service_areas = parsed.serviceAreas || null;
+  const instagram = parsed.instagram || null;
+  const websiteRaw = (inquiry.website ?? "").trim() || parsed.websiteFromMessage || null;
+  const website = websiteRaw && websiteRaw !== "—" ? websiteRaw : null;
 
   let slug = slugify(name);
   const { data: slugRow } = await client.from("trucks").select("slug,email").eq("slug", slug).maybeSingle();
@@ -111,15 +95,10 @@ export async function addTruckFromInquiry(
     slug = `${slug}-${inquiryId.slice(0, 8)}`;
   }
 
-  const vendorTypeFromColumn = (inquiry.vendor_type ?? "").trim();
-  const vendorTypeFromMessage = forTrucksLine(msg, MSG.vendorTypes);
-  const vendor_type = inquiryVendorTypeToTruck(
-    vendorTypeFromColumn || vendorTypeFromMessage || null,
-  );
-
+  const vendorTypeFromMessage = messageLine(msg, "Vendor type(s):");
+  const vendor_type = inquiryVendorTypeToTruck(vendorTypeFromMessage || null);
   const photo_url = (inquiry.photo_url ?? "").trim() || null;
-  const cateringLine = forTrucksLine(msg, MSG.catering).toLowerCase();
-  const catering = cateringLine.startsWith("y");
+  const catering = parsed.cateringYes;
 
   const payload = {
     name,
