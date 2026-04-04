@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { CtaButton } from "@/components/cta-button";
 import { EventCard } from "@/components/event-card";
 import { SectionHeader } from "@/components/section-header";
 import { fetchActiveEventsFromSupabase } from "@/lib/events-directory";
@@ -16,6 +17,9 @@ export default async function EventsPage() {
 
   return (
     <div className="space-y-10 md:space-y-12">
+      <div className="flex justify-end">
+        <CtaButton href="/submit-event">Submit Your Event →</CtaButton>
+      </div>
       <SectionHeader
         eyebrow="Events"
         title="Featured Food Truck Events Across Charlotte"
