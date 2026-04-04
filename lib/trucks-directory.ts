@@ -50,7 +50,7 @@ export function toTruckListItems(rows: unknown): FoodTruckListItem[] {
 }
 
 /**
- * Fetches active trucks from Supabase (featured first, then oldest first).
+ * Fetches directory-listed trucks (active + show_in_directory) from Supabase (featured first, then oldest first).
  * Returns [] if the client is not configured, the query fails, or there are no rows (caller uses static fallback when empty).
  */
 export async function fetchDirectoryTrucksFromSupabase(): Promise<FoodTruckListItem[]> {
@@ -63,6 +63,7 @@ export async function fetchDirectoryTrucksFromSupabase(): Promise<FoodTruckListI
     .from("trucks")
     .select("*")
     .eq("active", true)
+    .eq("show_in_directory", true)
     .order("featured", { ascending: false })
     .order("created_at", { ascending: true });
 

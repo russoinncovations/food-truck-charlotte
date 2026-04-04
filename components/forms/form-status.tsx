@@ -1,10 +1,18 @@
 import type { InquiryFormState } from "@/app/actions/inquiry";
 
+export type FormStatusState = Pick<InquiryFormState, "error" | "success">;
+
 type FormStatusProps = {
-  state: InquiryFormState | undefined;
+  state: FormStatusState | undefined;
+  successTitle?: string;
+  successDescription?: string;
 };
 
-export function FormStatus({ state }: FormStatusProps) {
+export function FormStatus({
+  state,
+  successTitle = "Thank you — your message was sent.",
+  successDescription = "We'll follow up using the contact information you provided.",
+}: FormStatusProps) {
   if (!state?.error && !state?.success) {
     return null;
   }
@@ -16,10 +24,8 @@ export function FormStatus({ state }: FormStatusProps) {
         role="status"
         aria-live="polite"
       >
-        <p className="font-medium text-[#1E1E1E]">Thank you — your message was sent.</p>
-        <p className="mt-1 text-[#1E1E1E]/75">
-          We&apos;ll follow up using the contact information you provided.
-        </p>
+        <p className="font-medium text-[#1E1E1E]">{successTitle}</p>
+        <p className="mt-1 text-[#1E1E1E]/75">{successDescription}</p>
       </div>
     );
   }

@@ -62,6 +62,7 @@ export async function fetchActiveTruckBySlug(slug: string): Promise<TruckDetail 
     .select("*")
     .eq("slug", slug)
     .eq("active", true)
+    .eq("show_in_directory", true)
     .maybeSingle();
 
   if (error) {

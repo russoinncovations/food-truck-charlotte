@@ -117,6 +117,7 @@ export async function addTruckFromInquiry(
     email,
     vendor_type,
     active: true,
+    show_in_directory: true,
     catering,
     photo_url,
   };

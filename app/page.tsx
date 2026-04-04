@@ -33,6 +33,7 @@ export default async function Home() {
         .from("trucks")
         .select("*")
         .eq("active", true)
+        .eq("show_in_directory", true)
         .order("created_at", { ascending: true })
         .limit(3)
     : { data: null };
