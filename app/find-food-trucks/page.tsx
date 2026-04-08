@@ -303,34 +303,63 @@ export default async function FindFoodTrucksPage({
                 <Link
                   key={truck.id}
                   href={`/trucks/${truck.slug}`}
-                  className="group flex h-full flex-col overflow-hidden rounded-xl border transition-all duration-200 hover:-translate-y-1 hover:shadow-[0_14px_36px_rgba(28,26,23,0.14)]"
+                  className="group flex h-full flex-col overflow-hidden rounded-xl transition-all duration-200 hover:-translate-y-1 hover:shadow-[0_14px_36px_rgba(28,26,23,0.14)]"
                   style={{
-                    borderColor: "var(--ftc-border)",
                     background: "#fff",
+                    border: "1px solid var(--ftc-border)",
+                    borderLeft: `4px solid ${truck.color}`,
                     boxShadow: "var(--shadow-soft)",
                     textDecoration: "none",
                   }}
                 >
-                  <div
-                    className="relative flex min-h-[220px] flex-col items-center justify-center"
-                    style={{
-                      background: `linear-gradient(160deg, ${truck.color} 0%, ${truck.color}cc 45%, ${truck.color}99 100%)`,
-                    }}
-                  >
-                    {/* Cuisine badge — top left */}
-                    <span
-                      className="absolute left-3 top-3 max-w-[65%] truncate rounded px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.08em]"
-                      style={{
-                        background: "rgba(255,252,248,0.92)",
-                        color: "var(--ftc-orange)",
-                        border: "1px solid var(--ftc-border)",
-                      }}
+                  <div className="flex flex-1 gap-4 p-5">
+                    <div
+                      className="font-display flex h-[72px] w-[72px] shrink-0 items-center justify-center rounded-full text-[28px] font-bold leading-none"
+                      style={{ background: truck.color, color: truck.textColor }}
                     >
-                      {truck.cuisine}
-                    </span>
-                    {/* Status — top right */}
+                      {truck.initial}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <span
+                        className="mb-2 inline-block max-w-full truncate rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em]"
+                        style={{ color: "var(--ftc-orange)", background: "var(--ftc-orange-lt)" }}
+                      >
+                        {truck.cuisine}
+                      </span>
+                      <h2
+                        className="font-display mb-1 text-[18px] font-bold leading-snug tracking-tight"
+                        style={{ color: "var(--ftc-ink)" }}
+                      >
+                        {truck.name}
+                      </h2>
+                      <p className="mb-3 text-[13px] leading-snug" style={{ color: "var(--ftc-muted)" }}>
+                        {truck.area}
+                      </p>
+                      {truck.tags.length > 0 ? (
+                        <div className="flex flex-wrap gap-2">
+                          {truck.tags.map((tag) => (
+                            <span
+                              key={tag}
+                              className="rounded px-2 py-0.5 text-[11px]"
+                              style={{
+                                background: "var(--ftc-cream-md)",
+                                color: "var(--ftc-muted)",
+                                border: "1px solid var(--ftc-border)",
+                              }}
+                            >
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+                  <div
+                    className="flex items-center justify-between border-t px-5 py-3"
+                    style={{ borderColor: "var(--ftc-border)" }}
+                  >
                     <span
-                      className="absolute right-3 top-3 rounded px-2 py-1 text-[10px] font-medium uppercase tracking-[0.06em]"
+                      className="rounded px-2 py-1 text-[10px] font-medium uppercase tracking-[0.06em]"
                       style={{
                         background: status.bg,
                         color: status.color,
@@ -339,55 +368,9 @@ export default async function FindFoodTrucksPage({
                     >
                       {status.label}
                     </span>
-                    {/* Avatar */}
-                    <div
-                      className="font-display flex h-[88px] w-[88px] items-center justify-center rounded-2xl text-4xl font-bold shadow-sm"
-                      style={{
-                        background: "rgba(255,255,255,0.38)",
-                        color: truck.textColor,
-                      }}
-                    >
-                      {truck.initial}
-                    </div>
-                  </div>
-
-                  <div className="flex flex-1 flex-col p-5">
-                    <h2
-                      className="font-display mb-1 text-[19px] font-bold leading-tight tracking-tight"
-                      style={{ fontFamily: "var(--font-display)", color: "var(--ftc-ink)" }}
-                    >
-                      {truck.name}
-                    </h2>
-                    <p className="mb-4 text-[13px] leading-snug" style={{ color: "var(--ftc-subtle)" }}>
-                      {truck.area}
-                    </p>
-
-                    {truck.tags.length > 0 ? (
-                      <div className="mb-5 flex flex-wrap gap-2">
-                        {truck.tags.map((tag) => (
-                          <span
-                            key={tag}
-                            className="rounded px-2 py-1 text-[11px]"
-                            style={{
-                              background: "var(--ftc-cream-md)",
-                              color: "var(--ftc-muted)",
-                              border: "1px solid var(--ftc-border)",
-                            }}
-                          >
-                            {tag}
-                          </span>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="mb-5" />
-                    )}
-
-                    <div
-                      className="font-display mt-auto w-full rounded-lg py-[11px] text-center text-[14px] font-semibold text-white transition-opacity group-hover:opacity-[0.96]"
-                      style={{ background: "var(--ftc-orange)" }}
-                    >
-                      View Truck →
-                    </div>
+                    <span className="text-[14px] font-semibold" style={{ color: "var(--ftc-orange)" }}>
+                      View →
+                    </span>
                   </div>
                 </Link>
               );

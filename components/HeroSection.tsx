@@ -136,7 +136,7 @@ export function HeroSection({ featuredTrucks, totalTruckCount }: HeroSectionProp
           <div className="flex flex-wrap items-center gap-6 sm:gap-8">
             {[
               { num: "35K+", label: "Community Members" },
-              { num: "Since '14", label: "Charlotte-Based" },
+              { num: "Since '20", label: "Charlotte-Based" },
               { num: "Free", label: "Always" },
             ].map(({ num, label }, i, arr) => (
               <div key={label} className="flex items-center gap-6 sm:gap-8">
