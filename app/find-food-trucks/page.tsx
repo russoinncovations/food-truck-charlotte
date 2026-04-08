@@ -116,13 +116,15 @@ async function fetchDirectoryTrucks(): Promise<TruckCard[]> {
     return [];
   }
 
-  const { data, error } = await client
+  const queryResult = await client
     .from("trucks")
     .select("id, name, slug, cuisine, area, status, color, text_color, initial, tags")
-    .eq("active", true)
-    .eq("show_in_directory", true)
     .order("featured", { ascending: false })
     .order("created_at", { ascending: true });
+
+  console.log("[find-food-trucks] Supabase query:", queryResult);
+
+  const { data, error } = queryResult;
 
   if (error) {
     console.error("[find-food-trucks] Supabase:", error.message);
