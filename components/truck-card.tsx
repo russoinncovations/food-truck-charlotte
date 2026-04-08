@@ -6,42 +6,64 @@ type TruckCardProps = {
   truck: FoodTruckListItem;
 };
 
+function serviceAreaParts(serviceArea: string): string[] {
+  return serviceArea
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
+function nameInitial(name: string): string {
+  const t = name.trim();
+  if (!t) return "?";
+  return t.charAt(0).toUpperCase();
+}
+
 export function TruckCard({ truck }: TruckCardProps) {
+  const cuisineForBadge = truck.cuisine?.trim();
+  const showCuisineBadge = Boolean(cuisineForBadge && cuisineForBadge !== "General");
+  const areas = serviceAreaParts(truck.serviceArea);
+  const serviceAreaDisplay =
+    areas.length > 0 ? areas.join(" · ") : truck.serviceArea.trim() || "—";
+
   return (
-    <article className="rounded-2xl border border-[#1E1E1E]/10 bg-[#fffdfa] p-5 shadow-[0_8px_24px_rgba(30,30,30,0.04)]">
-      {truck.photoUrl ? (
-        <div className="relative mb-4 aspect-[16/10] w-full overflow-hidden rounded-xl border border-[#1E1E1E]/10">
+    <article className="flex w-full gap-4 rounded-xl border border-[#1E1E1E]/10 bg-[#fffdfa] p-4 shadow-sm">
+      <div className="relative h-[120px] w-[120px] shrink-0 overflow-hidden rounded-lg bg-[#1a1a1a]">
+        {truck.photoUrl ? (
           <Image
             src={truck.photoUrl}
             alt={`${truck.name} photo`}
             fill
             className="object-cover"
-            sizes="(max-width: 768px) 100vw, 33vw"
+            sizes="120px"
             unoptimized
           />
-        </div>
-      ) : null}
-      <div className="mb-4 flex flex-wrap items-center gap-2">
-        <span className="rounded-full border border-[#1E1E1E]/12 bg-[#f9f4ec] px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-[#1E1E1E]/70">
-          {truck.vendor_type === "cart_tent" ? "CART & TENT" : "FOOD TRUCK"}
-        </span>
-        <span className="rounded-full border border-[#D97A2B]/30 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-[#8f4f1c]">
-          {truck.cuisine}
-        </span>
+        ) : (
+          <div className="flex h-full w-full items-center justify-center bg-[#1a1a1a]" aria-hidden>
+            <span className="select-none text-5xl font-semibold leading-none text-white/90">
+              {nameInitial(truck.name)}
+            </span>
+          </div>
+        )}
       </div>
-      <h3 className="mb-2 text-[1.35rem] leading-tight font-semibold text-[#1E1E1E]">{truck.name}</h3>
-      <p className="mb-4 text-[15px] leading-7 text-[#1E1E1E]/80">
-        {truck.description.trim() ? truck.description : "—"}
-      </p>
-      <p className="mb-5 text-[15px] text-[#1E1E1E]/70">
-        <span className="font-medium">Service Area:</span> {truck.serviceArea.trim() ? truck.serviceArea : "—"}
-      </p>
-      <Link
-        href={`/trucks/${truck.slug}`}
-        className="inline-flex rounded-full border border-[#1E1E1E]/20 bg-white px-4 py-2 text-sm font-semibold text-[#1E1E1E] hover:bg-[#1E1E1E]/5"
-      >
-        View Truck
-      </Link>
+
+      <div className="flex min-h-[120px] min-w-0 flex-1 flex-col">
+        <h3 className="text-lg font-bold leading-snug text-[#1E1E1E]">{truck.name}</h3>
+        {showCuisineBadge ? (
+          <span className="mt-1.5 inline-flex w-fit rounded-full border border-[#D97A2B]/30 bg-[#fff4ea] px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-[#8f4f1c]">
+            {cuisineForBadge}
+          </span>
+        ) : null}
+        <p className="mt-1.5 text-sm text-gray-500">{serviceAreaDisplay}</p>
+        <div className="mt-auto flex justify-end pt-3">
+          <Link
+            href={`/trucks/${truck.slug}`}
+            className="inline-flex shrink-0 rounded-full border border-[#1E1E1E]/20 bg-white px-4 py-2 text-sm font-semibold text-[#1E1E1E] hover:bg-[#1E1E1E]/5"
+          >
+            View Truck
+          </Link>
+        </div>
+      </div>
     </article>
   );
 }

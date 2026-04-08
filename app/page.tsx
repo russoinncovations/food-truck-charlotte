@@ -2,14 +2,16 @@ import type { Metadata } from "next";
 import { CtaButton } from "@/components/cta-button";
 import { EventCard } from "@/components/event-card";
 import { FilterChips } from "@/components/filter-chips";
+import MarqueeBar, { type MarqueeItem } from "@/components/MarqueeBar";
+import { HeroSection } from "@/components/HeroSection";
 import { SectionHeader } from "@/components/section-header";
-import { TruckCard } from "@/components/truck-card";
-import { trucks } from "@/data/trucks";
-import { toEventListItems } from "@/lib/events-directory";
+import { trucks as staticTrucks } from "@/data/trucks";
+import { fetchUpcomingEventsFromSupabase } from "@/lib/events-directory";
+import { getSupabase } from "@/lib/supabase";
 import { toTruckListItems } from "@/lib/trucks-directory";
-import { supabase } from "@/lib/supabase";
+import type { EventListItem, FoodTruck, FoodTruckListItem } from "@/lib/types";
 
-const cuisineFilters = [...new Set(trucks.map((truck) => truck.cuisine))];
+const cuisineFilters = [...new Set(staticTrucks.map((truck) => truck.cuisine))];
 
 export const metadata: Metadata = {
   title: "Find Food Trucks. Discover Events. Book a Truck.",
@@ -17,70 +19,80 @@ export const metadata: Metadata = {
     "Charlotte's trusted guide to food truck discovery, local events, and straightforward booking inquiries.",
 };
 
-export default async function Home() {
-  const { data: events } = supabase
-    ? await supabase
-        .from("events")
-        .select("*")
-        .eq("active", true)
-        .gte("date", new Date().toISOString().split("T")[0])
-        .order("date", { ascending: true })
-        .limit(2)
-    : { data: null };
+function foodTruckToListItem(t: FoodTruck): FoodTruckListItem {
+  return {
+    slug: t.slug,
+    name: t.name,
+    cuisine: t.cuisine,
+    vendor_type: t.vendor_type,
+    description: t.description,
+    serviceArea: t.serviceArea,
+    ...(t.catering ? { catering: true } : {}),
+  };
+}
 
-  const { data: homeTrucks } = supabase
-    ? await supabase
+function staticFeaturedList(): FoodTruckListItem[] {
+  return [...staticTrucks]
+    .sort((a, b) => Number(!!b.featured) - Number(!!a.featured))
+    .slice(0, 5)
+    .map(foodTruckToListItem);
+}
+
+function buildMarqueeItems(trucks: FoodTruckListItem[], events: EventListItem[]): MarqueeItem[] {
+  const items: MarqueeItem[] = [
+    ...trucks.slice(0, 4).map((t) => ({ label: t.name, sub: t.cuisine })),
+    ...events.slice(0, 4).map((e) => ({ label: e.title, sub: e.formattedDate })),
+  ];
+  return items;
+}
+
+export default async function Home() {
+  let totalTruckCount = staticTrucks.length;
+  let featuredTrucks: FoodTruckListItem[] = staticFeaturedList();
+
+  const client = getSupabase();
+  let upcomingEvents: EventListItem[] = [];
+
+  if (client) {
+    const [{ count }, { data: featuredRows }, upcoming] = await Promise.all([
+      client
+        .from("trucks")
+        .select("*", { count: "exact", head: true })
+        .eq("active", true)
+        .eq("show_in_directory", true),
+      client
         .from("trucks")
         .select("*")
         .eq("active", true)
         .eq("show_in_directory", true)
+        .order("featured", { ascending: false })
         .order("created_at", { ascending: true })
-        .limit(3)
-    : { data: null };
+        .limit(5),
+      fetchUpcomingEventsFromSupabase(8),
+    ]);
 
-  const eventListItems = toEventListItems(events);
-  const homeTruckItems = toTruckListItems(homeTrucks);
+    if (typeof count === "number" && count > 0) {
+      totalTruckCount = count;
+    }
+
+    const fromDb = toTruckListItems(featuredRows);
+    if (fromDb.length > 0) {
+      featuredTrucks = fromDb;
+    }
+
+    upcomingEvents = upcoming;
+  }
+
+  const eventListItems = upcomingEvents.slice(0, 2);
+  const marqueeCandidates = buildMarqueeItems(featuredTrucks, upcomingEvents);
+  const marqueeItems = marqueeCandidates.length >= 3 ? marqueeCandidates : undefined;
 
   return (
     <div className="space-y-16 md:space-y-20">
-      <section className="rounded-3xl border border-[#1E1E1E]/8 bg-[#fffdfa] p-6 shadow-[0_12px_32px_rgba(30,30,30,0.04)] md:p-11">
-        <p className="mb-4 text-[11px] font-semibold uppercase tracking-[0.24em] text-[#D97A2B]">Charlotte Local Guide</p>
-        <h1 className="max-w-4xl text-3xl font-semibold tracking-tight text-[#1E1E1E] md:text-[3.4rem] md:leading-[1.05]">
-          Find Charlotte Food Trucks. Free to List. Free to Find.
-        </h1>
-        <p className="mt-4 max-w-2xl text-base leading-7 text-[#1E1E1E]/75">
-          Built from Charlotte&apos;s largest food truck community — 35,000+ members strong. This is a free local guide first.
-          Trucks list free while we build this together.
-        </p>
-        <div className="mt-7 flex flex-wrap gap-3">
-          <CtaButton href="/find-food-trucks">Find Food Trucks</CtaButton>
-          <CtaButton href="/book-a-truck" variant="secondary">
-            Request a Truck
-          </CtaButton>
-        </div>
-        <p className="mt-6 text-[15px] leading-7 text-[#1E1E1E]/68">
-          Community-backed by a large Charlotte food truck network with on-the-ground local insight.
-        </p>
-      </section>
-
-      <div style={{ borderTop: '1px solid #e5e0d8', borderBottom: '1px solid #e5e0d8', padding: '12px 0', textAlign: 'center', fontSize: '0.75rem', letterSpacing: '0.05em', color: '#6b6560' }}>
-        35,000+ community members <span style={{ color: '#c2601f' }}>·</span> Charlotte-based since 2014 <span style={{ color: '#c2601f' }}>·</span> Free to list
+      <div className="relative left-1/2 w-screen max-w-[100vw] -translate-x-1/2">
+        <MarqueeBar items={marqueeItems} />
+        <HeroSection featuredTrucks={featuredTrucks} totalTruckCount={totalTruckCount} />
       </div>
-
-      {homeTruckItems.length > 0 ? (
-        <section className="space-y-7">
-          <SectionHeader
-            eyebrow="Featured Trucks"
-            title="Curated Charlotte Trucks Locals Recommend"
-            description="A trusted mix of neighborhood favorites and event-ready trucks with strong service reputations across Charlotte."
-          />
-          <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
-            {homeTruckItems.map((truck) => (
-              <TruckCard key={truck.slug} truck={truck} />
-            ))}
-          </div>
-        </section>
-      ) : null}
 
       <section className="rounded-2xl border border-[#1E1E1E]/8 bg-[#fffdfa] p-6 md:p-7">
         <SectionHeader
@@ -94,7 +106,10 @@ export default async function Home() {
             "See where local trucks are serving this week.",
             "Share one inquiry to start your booking process.",
           ].map((step) => (
-            <div key={step} className="rounded-xl border border-[#1E1E1E]/8 bg-white p-4 text-[15px] leading-7 text-[#1E1E1E]/82">
+            <div
+              key={step}
+              className="rounded-xl border border-[#1E1E1E]/8 bg-white p-4 text-[15px] leading-7 text-[#1E1E1E]/82"
+            >
               {step}
             </div>
           ))}

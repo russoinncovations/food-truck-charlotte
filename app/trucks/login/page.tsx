@@ -36,7 +36,7 @@ export default async function TruckLoginPage({
           <p className="font-medium">{errorMessage}</p>
         </div>
       ) : null}
-      <TruckMagicLinkForm />
+      <TruckMagicLinkForm showLoginHelper />
       <p className="text-center text-[15px] text-[#1E1E1E]/70">
         Need an account?{" "}
         <Link

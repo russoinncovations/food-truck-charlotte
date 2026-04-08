@@ -67,7 +67,7 @@ export function FindFoodTrucksContent({ trucks, cuisines }: FindFoodTrucksConten
         </div>
       </section>
 
-      <section className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+      <section className="flex w-full flex-col gap-4">
         {filteredTrucks.map((truck) => (
           <DirectoryTruckCard key={truck.slug} truck={truck} />
         ))}

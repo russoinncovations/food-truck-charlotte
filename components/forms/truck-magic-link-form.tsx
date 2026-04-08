@@ -9,7 +9,12 @@ const inputClass =
 const buttonClass =
   "inline-flex w-full max-w-full justify-center rounded-full bg-[#D97A2B] px-6 py-3 text-sm font-semibold text-white transition-opacity hover:bg-[#c76e25] disabled:cursor-not-allowed disabled:opacity-60 sm:w-fit";
 
-export function TruckMagicLinkForm() {
+type TruckMagicLinkFormProps = {
+  /** When true, shows helper text between email and submit (e.g. /trucks/login). */
+  showLoginHelper?: boolean;
+};
+
+export function TruckMagicLinkForm({ showLoginHelper = false }: TruckMagicLinkFormProps) {
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState<{ type: "ok" | "err"; text: string } | null>(null);
   const [pending, setPending] = useState(false);
@@ -78,6 +83,12 @@ export function TruckMagicLinkForm() {
           placeholder="Same email you used to register"
         />
       </label>
+
+      {showLoginHelper ? (
+        <p className="text-sm text-gray-500">
+          For best results, open the magic link in the same browser you used to request it.
+        </p>
+      ) : null}
 
       <button type="submit" disabled={pending} className={buttonClass}>
         {pending ? "Sending…" : "Send magic link"}
