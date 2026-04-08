@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { getSupabase } from "@/lib/supabase";
 
 export const dynamic = "force-dynamic";
 
@@ -34,33 +35,67 @@ const STATUS_MAP = {
   inquire: { label: "Inquire", bg: "#F4F0E8", color: "#7A7268" as const, border: "#E8E2D8" as const },
 } as const;
 
-/** Temporary static data while verifying the page (replaces Supabase fetch). */
-const STATIC_DIRECTORY_TRUCKS: TruckCard[] = [
-  {
-    id: "static-1",
-    name: "Latin Stop",
-    slug: "latin-stop",
-    cuisine: "Latin",
-    area: "South End · Plaza Midwood",
-    status: "available",
-    color: "#FDDCCE",
-    textColor: "#D94F1E",
-    initial: "L",
-    tags: ["Tacos", "Arepas", "Catering"],
-  },
-  {
-    id: "static-2",
-    name: "Smoke & Oak BBQ",
-    slug: "smoke-oak-bbq",
-    cuisine: "BBQ",
-    area: "Ballantyne · South Charlotte",
-    status: "inquire",
-    color: "#CCE8E0",
-    textColor: "#0F6E56",
-    initial: "S",
-    tags: ["Brisket", "Corporate"],
-  },
-];
+function strRow(row: Record<string, unknown>, ...keys: string[]): string {
+  for (const k of keys) {
+    const v = row[k];
+    if (typeof v === "string" && v.trim()) return v.trim();
+  }
+  return "";
+}
+
+function normalizeTags(raw: unknown): string[] {
+  if (Array.isArray(raw)) {
+    return raw.map((t) => String(t)).filter(Boolean);
+  }
+  if (typeof raw === "string" && raw.trim()) {
+    try {
+      const parsed = JSON.parse(raw) as unknown;
+      if (Array.isArray(parsed)) {
+        return parsed.map((t) => String(t)).filter(Boolean);
+      }
+    } catch {
+      return raw.split(/[,;]/).map((s) => s.trim()).filter(Boolean);
+    }
+  }
+  return [];
+}
+
+function nameInitialFrom(name: string): string {
+  const t = name.trim();
+  if (!t) return "?";
+  return t.charAt(0).toUpperCase();
+}
+
+function normalizeStatus(raw: string | null | undefined): TruckStatus {
+  if (raw === "available" || raw === "event" || raw === "inquire") {
+    return raw;
+  }
+  return "inquire";
+}
+
+function rowToCard(row: Record<string, unknown>): TruckCard {
+  const name = strRow(row, "name") || "Untitled";
+  const cuisine = strRow(row, "cuisine") || "General";
+  const area = strRow(row, "area", "service_areas") || "Charlotte area";
+  const color = strRow(row, "color") || "#F7F2EA";
+  const textColor = strRow(row, "text_color", "textColor") || "#1C1A17";
+  const initial = strRow(row, "initial") || nameInitialFrom(name);
+  const statusRaw = row.status;
+  const statusStr = typeof statusRaw === "string" ? statusRaw : null;
+
+  return {
+    id: String(row.id ?? strRow(row, "slug") ?? ""),
+    name,
+    slug: strRow(row, "slug") || String(row.id ?? ""),
+    cuisine,
+    area,
+    status: normalizeStatus(statusStr),
+    color,
+    textColor,
+    initial,
+    tags: normalizeTags(row.tags),
+  };
+}
 
 function buildFindUrl(params: { cuisine: string; q: string }): string {
   const sp = new URLSearchParams();
@@ -75,7 +110,27 @@ function buildFindUrl(params: { cuisine: string; q: string }): string {
 }
 
 async function fetchDirectoryTrucks(): Promise<TruckCard[]> {
-  return STATIC_DIRECTORY_TRUCKS;
+  const client = getSupabase();
+  if (!client) {
+    return [];
+  }
+
+  const queryResult = await client.from("trucks").select("*");
+
+  console.log("[find-food-trucks] Supabase query:", queryResult);
+
+  const { data, error } = queryResult;
+
+  if (error) {
+    console.error("[find-food-trucks] fetch failed:", error.message);
+    return [];
+  }
+
+  if (!data?.length) {
+    return [];
+  }
+
+  return (data as Record<string, unknown>[]).map(rowToCard);
 }
 
 function filterTrucks(trucks: TruckCard[], cuisine: string, query: string): TruckCard[] {
