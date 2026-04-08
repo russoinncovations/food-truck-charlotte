@@ -115,11 +115,11 @@ async function fetchDirectoryTrucks(): Promise<TruckCard[]> {
     return [];
   }
 
-  const queryResult = await client.from("trucks").select("*");
-
-  console.log("[find-food-trucks] Supabase query:", queryResult);
-
-  const { data, error } = queryResult;
+  const { data, error } = await client
+    .from("trucks")
+    .select("*")
+    .eq("active", true)
+    .eq("show_in_directory", true);
 
   if (error) {
     console.error("[find-food-trucks] fetch failed:", error.message);
