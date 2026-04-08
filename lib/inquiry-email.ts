@@ -17,6 +17,16 @@ export function getConfirmationFromEmail(): string {
   return "noreply@foodtruckclt.com";
 }
 
+/** Subject for book-a-truck admin + owner copies. Includes display name when resolved from the truck slug. */
+export function formatBookATruckInquirySubject(submitterName: string, truckName?: string | null): string {
+  const submitter = submitterName.trim() || "Guest";
+  const truck = truckName?.trim();
+  if (truck) {
+    return `[Food Truck Charlotte] Inquiry for ${truck} — ${submitter}`;
+  }
+  return `[Food Truck Charlotte] Inquiry — ${submitter}`;
+}
+
 export type InquiryConfirmation =
   | { type: "for_trucks"; submitterEmail: string; truckName: string }
   | { type: "book_a_truck"; submitterEmail: string; name: string }
@@ -126,5 +136,38 @@ export async function sendInquiryEmail(
   } catch (e) {
     console.error("[Resend]", e);
     return { ok: false as const, error: "Email could not be sent. Please try again later." };
+  }
+}
+
+/** Sends the same plain-text body used for admin inquiries to an additional recipient (e.g. truck owner). */
+export async function sendInquiryTextToRecipient(
+  to: string,
+  subject: string,
+  textBody: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const { from } = getInquiryConfig();
+  const resend = getResendClient();
+  if (!resend) {
+    return { ok: false, error: "Email is not configured on the server." };
+  }
+  const trimmed = to.trim();
+  if (!trimmed) {
+    return { ok: false, error: "Invalid recipient." };
+  }
+  try {
+    const { error } = await resend.emails.send({
+      from,
+      to: [trimmed],
+      subject,
+      text: textBody,
+    });
+    if (error) {
+      console.error("[Resend] additional recipient:", error);
+      return { ok: false, error: "Email could not be sent. Please try again later." };
+    }
+    return { ok: true };
+  } catch (e) {
+    console.error("[Resend] additional recipient:", e);
+    return { ok: false, error: "Email could not be sent. Please try again later." };
   }
 }

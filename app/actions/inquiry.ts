@@ -1,6 +1,10 @@
 "use server";
 
-import { sendInquiryEmail } from "@/lib/inquiry-email";
+import {
+  formatBookATruckInquirySubject,
+  sendInquiryEmail,
+  sendInquiryTextToRecipient,
+} from "@/lib/inquiry-email";
 import { getSupabase } from "@/lib/supabase";
 import { uploadVendorListingPhoto } from "@/lib/upload-vendor-photo";
 import {
@@ -105,8 +109,11 @@ export async function submitBookATruck(
   }
 
   const d = parsed.data;
+  const truck = optionalFormString(formData, "truck");
   const body = [
     "Food Truck Charlotte — Book a Truck inquiry",
+    "",
+    `Requested truck (slug): ${truck ?? "—"}`,
     "",
     `Name: ${d.name}`,
     `Email: ${d.email}`,
@@ -121,14 +128,45 @@ export async function submitBookATruck(
     d.notes ?? "—",
   ].join("\n");
 
-  const result = await sendInquiryEmail(
-    `[Food Truck Charlotte] Book a Truck — ${d.name}`,
-    body,
-    { type: "book_a_truck", submitterEmail: d.email, name: d.name },
-  );
+  let truckDisplayName: string | null = null;
+  let ownerEmailForCopy: string | null = null;
+  if (truck) {
+    const client = getSupabase();
+    if (client) {
+      const { data: truckRow, error: truckErr } = await client
+        .from("trucks")
+        .select("name, owner_email")
+        .eq("slug", truck)
+        .maybeSingle();
+      if (!truckErr && truckRow && typeof truckRow === "object") {
+        const row = truckRow as { name?: string | null; owner_email?: string | null };
+        if (typeof row.name === "string" && row.name.trim()) {
+          truckDisplayName = row.name.trim();
+        }
+        if (typeof row.owner_email === "string" && row.owner_email.trim()) {
+          ownerEmailForCopy = row.owner_email.trim();
+        }
+      }
+    }
+  }
+
+  const subject = formatBookATruckInquirySubject(d.name, truckDisplayName);
+  const result = await sendInquiryEmail(subject, body, {
+    type: "book_a_truck",
+    submitterEmail: d.email,
+    name: d.name,
+  });
   if (!result.ok) {
     return { error: result.error };
   }
+
+  if (ownerEmailForCopy) {
+    const copy = await sendInquiryTextToRecipient(ownerEmailForCopy, subject, body);
+    if (!copy.ok) {
+      console.error("[book-a-truck] truck owner inquiry copy failed:", copy.error);
+    }
+  }
+
   await saveInquiryToSupabase({
     type: "book_a_truck",
     name: d.name,

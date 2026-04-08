@@ -8,7 +8,14 @@ export const metadata: Metadata = {
     "Submit a food truck inquiry for your Charlotte event and share details so we can help connect you with a good fit.",
 };
 
-export default function BookATruckPage() {
+export default async function BookATruckPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ truck?: string }>;
+}) {
+  const sp = await searchParams;
+  const truckSlug = typeof sp.truck === "string" ? sp.truck : undefined;
+
   return (
     <div className="space-y-10 md:space-y-12">
       <SectionHeader
@@ -21,7 +28,7 @@ export default function BookATruckPage() {
         This is an inquiry form, not an instant booking confirmation. We recommend submitting early for the best availability.
       </p>
 
-      <BookATruckForm />
+      <BookATruckForm truckSlug={truckSlug} />
     </div>
   );
 }

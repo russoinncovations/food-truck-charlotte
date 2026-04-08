@@ -8,11 +8,16 @@ import { SubmitButton } from "@/components/forms/submit-button";
 
 const initialState: InquiryFormState = {};
 
-export function BookATruckForm() {
+type BookATruckFormProps = {
+  truckSlug?: string;
+};
+
+export function BookATruckForm({ truckSlug }: BookATruckFormProps) {
   const [state, formAction, isPending] = useActionState(submitBookATruck, initialState);
 
   return (
     <form action={formAction} method="post" className="grid gap-4 rounded-2xl border border-[#1E1E1E]/8 bg-[#fffdfa] p-5 md:grid-cols-2 md:p-6">
+      <input type="hidden" name="truck" value={truckSlug ?? ""} />
       <div className="md:col-span-2">
         <FormStatus state={state} />
       </div>
