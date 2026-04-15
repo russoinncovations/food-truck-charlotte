@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { Truck, Facebook, Instagram, Twitter } from "lucide-react"
+import { Truck, Instagram, Twitter } from "lucide-react"
 
 const navigation = {
   discover: [
