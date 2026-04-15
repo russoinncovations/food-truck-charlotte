@@ -2,10 +2,10 @@
 
 type SubmitButtonProps = {
   children: React.ReactNode;
-  isPending: boolean;
+  isPending?: boolean;
 };
 
-export function SubmitButton({ children, isPending }: SubmitButtonProps) {
+export function SubmitButton({ children, isPending = false }: SubmitButtonProps) {
   return (
     <button
       type="submit"

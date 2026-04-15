@@ -1,15 +1,11 @@
 "use client";
 
-import { useActionState } from "react";
-import { submitForTrucks, type InquiryFormState } from "@/app/actions/inquiry";
+import { submitVendorApplication } from '@/app/actions/submitVendorApplication';
 import { FormField } from "@/components/form-field";
-import { FormStatus } from "@/components/forms/form-status";
 import { SubmitButton } from "@/components/forms/submit-button";
 
-const initialState: InquiryFormState = {};
-
 export function ForTrucksForm() {
-  const [state, formAction, isPending] = useActionState(submitForTrucks, initialState);
+  const formAction = submitVendorApplication;
 
   return (
     <form
@@ -18,10 +14,6 @@ export function ForTrucksForm() {
       encType="multipart/form-data"
       className="grid gap-4 rounded-2xl border border-[#1E1E1E]/8 bg-[#fffdfa] p-5 md:grid-cols-2 md:p-6"
     >
-      <div className="md:col-span-2">
-        <FormStatus state={state} />
-      </div>
-
       <div className="md:col-span-2">
         <fieldset className="min-w-0 border-0 p-0">
           <legend className="text-[15px] font-medium text-[#1E1E1E]">What type of vendor are you?</legend>
@@ -160,7 +152,7 @@ export function ForTrucksForm() {
         </span>
       </div>
 
-      <SubmitButton isPending={isPending}>Join the Directory</SubmitButton>
+      <SubmitButton>Join the Directory</SubmitButton>
     </form>
   );
 }

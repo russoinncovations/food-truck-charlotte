@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { BookATruckForm } from "@/components/forms/book-a-truck-form";
+import { BookingRequestForm } from "@/components/forms/book-a-truck-form";
 import { SectionHeader } from "@/components/section-header";
 
 export const metadata: Metadata = {
@@ -28,7 +28,7 @@ export default async function BookATruckPage({
         This is an inquiry form, not an instant booking confirmation. We recommend submitting early for the best availability.
       </p>
 
-      <BookATruckForm truckSlug={truckSlug} />
+      <BookingRequestForm truckSlug={truckSlug} />
     </div>
   );
 }

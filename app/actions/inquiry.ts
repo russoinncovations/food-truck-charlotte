@@ -32,6 +32,14 @@ function pickVendorTypes(formData: FormData): string[] {
   return formData.getAll("vendorType").filter((v): v is string => typeof v === "string");
 }
 
+function cuisinesFromForm(formData: FormData): string[] {
+  return formData
+    .getAll("cuisines")
+    .filter((v): v is string => typeof v === "string")
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
 /** First non-empty trimmed string from FormData for any of the given field names. */
 function optionalFormString(formData: FormData, ...names: string[]): string | null {
   for (const name of names) {
@@ -88,7 +96,7 @@ async function saveInquiryToSupabase(payload: {
   }
 }
 
-export async function submitBookATruck(
+export async function submitBookingRequest(
   _prevState: InquiryFormState | undefined,
   formData: FormData,
 ): Promise<InquiryFormState> {
@@ -100,7 +108,6 @@ export async function submitBookATruck(
     "date",
     "location",
     "attendance",
-    "cuisinePreference",
     "notes",
   ]);
   const parsed = bookATruckSchema.safeParse(raw);
@@ -109,6 +116,7 @@ export async function submitBookATruck(
   }
 
   const d = parsed.data;
+  const cuisines = cuisinesFromForm(formData);
   const truck = optionalFormString(formData, "truck");
   const body = [
     "Food Truck Charlotte — Book a Truck inquiry",
@@ -122,7 +130,7 @@ export async function submitBookATruck(
     `Date: ${d.date ?? "—"}`,
     `Location: ${d.location ?? "—"}`,
     `Estimated attendance: ${d.attendance ?? "—"}`,
-    `Cuisine preference: ${d.cuisinePreference ?? "—"}`,
+    `Cuisines: ${cuisines.length > 0 ? cuisines.join(", ") : "—"}`,
     "",
     "Notes:",
     d.notes ?? "—",
@@ -167,6 +175,41 @@ export async function submitBookATruck(
     }
   }
 
+  const client = getSupabase();
+  if (client) {
+    const attendanceRaw = d.attendance?.trim();
+    const guestCountParsed = attendanceRaw ? Number.parseInt(attendanceRaw, 10) : null;
+    const guest_count =
+      attendanceRaw && Number.isFinite(guestCountParsed) ? guestCountParsed : null;
+
+       const messageParts = [d.notes?.trim(), truck ? `Requested truck (slug): ${truck}` : null].filter(Boolean);
+    const message = messageParts.length > 0 ? messageParts.join("\n\n") : null;
+
+    const { error: bookingErr } = await client.from("booking_requests").insert({
+      customer_name: d.name.trim(),
+      email: d.email.trim(),
+      phone: d.phone?.trim() || null,
+      company_name: null,
+      event_type: d.eventType.trim(),
+      event_date: d.date?.trim() || null,
+      event_time: null,
+      guest_count,
+      budget_min: null,
+      budget_max: null,
+      location_city: null,
+      location_state: null,
+      venue_name: d.location?.trim() || null,
+      message,
+      cuisines: cuisines.length > 0 ? cuisines : null,
+      truck_count: null,
+      is_flexible: false,
+    });
+    if (bookingErr) {
+      console.error("[booking_requests] insert failed:", bookingErr.message);
+      return { error: "We could not save your request. Please try again later." };
+    }
+  }
+
   await saveInquiryToSupabase({
     type: "book_a_truck",
     name: d.name,
@@ -175,6 +218,13 @@ export async function submitBookATruck(
     phone: d.phone ?? null,
   });
   return { success: true };
+}
+
+export async function submitBookATruck(
+  prevState: InquiryFormState | undefined,
+  formData: FormData,
+): Promise<InquiryFormState> {
+  return submitBookingRequest(prevState, formData);
 }
 
 export async function submitForTrucks(

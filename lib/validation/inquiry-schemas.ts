@@ -14,7 +14,6 @@ export const bookATruckSchema = z.object({
   date: optionalStr,
   location: optionalStr,
   attendance: optionalStr,
-  cuisinePreference: optionalStr,
   notes: optionalStr,
 });
 
