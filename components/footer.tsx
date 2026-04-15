@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { Truck, Instagram, Twitter } from "lucide-react"
+import { Truck } from "lucide-react"
 
 const navigation = {
   discover: [
@@ -23,9 +23,7 @@ const navigation = {
 }
 
 const social = [
-  { name: "Facebook", href: "https://facebook.com/foodtruckclt", icon: Facebook },
-  { name: "Instagram", href: "https://instagram.com/foodtruckclt", icon: Instagram },
-  { name: "Twitter", href: "https://twitter.com/foodtruckclt", icon: Twitter },
+  { name: "Facebook", href: "https://facebook.com/foodtruckclt" },
 ]
 
 export function Footer() {
@@ -53,19 +51,34 @@ export function Footer() {
                 food truck community on Facebook.
               </p>
               {/* Social */}
-              <div className="flex gap-4">
+              <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
                 {social.map((item) => (
                   <a
                     key={item.name}
                     href={item.href}
                     target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex h-10 w-10 items-center justify-center rounded-full bg-muted text-muted-foreground hover:bg-primary hover:text-primary-foreground transition-colors"
+                    rel="noreferrer"
+                    className="hover:text-foreground transition-colors"
                   >
-                    <item.icon className="h-5 w-5" />
-                    <span className="sr-only">{item.name}</span>
+                    {item.name}
                   </a>
                 ))}
+                <a
+                  href="https://instagram.com"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="hover:text-foreground transition-colors"
+                >
+                  Instagram
+                </a>
+                <a
+                  href="https://twitter.com"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="hover:text-foreground transition-colors"
+                >
+                  Twitter
+                </a>
               </div>
             </div>
 
