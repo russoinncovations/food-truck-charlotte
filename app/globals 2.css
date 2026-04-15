@@ -1,0 +1,182 @@
+@import url("https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;600;700;800&family=Lora:ital,wght@0,400;0,600;1,400;1,600&display=swap");
+
+@import "tailwindcss";
+
+:root {
+  --background: #fffcf8;
+  --foreground: #1e1e1e;
+  --surface: #fffdf9;
+  --surface-strong: #ffffff;
+  --accent: #d97a2b;
+  --muted: #6f655c;
+
+  /* FoodTruckCLT redesign tokens */
+  --ftc-orange: #d94f1e;
+  --ftc-orange-lt: #fddcce;
+  --ftc-cream: #fffcf8;
+  --ftc-cream-md: #f7f2ea;
+  --ftc-cream-dk: #f0ebe3;
+  --ftc-border: #efeae2;
+  --ftc-border-md: #e8e2d8;
+  --ftc-ink: #1c1a17;
+  --ftc-ink-lt: #3a3733;
+  --ftc-muted: #7a7268;
+  --ftc-subtle: #9c9489;
+  --ftc-hint: #b0a99f;
+  --ftc-green: #2d8a4e;
+  --ftc-green-lt: #cce8e0;
+  --font-display: "Bricolage Grotesque", system-ui, sans-serif;
+  --font-serif: "Lora", Georgia, serif;
+  --shadow-card: 4px 4px 0 var(--ftc-ink);
+  --shadow-soft: 0 2px 16px rgba(28, 26, 23, 0.07);
+}
+
+.font-display {
+  font-family: var(--font-display);
+}
+.font-serif {
+  font-family: var(--font-serif);
+}
+
+@keyframes ftc-marquee {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+.animate-marquee {
+  animation: ftc-marquee 22s linear infinite;
+}
+
+@keyframes ftc-slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+.animate-slide-in {
+  animation: ftc-slide-in 0.4s ease forwards;
+  opacity: 0;
+}
+
+@keyframes ftc-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
+}
+.animate-pulse-dot {
+  animation: ftc-pulse 1.8s ease-in-out infinite;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  line-height: 1.5;
+}
+
+h1,
+h2,
+h3 {
+  letter-spacing: -0.02em;
+}
+
+/* ============================================
+   FOODTRUCKCLT — DESIGN SYSTEM ADDITIONS
+   Appended from prototype styles/globals-additions.css
+   (duplicate :root/@keyframes merge with earlier rules; last wins where identical)
+   ============================================ */
+
+:root {
+  /* Brand */
+  --ftc-orange: #d94f1e;
+  --ftc-orange-lt: #fddcce;
+  --ftc-cream: #fffcf8;
+  --ftc-cream-md: #f7f2ea;
+  --ftc-cream-dk: #f0ebe3;
+  --ftc-border: #efeae2;
+  --ftc-border-md: #e8e2d8;
+  --ftc-ink: #1c1a17;
+  --ftc-ink-lt: #3a3733;
+  --ftc-muted: #7a7268;
+  --ftc-subtle: #9c9489;
+  --ftc-hint: #b0a99f;
+  --ftc-green: #2d8a4e;
+  --ftc-green-lt: #cce8e0;
+
+  /* Typography */
+  --font-display: "Bricolage Grotesque", system-ui, sans-serif;
+  --font-serif: "Lora", Georgia, serif;
+
+  /* Shadows */
+  --shadow-card: 4px 4px 0 var(--ftc-ink);
+  --shadow-soft: 0 2px 16px rgba(28, 26, 23, 0.07);
+}
+
+/* Utility classes you'll use everywhere */
+.font-display {
+  font-family: var(--font-display);
+}
+.font-serif {
+  font-family: var(--font-serif);
+}
+
+/* Marquee animation */
+@keyframes ftc-marquee {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+.animate-marquee {
+  animation: ftc-marquee 22s linear infinite;
+}
+
+/* Slide-in for truck rows */
+@keyframes ftc-slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+.animate-slide-in {
+  animation: ftc-slide-in 0.4s ease forwards;
+  opacity: 0;
+}
+
+/* Live pulse dot */
+@keyframes ftc-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
+}
+.animate-pulse-dot {
+  animation: ftc-pulse 1.8s ease-in-out infinite;
+}
