@@ -130,3 +130,60 @@
     font-family: var(--font-display);
   }
 }
+/* ============================================
+   FOODTRUCKCLT — DESIGN SYSTEM ADDITIONS
+   Add these to your existing globals.css
+   ============================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;600;700;800&family=Lora:ital,wght@0,400;0,600;1,400;1,600&display=swap');
+
+:root {
+  /* Brand */
+  --ftc-orange:     #D94F1E;
+  --ftc-orange-lt:  #FDDCCE;
+  --ftc-cream:      #FFFCF8;
+  --ftc-cream-md:   #F7F2EA;
+  --ftc-cream-dk:   #F0EBE3;
+  --ftc-border:     #EFEAE2;
+  --ftc-border-md:  #E8E2D8;
+  --ftc-ink:        #1C1A17;
+  --ftc-ink-lt:     #3A3733;
+  --ftc-muted:      #7A7268;
+  --ftc-subtle:     #9C9489;
+  --ftc-hint:       #B0A99F;
+  --ftc-green:      #2D8A4E;
+  --ftc-green-lt:   #CCE8E0;
+
+  /* Typography */
+  --font-display: 'Bricolage Grotesque', sans-serif;
+  --font-serif:   'Lora', serif;
+
+  /* Shadows */
+  --shadow-card:   4px 4px 0 var(--ftc-ink);
+  --shadow-soft:   0 2px 16px rgba(28,26,23,0.07);
+}
+
+/* Utility classes you'll use everywhere */
+.font-display { font-family: var(--font-display); }
+.font-serif   { font-family: var(--font-serif); }
+
+/* Marquee animation */
+@keyframes ftc-marquee {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+.animate-marquee { animation: ftc-marquee 22s linear infinite; }
+
+/* Slide-in for truck rows */
+@keyframes ftc-slide-in {
+  from { opacity: 0; transform: translateX(12px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+.animate-slide-in { animation: ftc-slide-in 0.4s ease forwards; opacity: 0; }
+
+/* Live pulse dot */
+@keyframes ftc-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.3; }
+}
+.animate-pulse-dot { animation: ftc-pulse 1.8s ease-in-out infinite; }
