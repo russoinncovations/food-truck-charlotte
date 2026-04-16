@@ -3,6 +3,7 @@ import Link from "next/link"
 import Image from "next/image"
 import { revalidatePath } from "next/cache"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -45,6 +46,22 @@ async function updateTruckOpportunityStatus(formData: FormData) {
   revalidatePath("/dashboard")
 }
 
+async function updateServingStatus(formData: FormData) {
+  "use server"
+  const truckId = formData.get("truckId") as string | null
+  const servingToday = formData.get("servingToday") === "true"
+  const todayLocation = (formData.get("todayLocation") as string | null) ?? ""
+  if (!truckId) return
+
+  const supabase = await createClient()
+  await supabase
+    .from("trucks")
+    .update({ serving_today: servingToday, today_location: todayLocation })
+    .eq("id", truckId)
+  revalidatePath("/dashboard")
+  revalidatePath("/map")
+}
+
 // Mock vendor data - in production this would come from auth/database
 const vendorTruck = foodTrucks[0]
 
@@ -56,6 +73,13 @@ export default async function DashboardPage() {
     .eq("status", "pending")
     .order("created_at", { ascending: false })
     .limit(5)
+
+  const { data: truckData } = await supabase
+    .from("trucks")
+    .select("id, name, serving_today, today_location")
+    .eq("show_in_directory", true)
+    .limit(1)
+    .single()
 
   return (
     <div className="min-h-screen bg-muted/30">
@@ -197,30 +221,90 @@ export default async function DashboardPage() {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  {vendorTruck.schedule[0] ? (
-                    <div className="flex items-center justify-between p-4 rounded-lg bg-muted/50">
-                      <div className="flex items-center gap-4">
-                        <div className="h-12 w-12 rounded-full bg-green-500/10 flex items-center justify-center">
-                          <MapPin className="h-6 w-6 text-green-600" />
+                  {truckData?.id ? (
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between gap-4 rounded-lg border p-4">
+                        <div className="flex items-center gap-3">
+                          <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center">
+                            <MapPin className="h-6 w-6 text-muted-foreground" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-foreground">Serving status</p>
+                            <p className="text-xs text-muted-foreground">
+                              {truckData.serving_today
+                                ? "You appear on the map as open today."
+                                : "You are not marked as serving today."}
+                            </p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="font-medium text-foreground">
-                            {vendorTruck.schedule[0].location}
-                          </p>
-                          <p className="text-sm text-muted-foreground">
-                            {vendorTruck.schedule[0].startTime} - {vendorTruck.schedule[0].endTime}
-                          </p>
-                        </div>
+                        <Badge
+                          className={
+                            truckData.serving_today
+                              ? "bg-green-500 text-white border-0"
+                              : "border-muted-foreground/30"
+                          }
+                          variant={truckData.serving_today ? "default" : "secondary"}
+                        >
+                          {truckData.serving_today ? "Serving today" : "Not serving"}
+                        </Badge>
                       </div>
-                      <Badge className="bg-green-500 text-white border-0">
-                        Currently Open
-                      </Badge>
+                      <div className="flex flex-col gap-3 sm:flex-row">
+                        <form
+                          action={updateServingStatus}
+                          className="flex flex-1 flex-col gap-3 rounded-lg border p-4"
+                        >
+                          <input type="hidden" name="truckId" value={truckData.id} />
+                          <input type="hidden" name="servingToday" value="true" />
+                          <div className="space-y-2">
+                            <label
+                              htmlFor="todayLocation-start"
+                              className="text-sm font-medium text-foreground"
+                            >
+                              Current Location
+                            </label>
+                            <Input
+                              id="todayLocation-start"
+                              name="todayLocation"
+                              type="text"
+                              placeholder="e.g. South End Brewery"
+                              defaultValue={truckData.today_location ?? ""}
+                            />
+                          </div>
+                          <Button type="submit" className="w-full sm:w-auto">
+                            Start Serving
+                          </Button>
+                        </form>
+                        <form
+                          action={updateServingStatus}
+                          className="flex flex-1 flex-col gap-3 rounded-lg border p-4"
+                        >
+                          <input type="hidden" name="truckId" value={truckData.id} />
+                          <input type="hidden" name="servingToday" value="false" />
+                          <div className="space-y-2">
+                            <label
+                              htmlFor="todayLocation-stop"
+                              className="text-sm font-medium text-foreground"
+                            >
+                              Current Location
+                            </label>
+                            <Input
+                              id="todayLocation-stop"
+                              name="todayLocation"
+                              type="text"
+                              placeholder="e.g. South End Brewery"
+                              defaultValue={truckData.today_location ?? ""}
+                            />
+                          </div>
+                          <Button type="submit" variant="outline" className="w-full sm:w-auto">
+                            Stop Serving
+                          </Button>
+                        </form>
+                      </div>
                     </div>
                   ) : (
                     <div className="text-center py-8">
                       <Calendar className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
-                      <p className="text-muted-foreground mb-2">No schedule set for today</p>
-                      <Button>Add Today&apos;s Location</Button>
+                      <p className="text-muted-foreground mb-2">No truck found in directory</p>
                     </div>
                   )}
                 </CardContent>

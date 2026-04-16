@@ -18,6 +18,9 @@ export function Header() {
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b border-border">
+      <div className="w-full bg-[#D94F1E] px-4 py-2 text-center text-sm text-white">
+        🚧 We&apos;re putting the finishing touches on FoodTruck CLT. Full launch coming soon — check back shortly!
+      </div>
       <nav className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between">
           {/* Logo */}
