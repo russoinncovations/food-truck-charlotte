@@ -1,36 +1,39 @@
 import { Metadata } from "next"
 import Link from "next/link"
-import Image from "next/image"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
-import {
-  Star,
-  MapPin,
-  Clock,
-  Calendar,
-  Heart,
-  Share2,
-  Navigation,
-  Phone,
-  Globe,
-  ChevronLeft,
-  Sparkles,
-} from "lucide-react"
-import { foodTrucks, cuisineCategories } from "@/lib/data"
+import { createClient } from "@/lib/supabase/server"
+
+const cuisineFilterButtons = [
+  { id: "all", name: "All" },
+  { id: "mexican", name: "Mexican" },
+  { id: "bbq", name: "BBQ" },
+  { id: "desserts", name: "Desserts" },
+  { id: "wings", name: "Wings" },
+  { id: "asian", name: "Asian" },
+  { id: "american", name: "American" },
+]
 
 export const metadata: Metadata = {
   title: "All Food Trucks | FoodTruck CLT",
   description: "Browse all food trucks in Charlotte, NC. Filter by cuisine, view schedules, and find your next meal.",
 }
 
-export default function TrucksPage() {
+export default async function TrucksPage() {
+  const supabase = await createClient()
+  const { data: trucks } = await supabase
+    .from("trucks")
+    .select("id, name, cuisine, slug, serving_today, today_location, show_in_directory")
+    .eq("show_in_directory", true)
+    .order("name")
+
   return (
     <main className="min-h-screen bg-background">
       <Header />
-      
+
       <div className="pt-24 pb-16">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           {/* Page Header */}
@@ -39,13 +42,13 @@ export default function TrucksPage() {
               All Food Trucks
             </h1>
             <p className="mt-2 text-muted-foreground">
-              Discover {foodTrucks.length} amazing food trucks serving Charlotte
+              Discover {trucks?.length ?? 0} amazing food trucks serving Charlotte
             </p>
           </div>
 
           {/* Cuisine Filter */}
           <div className="mb-8 flex flex-wrap gap-2">
-            {cuisineCategories.map((cat) => (
+            {cuisineFilterButtons.map((cat) => (
               <Button
                 key={cat.id}
                 variant={cat.id === "all" ? "default" : "outline"}
@@ -58,21 +61,18 @@ export default function TrucksPage() {
 
           {/* Trucks Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {foodTrucks.map((truck) => {
-              const nextStop = truck.schedule[0]
-              
+            {(trucks ?? []).map((truck) => {
+              const cuisineTags = [truck.cuisine].filter(Boolean) as string[]
+
               return (
                 <Card key={truck.id} className="group overflow-hidden hover:shadow-lg hover:border-primary/50 transition-all">
                   <Link href={`/trucks/${truck.slug}`}>
-                    <div className="relative aspect-[4/3] overflow-hidden">
-                      <Image
-                        src={truck.image}
-                        alt={truck.name}
-                        fill
-                        className="object-cover transition-transform duration-300 group-hover:scale-105"
-                      />
+                    <div className="relative aspect-[4/3] overflow-hidden bg-muted flex items-center justify-center">
+                      <div className="h-20 w-20 rounded-full bg-primary/15 flex items-center justify-center text-3xl font-bold text-primary">
+                        {truck.name?.[0] ?? "?"}
+                      </div>
                       <div className="absolute top-3 left-3">
-                        {truck.isOpen ? (
+                        {truck.serving_today ? (
                           <Badge className="bg-green-500/90 text-white border-0">
                             <span className="relative mr-1.5 flex h-2 w-2">
                               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white opacity-75" />
@@ -84,51 +84,22 @@ export default function TrucksPage() {
                           <Badge variant="secondary">Closed</Badge>
                         )}
                       </div>
-                      {truck.isFeatured && (
-                        <div className="absolute top-3 right-3">
-                          <Badge className="bg-accent text-accent-foreground border-0">
-                            Featured
-                          </Badge>
-                        </div>
-                      )}
                     </div>
-                    
+
                     <CardContent className="p-4">
                       <div className="flex flex-wrap gap-1 mb-2">
-                        {truck.cuisine.slice(0, 2).map((c) => (
+                        {cuisineTags.slice(0, 2).map((c) => (
                           <span key={c} className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
                             {c}
                           </span>
                         ))}
                       </div>
-                      
+
                       <div className="flex items-start justify-between gap-2 mb-2">
                         <h3 className="font-display font-semibold text-foreground group-hover:text-primary transition-colors">
                           {truck.name}
                         </h3>
-                        <div className="flex items-center gap-1 text-sm shrink-0">
-                          <Star className="h-4 w-4 fill-accent text-accent" />
-                          <span className="font-medium">{truck.rating}</span>
-                        </div>
                       </div>
-                      
-                      <p className="text-sm text-muted-foreground mb-3">
-                        {truck.priceRange} · {truck.reviewCount} reviews
-                      </p>
-                      
-                      {nextStop && (
-                        <div className="pt-3 border-t">
-                          <p className="text-xs text-muted-foreground mb-1">Next stop</p>
-                          <div className="flex items-center gap-1 text-sm">
-                            <MapPin className="h-3.5 w-3.5 text-primary shrink-0" />
-                            <span className="truncate">{nextStop.location}</span>
-                          </div>
-                          <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
-                            <Clock className="h-3 w-3" />
-                            <span>{nextStop.startTime} - {nextStop.endTime}</span>
-                          </div>
-                        </div>
-                      )}
                     </CardContent>
                   </Link>
                 </Card>
@@ -137,7 +108,7 @@ export default function TrucksPage() {
           </div>
         </div>
       </div>
-      
+
       <Footer />
     </main>
   )
