@@ -1,5 +1,6 @@
 import { Metadata } from "next"
 import Link from "next/link"
+import { redirect } from "next/navigation"
 import { revalidatePath } from "next/cache"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -64,6 +65,12 @@ async function updateServingStatus(formData: FormData) {
 // Mock vendor data - in production this would come from auth/database
 export default async function DashboardPage() {
   const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) {
+    redirect("/vendor-login")
+  }
   const { data: opportunities } = await supabase
     .from("truck_opportunities")
     .select("*, booking_requests(*)")
@@ -74,8 +81,7 @@ export default async function DashboardPage() {
   const { data: truckData } = await supabase
     .from("trucks")
     .select("id, name, serving_today, today_location")
-    .eq("show_in_directory", true)
-    .limit(1)
+    .eq("email", user.email)
     .single()
 
   return (
