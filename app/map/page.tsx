@@ -2,16 +2,23 @@ import { Suspense } from "react"
 import { Metadata } from "next"
 import { MapExplorer } from "@/components/map-explorer"
 import { Skeleton } from "@/components/ui/skeleton"
+import { createClient } from "@/lib/supabase/server"
 
 export const metadata: Metadata = {
   title: "Find Food Trucks Near You | FoodTruck CLT",
   description: "Interactive map showing real-time food truck locations across Charlotte, NC. Filter by cuisine, distance, and availability.",
 }
 
-export default function MapPage() {
+export default async function MapPage() {
+  const supabase = await createClient()
+  const { data: trucks } = await supabase
+    .from("trucks")
+    .select("id, name, cuisine, latitude, longitude, serving_today, today_location, today_specials")
+    .eq("serving_today", true)
+
   return (
     <Suspense fallback={<MapSkeleton />}>
-      <MapExplorer />
+      <MapExplorer trucks={trucks ?? []} />
     </Suspense>
   )
 }

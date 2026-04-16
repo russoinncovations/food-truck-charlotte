@@ -30,7 +30,59 @@ import {
   Truck,
   Navigation,
 } from "lucide-react"
-import { foodTrucks, cuisineCategories, type FoodTruck } from "@/lib/data"
+import { cuisineCategories, type FoodTruck } from "@/lib/data"
+
+export type ServingTruckRow = {
+  id: string
+  name: string
+  cuisine: string | string[] | null
+  latitude: number | string | null
+  longitude: number | string | null
+  serving_today: boolean | null
+  today_location: string | null
+  today_specials: string | null
+}
+
+function mapRowsToMapTrucks(rows: ServingTruckRow[]): FoodTruck[] {
+  return rows.map((truck) => {
+    const lat = Number(truck.latitude)
+    const lng = Number(truck.longitude)
+    const cuisine = Array.isArray(truck.cuisine)
+      ? truck.cuisine
+      : truck.cuisine
+        ? [truck.cuisine]
+        : []
+    const slug = truck.name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/(^-|-$)/g, "") || truck.id
+
+    return {
+      id: truck.id,
+      name: truck.name,
+      slug,
+      cuisine,
+      description: "",
+      image: "/images/truck-tacos.jpg",
+      rating: 0,
+      reviewCount: 0,
+      priceRange: "$",
+      isOpen: Boolean(truck.serving_today),
+      isFeatured: false,
+      location:
+        Number.isFinite(lat) && Number.isFinite(lng)
+          ? {
+              lat,
+              lng,
+              address: truck.today_location ?? "",
+            }
+          : undefined,
+      schedule: [],
+      menu: [],
+      socialLinks: {},
+    }
+  })
+}
 
 // Dynamically import map to avoid SSR issues
 const MapView = dynamic(() => import("@/components/map-view"), {
@@ -45,7 +97,7 @@ const MapView = dynamic(() => import("@/components/map-view"), {
   ),
 })
 
-export function MapExplorer() {
+export function MapExplorer({ trucks }: { trucks: ServingTruckRow[] }) {
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedCuisine, setSelectedCuisine] = useState("all")
   const [showOpenOnly, setShowOpenOnly] = useState(false)
@@ -53,8 +105,10 @@ export function MapExplorer() {
   const [viewMode, setViewMode] = useState<"map" | "list">("map")
   const [isSidebarOpen, setIsSidebarOpen] = useState(true)
 
+  const mapTrucks = useMemo(() => mapRowsToMapTrucks(trucks), [trucks])
+
   const filteredTrucks = useMemo(() => {
-    return foodTrucks.filter((truck) => {
+    return mapTrucks.filter((truck) => {
       const matchesSearch =
         searchQuery === "" ||
         truck.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -69,7 +123,7 @@ export function MapExplorer() {
       const matchesOpen = !showOpenOnly || truck.isOpen
       return matchesSearch && matchesCuisine && matchesOpen
     })
-  }, [searchQuery, selectedCuisine, showOpenOnly])
+  }, [mapTrucks, searchQuery, selectedCuisine, showOpenOnly])
 
   return (
     <div className="h-screen flex flex-col">
@@ -111,7 +165,7 @@ export function MapExplorer() {
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-500 opacity-75" />
               <span className="relative inline-flex h-2 w-2 rounded-full bg-green-500" />
             </span>
-            {foodTrucks.filter((t) => t.isOpen).length} trucks open
+            {mapTrucks.filter((t) => t.isOpen).length} trucks open
           </Badge>
           <Button
             variant="outline"
