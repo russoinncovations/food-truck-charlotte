@@ -1,6 +1,7 @@
 import { Metadata } from "next"
 import Link from "next/link"
 import Image from "next/image"
+import { revalidatePath } from "next/cache"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
@@ -24,18 +25,38 @@ import {
   Bell,
   Menu,
 } from "lucide-react"
-import { foodTrucks, events, type FoodTruck, type Event } from "@/lib/data"
+import { foodTrucks } from "@/lib/data"
+import { createClient } from "@/lib/supabase/server"
+import { EVENT_TYPES } from "@/lib/booking-types"
 
 export const metadata: Metadata = {
   title: "Vendor Dashboard | FoodTruck CLT",
   description: "Manage your food truck profile, schedule, and connect with the Charlotte community.",
 }
 
+async function updateTruckOpportunityStatus(formData: FormData) {
+  "use server"
+  const opportunityId = formData.get("opportunityId") as string | null
+  const status = formData.get("status") as string | null
+  if (!opportunityId || (status !== "interested" && status !== "pass")) return
+
+  const supabase = await createClient()
+  await supabase.from("truck_opportunities").update({ status }).eq("id", opportunityId)
+  revalidatePath("/dashboard")
+}
+
 // Mock vendor data - in production this would come from auth/database
 const vendorTruck = foodTrucks[0]
-const upcomingEvents = events.slice(0, 3)
 
-export default function DashboardPage() {
+export default async function DashboardPage() {
+  const supabase = await createClient()
+  const { data: opportunities } = await supabase
+    .from("truck_opportunities")
+    .select("*, booking_requests(*)")
+    .eq("status", "pending")
+    .order("created_at", { ascending: false })
+    .limit(5)
+
   return (
     <div className="min-h-screen bg-muted/30">
       {/* Dashboard Header */}
@@ -291,32 +312,61 @@ export default function DashboardPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    {upcomingEvents.map((event) => {
-                      const date = new Date(event.date)
+                    {(opportunities ?? []).map((opp) => {
+                      const raw = opp.booking_requests
+                      const br = Array.isArray(raw) ? raw[0] : raw
+                      const eventTypeLabel =
+                        EVENT_TYPES.find((t) => t.value === br?.event_type)?.label ??
+                        br?.event_type ??
+                        "—"
+                      const dateStr = br?.event_date
+                        ? new Date(br.event_date).toLocaleDateString("en-US", {
+                            month: "short",
+                            day: "numeric",
+                            year: "numeric",
+                          })
+                        : "—"
                       return (
                         <div
-                          key={event.id}
-                          className="flex items-start gap-3 p-3 rounded-lg border hover:bg-muted/50 transition-colors cursor-pointer"
+                          key={opp.id}
+                          className="p-3 rounded-lg border hover:bg-muted/50 transition-colors space-y-3"
                         >
-                          <div className="relative h-12 w-12 rounded-lg overflow-hidden shrink-0">
-                            <Image
-                              src={event.image}
-                              alt={event.name}
-                              fill
-                              className="object-cover"
-                            />
+                          <div className="flex items-start gap-3">
+                            <div className="h-12 w-12 rounded-lg bg-muted flex items-center justify-center shrink-0">
+                              <Calendar className="h-6 w-6 text-muted-foreground" />
+                            </div>
+                            <div className="flex-1 min-w-0 space-y-1">
+                              <p className="font-medium text-foreground text-sm truncate">
+                                {eventTypeLabel}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                {dateStr}
+                                {br?.city != null && br.city !== "" ? ` · ${br.city}` : ""}
+                                {br?.guest_count != null ? ` · ${br.guest_count} guests` : ""}
+                              </p>
+                              <Badge variant="secondary" className="text-xs capitalize">
+                                {opp.status}
+                              </Badge>
+                            </div>
                           </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="font-medium text-foreground text-sm truncate">
-                              {event.name}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              {date.toLocaleDateString("en-US", {
-                                month: "short",
-                                day: "numeric",
-                              })} · {event.location}
-                            </p>
-                          </div>
+                          {opp.status === "pending" && (
+                            <div className="flex gap-2 pt-1">
+                              <form action={updateTruckOpportunityStatus} className="flex-1">
+                                <input type="hidden" name="opportunityId" value={opp.id} />
+                                <input type="hidden" name="status" value="interested" />
+                                <Button type="submit" size="sm" className="w-full">
+                                  Interested
+                                </Button>
+                              </form>
+                              <form action={updateTruckOpportunityStatus} className="flex-1">
+                                <input type="hidden" name="opportunityId" value={opp.id} />
+                                <input type="hidden" name="status" value="pass" />
+                                <Button type="submit" variant="outline" size="sm" className="w-full">
+                                  Pass
+                                </Button>
+                              </form>
+                            </div>
+                          )}
                         </div>
                       )
                     })}
