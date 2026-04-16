@@ -118,7 +118,7 @@ export async function submitBookingRequest(
   // Route to all active trucks, filtered by cuisine if provided
   const { data: trucks } = await supabase
     .from("trucks")
-    .select("id, name, email, cuisines")
+    .select("id, name, email, cuisine")
     .eq("show_in_directory", true)
 
   if (trucks && trucks.length > 0) {
@@ -127,7 +127,7 @@ export async function submitBookingRequest(
     // Filter by cuisine match if cuisines were requested
     if (cuisines && cuisines.length > 0) {
       targetTrucks = trucks.filter((truck) =>
-        truck.cuisines?.some((c: string) => cuisines.includes(c))
+        cuisines.some((c: string) => c.toLowerCase().includes(truck.cuisine?.toLowerCase()) || truck.cuisine?.toLowerCase().includes(c.toLowerCase()))
       )
       // If no cuisine matches, fall back to all trucks
       if (targetTrucks.length === 0) targetTrucks = trucks

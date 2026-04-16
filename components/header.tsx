@@ -10,7 +10,7 @@ const navigation = [
   { name: "Find Trucks", href: "/map", icon: MapPin },
   { name: "Events", href: "/events", icon: Calendar },
   { name: "All Trucks", href: "/trucks", icon: Truck },
-  { name: "Book a Truck", href: "/book-trucks", icon: CalendarPlus },
+  { name: "Book a Truck", href: "/book-a-truck", icon: CalendarPlus },
 ]
 
 export function Header() {
