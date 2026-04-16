@@ -115,6 +115,34 @@ export async function submitBookingRequest(
 
   console.log("[v0] Insert successful, row id:", data?.id)
 
+  // Route to all active trucks, filtered by cuisine if provided
+  const { data: trucks } = await supabase
+    .from("trucks")
+    .select("id, name, email, cuisines")
+    .eq("show_in_directory", true)
+
+  if (trucks && trucks.length > 0) {
+    let targetTrucks = trucks
+
+    // Filter by cuisine match if cuisines were requested
+    if (cuisines && cuisines.length > 0) {
+      targetTrucks = trucks.filter((truck) =>
+        truck.cuisines?.some((c: string) => cuisines.includes(c))
+      )
+      // If no cuisine matches, fall back to all trucks
+      if (targetTrucks.length === 0) targetTrucks = trucks
+    }
+
+    // Create opportunity records for each target truck
+    const opportunities = targetTrucks.map((truck) => ({
+      booking_request_id: data.id,
+      truck_id: truck.id,
+      status: "pending",
+    }))
+
+    await supabase.from("truck_opportunities").insert(opportunities)
+  }
+
   // Only redirect on confirmed success
   redirect("/book-a-truck/success")
 }
