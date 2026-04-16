@@ -1,6 +1,5 @@
 import { Metadata } from "next"
 import Link from "next/link"
-import Image from "next/image"
 import { revalidatePath } from "next/cache"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -63,8 +62,6 @@ async function updateServingStatus(formData: FormData) {
 }
 
 // Mock vendor data - in production this would come from auth/database
-const vendorTruck = foodTrucks[0]
-
 export default async function DashboardPage() {
   const supabase = await createClient()
   const { data: opportunities } = await supabase
@@ -109,14 +106,8 @@ export default async function DashboardPage() {
                 <Settings className="h-5 w-5" />
               </Link>
             </Button>
-            <div className="h-8 w-8 rounded-full bg-primary/10 overflow-hidden">
-              <Image
-                src={vendorTruck.image}
-                alt={vendorTruck.name}
-                width={32}
-                height={32}
-                className="object-cover"
-              />
+            <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center text-white text-sm font-bold">
+              {truckData?.name?.[0] ?? "T"}
             </div>
           </div>
         </div>
@@ -154,7 +145,7 @@ export default async function DashboardPage() {
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
               <h1 className="font-display text-2xl md:text-3xl font-bold text-foreground">
-                Welcome back, {vendorTruck.name}!
+                Welcome back, {truckData?.name ?? "Your Truck"}!
               </h1>
               <p className="text-muted-foreground">
                 Here&apos;s what&apos;s happening with your truck today.
@@ -162,7 +153,7 @@ export default async function DashboardPage() {
             </div>
             <div className="flex gap-2">
               <Button variant="outline" className="gap-2" asChild>
-                <Link href={`/trucks/${vendorTruck.slug}`}>
+                <Link href="/trucks">
                   <Eye className="h-4 w-4" />
                   View Public Profile
                 </Link>
@@ -190,8 +181,8 @@ export default async function DashboardPage() {
             />
             <StatCard
               title="Avg Rating"
-              value={vendorTruck.rating.toString()}
-              change={`${vendorTruck.reviewCount} reviews`}
+              value={foodTrucks[0].rating.toString()}
+              change={`${foodTrucks[0].reviewCount} reviews`}
               icon={Star}
             />
             <StatCard
@@ -325,7 +316,7 @@ export default async function DashboardPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    {vendorTruck.schedule.slice(0, 3).map((item) => {
+                    {foodTrucks[0].schedule.slice(0, 3).map((item) => {
                       const date = new Date(item.date)
                       return (
                         <div
