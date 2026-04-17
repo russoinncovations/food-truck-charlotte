@@ -1,6 +1,5 @@
 import { Metadata } from "next"
 import Link from "next/link"
-import Image from "next/image"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { Button } from "@/components/ui/button"
@@ -106,20 +105,40 @@ const plans = [
 
 const testimonials = [
   {
-    name: "Maria's Taco Truck",
-    owner: "Maria Gonzalez",
-    quote: "Since joining FoodTruck CLT, our daily customers have doubled. The real-time location feature is a game changer.",
-    image: "/images/truck-1.jpg",
+    name: "LaShay J.",
+    subtitle: "Gouda's Kitchen",
+    quote:
+      "We learned so much from this group and 75% of our bookings have ALWAYS been through this group!",
     rating: 5,
   },
   {
-    name: "Seoul Food",
-    owner: "James Kim",
-    quote: "The event matching feature has connected us with amazing catering opportunities we never would have found otherwise.",
-    image: "/images/truck-2.jpg",
+    name: "Tina T.",
+    subtitle: "Community Member",
+    quote:
+      "I not only found 1 truck but several. In less than 1 hour I was able to secure a truck for a last minute event!",
+    rating: 5,
+  },
+  {
+    name: "Sonya H.",
+    subtitle: "Queen City Flavas Slushies LLC",
+    quote: "We appreciate you and everything this community has done for our business.",
     rating: 5,
   },
 ]
+
+const testimonialAvatarClasses = [
+  "bg-primary/15 text-primary",
+  "bg-accent/20 text-accent",
+  "bg-primary/10 text-primary",
+]
+
+function testimonialInitials(name: string): string {
+  const parts = name.trim().split(/\s+/)
+  if (parts.length >= 2) {
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+  }
+  return parts[0].slice(0, 2).toUpperCase()
+}
 
 export default function ListYourTruckPage() {
   return (
@@ -297,21 +316,18 @@ export default function ListYourTruckPage() {
           </div>
 
           <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-            {testimonials.map((testimonial) => (
+            {testimonials.map((testimonial, index) => (
               <Card key={testimonial.name} className="overflow-hidden">
                 <CardContent className="p-6">
                   <div className="flex items-center gap-4 mb-4">
-                    <div className="relative h-14 w-14 rounded-full overflow-hidden">
-                      <Image
-                        src={testimonial.image}
-                        alt={testimonial.name}
-                        fill
-                        className="object-cover"
-                      />
+                    <div
+                      className={`flex h-14 w-14 shrink-0 rounded-full items-center justify-center text-sm font-bold ${testimonialAvatarClasses[index % testimonialAvatarClasses.length]}`}
+                    >
+                      {testimonialInitials(testimonial.name)}
                     </div>
                     <div>
                       <p className="font-semibold text-foreground">{testimonial.name}</p>
-                      <p className="text-sm text-muted-foreground">{testimonial.owner}</p>
+                      <p className="text-sm text-muted-foreground">{testimonial.subtitle}</p>
                     </div>
                   </div>
                   <div className="flex gap-1 mb-3">
