@@ -202,7 +202,7 @@ export default function ListYourTruckPage() {
               <p className="text-sm text-muted-foreground">Active Users</p>
             </div>
             <div>
-              <p className="text-3xl md:text-4xl font-bold text-foreground">150+</p>
+              <p className="text-3xl md:text-4xl font-bold text-foreground">35,000+</p>
               <p className="text-sm text-muted-foreground">Food Trucks</p>
             </div>
             <div>
@@ -352,7 +352,7 @@ export default function ListYourTruckPage() {
             Ready to Grow Your Business?
           </h2>
           <p className="text-primary-foreground/80 mb-8 max-w-xl mx-auto">
-            Join 150+ food trucks already reaching thousands of Charlotte customers every day.
+            Charlotte&apos;s original food truck community — trusted by 35,000+ locals since 2020.
           </p>
           <Button size="lg" variant="secondary" className="gap-2" asChild>
             <a href="#apply">
