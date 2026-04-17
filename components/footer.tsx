@@ -16,14 +16,13 @@ const navigation = {
     { name: "Book for an Event", href: "/book-trucks" },
   ],
   community: [
-    { name: "Facebook Group", href: "https://facebook.com/groups/foodtruckclt" },
+    { name: "Facebook Group", href: "https://www.facebook.com/share/g/1DjV7rGgcU/" },
     { name: "About", href: "/about" },
-    { name: "Contact", href: "/contact" },
   ],
 }
 
 const social = [
-  { name: "Facebook", href: "https://facebook.com/foodtruckclt" },
+  { name: "Facebook", href: "https://www.facebook.com/share/g/1DjV7rGgcU/" },
 ]
 
 export function Footer() {
@@ -64,20 +63,12 @@ export function Footer() {
                   </a>
                 ))}
                 <a
-                  href="https://instagram.com"
+                  href="https://www.instagram.com/foodtruckcharlotte/"
                   target="_blank"
                   rel="noreferrer"
                   className="hover:text-foreground transition-colors"
                 >
                   Instagram
-                </a>
-                <a
-                  href="https://twitter.com"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="hover:text-foreground transition-colors"
-                >
-                  Twitter
                 </a>
               </div>
             </div>
