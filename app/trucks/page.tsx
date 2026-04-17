@@ -1,5 +1,6 @@
 import { Metadata } from "next"
 import Link from "next/link"
+import Image from "next/image"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { Button } from "@/components/ui/button"
@@ -16,6 +17,23 @@ const cuisineFilterButtons = [
   { id: "asian", name: "Asian" },
   { id: "american", name: "American" },
 ]
+
+const TRUCK_IMAGES = [
+  "https://images.unsplash.com/photo-1565958011703-44f9829ba187?w=400&h=300&fit=crop",
+  "https://images.unsplash.com/photo-1619566636858-adf3ef46400b?w=400&h=300&fit=crop",
+  "https://images.unsplash.com/photo-1524492412937-b28074a5d7da?w=400&h=300&fit=crop",
+  "https://images.unsplash.com/photo-1617196034183-421b4040ed20?w=400&h=300&fit=crop",
+  "https://images.unsplash.com/photo-1534790566855-4cb788d389ec?w=400&h=300&fit=crop",
+  "https://images.unsplash.com/photo-1512689189935-c6c80733a4d4?w=400&h=300&fit=crop",
+  "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&h=300&fit=crop",
+  "https://images.unsplash.com/photo-1600891964599-f61ba0e24092?w=400&h=300&fit=crop",
+]
+
+function getTruckImage(truckId: string): string {
+  const index =
+    truckId.split("").reduce((acc, c) => acc + c.charCodeAt(0), 0) % TRUCK_IMAGES.length
+  return TRUCK_IMAGES[index]
+}
 
 export const metadata: Metadata = {
   title: "All Food Trucks | FoodTruck CLT",
@@ -67,10 +85,13 @@ export default async function TrucksPage() {
               return (
                 <Card key={truck.id} className="group overflow-hidden hover:shadow-lg hover:border-primary/50 transition-all">
                   <Link href={`/trucks/${truck.slug}`}>
-                    <div className="relative aspect-[4/3] overflow-hidden bg-muted flex items-center justify-center">
-                      <div className="h-20 w-20 rounded-full bg-primary/15 flex items-center justify-center text-3xl font-bold text-primary">
-                        {truck.name?.[0] ?? "?"}
-                      </div>
+                    <div className="relative aspect-[4/3] overflow-hidden">
+                      <Image
+                        src={getTruckImage(truck.id)}
+                        alt={truck.name}
+                        fill
+                        className="object-cover transition-transform duration-300 group-hover:scale-105"
+                      />
                       <div className="absolute top-3 left-3">
                         {truck.serving_today ? (
                           <Badge className="bg-green-500/90 text-white border-0">
