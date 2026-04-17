@@ -8,8 +8,8 @@ import { Input } from "@/components/ui/input"
 import { Search, MapPin, ArrowRight, Users, Calendar, Truck } from "lucide-react"
 
 const stats = [
-  { label: "Trucks on the map", value: "90+", icon: Truck },
-  { label: "Events this month", value: "24", icon: Calendar },
+  { label: "Trucks listed", value: "16+", icon: Truck },
+  { label: "Upcoming events", value: "5", icon: Calendar },
   { label: "Facebook group members", value: "35K", icon: Users },
 ]
 
@@ -40,7 +40,7 @@ export function Hero() {
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75" />
                 <span className="relative inline-flex h-2 w-2 rounded-full bg-green-400" />
               </span>
-              8 trucks open right now in Charlotte
+              Charlotte's food truck community
             </div>
 
             {/* Headline */}
@@ -130,18 +130,18 @@ export function Hero() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <TimeCard
               title="Open Now"
-              description="8 trucks serving across Charlotte"
+              description="Find trucks open near you"
               href="/map?filter=open"
               accent
             />
             <TimeCard
               title="Tonight"
-              description="3 brewery events with trucks"
+              description="Check tonight's lineup"
               href="/events?filter=tonight"
             />
             <TimeCard
               title="This Weekend"
-              description="South End Friday + 4 more"
+              description="Browse this weekend"
               href="/events?filter=weekend"
             />
           </div>

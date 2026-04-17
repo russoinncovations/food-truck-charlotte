@@ -20,7 +20,7 @@ const vendorBenefits = [
 ]
 
 const hostBenefits = [
-  "Browse 90+ trucks by cuisine and availability",
+  "Browse Charlotte food trucks by cuisine and availability",
   "See real reviews from Charlotte customers",
   "Contact trucks directly - no middleman",
   "Great for breweries, offices, and private parties",
@@ -60,7 +60,7 @@ export function VendorCTA() {
               {/* Stats */}
               <div className="flex gap-6 mb-8 pb-8 border-b">
                 <div>
-                  <p className="text-2xl font-bold text-foreground">90+</p>
+                  <p className="text-2xl font-bold text-foreground">16+</p>
                   <p className="text-sm text-muted-foreground">Trucks listed</p>
                 </div>
                 <div>
