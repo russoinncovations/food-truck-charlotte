@@ -12,7 +12,7 @@ const FEATURED_TRUCKS = [
   { id: "the-plated-palette",   name: "The Plated Palette",    cuisine: "American",  area: "NoDa · Uptown",              status: "inquire",   initial: "T", color: "#CCE8E0", textColor: "#0F6E56" },
   { id: "lelas-mini-donuts",    name: "Lela's Mini Donuts",    cuisine: "Desserts",  area: "South End · Ballantyne",     status: "event",     initial: "L", color: "#FAF0CC", textColor: "#BA7517" },
   { id: "saucy-girl-taco-truck",name: "Saucy Girl Taco Truck", cuisine: "General",   area: "Waxhaw · Marvin",            status: "available", initial: "S", color: "#CCE0F4", textColor: "#185FA5" },
-  { id: "annes-cuisine",        name: "Anne's Cuisine LLC",    cuisine: "General",   area: "Charlotte Metro",            status: "inquire",   initial: "A", color: "#F4CCE0", textColor: "#993556" },
+  { id: "annes-cuisine",        name: "Anna's Cuisine LLC",    cuisine: "General",   area: "Charlotte Metro",            status: "inquire",   initial: "A", color: "#F4CCE0", textColor: "#993556" },
 ];
 
 const STATUS_MAP = {
@@ -47,7 +47,7 @@ export default function HeroSection() {
               className="text-[11px] font-medium uppercase tracking-[0.08em]"
               style={{ color: "var(--ftc-orange)" }}
             >
-              23 trucks active
+              16 trucks active
             </span>
             <span style={{ color: "var(--ftc-hint)" }}>·</span>
             <span
@@ -99,7 +99,7 @@ export default function HeroSection() {
               📍 Charlotte, NC
             </span>
             <Link
-              href="/find-food-trucks"
+              href="/trucks"
               className="text-[14px] font-medium text-white px-5 py-[11px] rounded-[7px] whitespace-nowrap"
               style={{ background: "var(--ftc-orange)" }}
             >
@@ -234,11 +234,11 @@ export default function HeroSection() {
           {/* CTA */}
           <div className="p-5">
             <Link
-              href="/find-food-trucks"
+              href="/trucks"
               className="flex items-center justify-center w-full text-[14px] font-medium rounded-lg py-[13px]"
               style={{ background: "var(--ftc-ink)", color: "var(--ftc-cream)" }}
             >
-              Browse All 23 Trucks →
+              Browse All Trucks →
             </Link>
           </div>
         </div>
