@@ -1,5 +1,9 @@
-import { Metadata } from "next"
+"use client"
+
+import { useState, FormEvent } from "react"
+import { useRouter } from "next/navigation"
 import Link from "next/link"
+import { createClient } from "@/lib/supabase/client"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { Button } from "@/components/ui/button"
@@ -18,11 +22,6 @@ import {
   BarChart3,
 } from "lucide-react"
 import { VendorSignupForm } from "@/components/forms/vendor-signup-form"
-
-export const metadata: Metadata = {
-  title: "List Your Truck | Food Truck CLT",
-  description: "Join Charlotte's largest food truck community. Reach 35,000+ local food lovers, manage your schedule, and grow your business.",
-}
 
 const features = [
   {
@@ -141,6 +140,53 @@ function testimonialInitials(name: string): string {
 }
 
 export default function ListYourTruckPage() {
+  const router = useRouter()
+  const [submitError, setSubmitError] = useState<string | null>(null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    setSubmitError(null)
+    setIsSubmitting(true)
+
+    const form = e.currentTarget
+    const fd = new FormData(form)
+
+    const cuisine_types = fd.getAll("cuisine_types").map(String).filter(Boolean)
+
+    const serviceAreasRaw = (fd.get("service_areas") as string | null)?.trim() ?? ""
+    const service_areas = serviceAreasRaw
+      ? serviceAreasRaw.split(/[,;]/).map((s) => s.trim()).filter(Boolean)
+      : []
+
+    const insert = {
+      business_name: (fd.get("business_name") as string | null)?.trim() || null,
+      contact_name: (fd.get("contact_name") as string | null)?.trim() || null,
+      email: (fd.get("email") as string | null)?.trim() || null,
+      phone: (fd.get("phone") as string | null)?.trim() || null,
+      website: (fd.get("website") as string | null)?.trim() || null,
+      instagram: (fd.get("instagram") as string | null)?.trim() || null,
+      vendor_description: (fd.get("vendor_description") as string | null)?.trim() || null,
+      cuisine_types,
+      service_areas,
+      base_city: (fd.get("base_city") as string | null)?.trim() || null,
+      status: "pending",
+      source: "website",
+    }
+
+    const supabase = createClient()
+    const { error } = await supabase.from("vendor_applications").insert(insert)
+
+    setIsSubmitting(false)
+
+    if (error) {
+      setSubmitError(error.message)
+      return
+    }
+
+    router.push("/list-your-truck/success")
+  }
+
   return (
     <main className="min-h-screen bg-background">
       <Header />
@@ -188,7 +234,11 @@ export default function ListYourTruckPage() {
             </p>
           </div>
           <Card className="p-6 md:p-8">
-            <VendorSignupForm />
+            <VendorSignupForm
+              onSubmit={handleSubmit}
+              submitError={submitError}
+              isSubmitting={isSubmitting}
+            />
           </Card>
         </div>
       </section>

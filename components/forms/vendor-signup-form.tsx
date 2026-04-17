@@ -1,7 +1,6 @@
 "use client"
 
-import { useActionState } from "react"
-import { submitVendorApplication, type VendorApplicationResult } from "@/app/actions/submitVendorApplication"
+import { FormEvent } from "react"
 import { FormField } from "@/components/forms/form-field"
 import { SubmitButton } from "@/components/forms/submit-button"
 import { AlertCircle } from "lucide-react"
@@ -20,20 +19,21 @@ const cuisineOptions = [
   "Other",
 ]
 
-const initialState: VendorApplicationResult | null = null
+type VendorSignupFormProps = {
+  onSubmit: (e: FormEvent<HTMLFormElement>) => void | Promise<void>
+  submitError: string | null
+  isSubmitting: boolean
+}
 
-export function VendorSignupForm() {
-  const [state, formAction, isPending] = useActionState(submitVendorApplication, initialState)
-
+export function VendorSignupForm({ onSubmit, submitError, isSubmitting }: VendorSignupFormProps) {
   return (
-    <form action={formAction} className="space-y-8">
-      {/* Error Display */}
-      {state?.error && (
+    <form onSubmit={onSubmit} className="space-y-8">
+      {submitError && (
         <div className="p-4 rounded-lg bg-destructive/10 border border-destructive/20 flex items-start gap-3">
           <AlertCircle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
           <div>
             <p className="font-medium text-destructive">Submission Failed</p>
-            <p className="text-sm text-destructive/80 mt-1">{state.error}</p>
+            <p className="text-sm text-destructive/80 mt-1">{submitError}</p>
           </div>
         </div>
       )}
@@ -74,20 +74,20 @@ export function VendorSignupForm() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FormField
             label="Truck / Business Name"
-            name="truckName"
+            name="business_name"
             required
             placeholder="e.g., Taco Loco"
           />
           <FormField
             label="Owner Name"
-            name="ownerName"
+            name="contact_name"
             required
             placeholder="Your full name"
           />
         </div>
         <FormField
           label="Describe your food and style"
-          name="description"
+          name="vendor_description"
           as="textarea"
           placeholder="Tell us about your menu, specialties, and what makes you unique..."
           rows={3}
@@ -143,7 +143,7 @@ export function VendorSignupForm() {
             >
               <input
                 type="checkbox"
-                name="cuisines"
+                name="cuisine_types"
                 value={cuisine}
                 className="h-4 w-4 rounded text-primary focus:ring-primary"
               />
@@ -153,7 +153,6 @@ export function VendorSignupForm() {
         </div>
       </fieldset>
 
-      {/* Years in Business */}
       <FormField
         label="How long have you been in business?"
         name="yearsInBusiness"
@@ -169,8 +168,8 @@ export function VendorSignupForm() {
 
       {/* Submit */}
       <div className="pt-4 border-t">
-        <SubmitButton className="w-full sm:w-auto" isPending={isPending}>
-          {isPending ? "Submitting..." : "Submit Application"}
+        <SubmitButton className="w-full sm:w-auto" isPending={isSubmitting}>
+          {isSubmitting ? "Submitting..." : "Submit Application"}
         </SubmitButton>
         <p className="mt-3 text-sm text-muted-foreground">
           We review applications within 2-3 business days. You&apos;ll receive an email once approved.
