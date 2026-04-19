@@ -35,6 +35,7 @@ async function updateTruckProfile(formData: FormData) {
   const description = (formData.get("description") as string | null) ?? ""
   const website = (formData.get("website") as string | null) ?? ""
   const instagram = (formData.get("instagram") as string | null) ?? ""
+  const facebook = (formData.get("facebook") as string | null) ?? ""
   const phone = (formData.get("phone") as string | null) ?? ""
   const tagline = (formData.get("tagline") as string | null) ?? ""
   const service_areas = (formData.get("service_areas") as string | null) ?? ""
@@ -48,6 +49,7 @@ async function updateTruckProfile(formData: FormData) {
       description: description.trim() || null,
       website: website.trim() || null,
       instagram: instagram.trim() || null,
+      facebook: facebook.trim() || null,
       phone: phone.trim() || null,
       tagline: tagline.trim() || null,
       service_areas: service_areas.trim() || null,
@@ -73,7 +75,7 @@ export default async function DashboardProfilePage() {
 
   const { data: truck } = await supabase
     .from("trucks")
-    .select("id, name, cuisine, description, website, instagram, phone, tagline, service_areas, today_specials")
+    .select("id, name, cuisine, description, website, instagram, facebook, phone, tagline, service_areas, today_specials")
     .eq("email", user.email)
     .single()
 
@@ -189,6 +191,17 @@ export default async function DashboardProfilePage() {
                       type="text"
                       defaultValue={truck.instagram ?? ""}
                       placeholder="@yourtruck or full URL"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="facebook">Facebook page or group URL</Label>
+                    <Input
+                      id="facebook"
+                      name="facebook"
+                      type="text"
+                      defaultValue={truck.facebook ?? ""}
+                      placeholder="https://facebook.com/yourpage"
                     />
                   </div>
 
