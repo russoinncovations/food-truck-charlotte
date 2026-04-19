@@ -4,7 +4,6 @@ import { FeaturedTrucks } from "@/components/featured-trucks"
 import { MapPreview } from "@/components/map-preview"
 import { EventsSection } from "@/components/events-section"
 import { VendorCTA } from "@/components/vendor-cta"
-import { Newsletter } from "@/components/newsletter"
 import { Footer } from "@/components/footer"
 
 export default function Home() {
@@ -16,7 +15,6 @@ export default function Home() {
       <MapPreview />
       <EventsSection />
       <VendorCTA />
-      <Newsletter />
       <Footer />
     </main>
   )
