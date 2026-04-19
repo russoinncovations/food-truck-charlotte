@@ -10,6 +10,27 @@ import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { createClient } from "@/lib/supabase/server"
 
+const CUISINE_OPTIONS = [
+  "Mexican / Tacos",
+  "BBQ / Smokehouse",
+  "American / Burgers",
+  "Asian Fusion",
+  "Southern / Soul Food",
+  "Desserts / Sweets",
+  "Pizza",
+  "Seafood",
+  "Mediterranean",
+  "Vegetarian / Vegan",
+  "Indian / Curry",
+  "Latin / Colombian",
+  "Caribbean",
+  "Wings / Chicken",
+  "Sandwiches / Wraps",
+  "Snow Cones / Slushies",
+  "Juice / Smoothies",
+  "Crepes / Waffles",
+]
+
 export const metadata: Metadata = {
   title: "Truck Profile | FoodTruck CLT",
   description: "Edit your food truck profile and how you appear in the directory.",
@@ -31,7 +52,7 @@ async function updateTruckProfile(formData: FormData) {
   }
 
   const name = (formData.get("name") as string | null) ?? ""
-  const cuisine = (formData.get("cuisine") as string | null) ?? ""
+  const cuisineTypes = formData.getAll("cuisine_types") as string[]
   const description = (formData.get("description") as string | null) ?? ""
   const website = (formData.get("website") as string | null) ?? ""
   const instagram = (formData.get("instagram") as string | null) ?? ""
@@ -45,7 +66,7 @@ async function updateTruckProfile(formData: FormData) {
     .from("trucks")
     .update({
       name: name.trim(),
-      cuisine: cuisine.trim() || null,
+      cuisine_types: cuisineTypes,
       description: description.trim() || null,
       website: website.trim() || null,
       instagram: instagram.trim() || null,
@@ -75,7 +96,7 @@ export default async function DashboardProfilePage() {
 
   const { data: truck } = await supabase
     .from("trucks")
-    .select("id, name, cuisine, description, website, instagram, facebook, phone, tagline, service_areas, today_specials")
+    .select("id, name, cuisine_types, description, website, instagram, facebook, phone, tagline, service_areas, today_specials")
     .eq("email", user.email)
     .single()
 
@@ -140,14 +161,30 @@ export default async function DashboardProfilePage() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="cuisine">Cuisine Type</Label>
-                    <Input
-                      id="cuisine"
-                      name="cuisine"
-                      type="text"
-                      defaultValue={truck.cuisine ?? ""}
-                      placeholder="e.g. Mexican, BBQ, Desserts"
-                    />
+                    <Label>Cuisine Types (select all that apply) *</Label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {CUISINE_OPTIONS.map((option) => {
+                        const checked = (truck.cuisine_types ?? []).includes(option)
+                        return (
+                          <label
+                            key={option}
+                            className="flex items-start gap-2 text-sm text-foreground cursor-pointer"
+                          >
+                            <input
+                              type="checkbox"
+                              name="cuisine_types"
+                              value={option}
+                              defaultChecked={checked}
+                              className="mt-1 rounded border-input size-4 shrink-0"
+                            />
+                            <span>{option}</span>
+                          </label>
+                        )
+                      })}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Required — used to match you with relevant booking requests
+                    </p>
                   </div>
 
                   <div className="space-y-2">
