@@ -25,7 +25,6 @@ export default function VendorLoginPage() {
       email: email.trim(),
       options: {
         emailRedirectTo: `${window.location.origin}/auth/callback`,
-        shouldCreateUser: false,
       },
     })
 
