@@ -14,7 +14,6 @@ import {
   Truck,
   Plus,
   Eye,
-  Heart,
   Star,
   MessageSquare,
   TrendingUp,
@@ -169,34 +168,6 @@ export default async function DashboardPage() {
                 Add Schedule
               </Button>
             </div>
-          </div>
-
-          {/* Quick Stats */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <StatCard
-              title="Profile Views"
-              value="2,847"
-              change="+12%"
-              icon={Eye}
-            />
-            <StatCard
-              title="Followers"
-              value="1,234"
-              change="+8%"
-              icon={Heart}
-            />
-            <StatCard
-              title="Avg Rating"
-              value={foodTrucks[0].rating.toString()}
-              change={`${foodTrucks[0].reviewCount} reviews`}
-              icon={Star}
-            />
-            <StatCard
-              title="Event Inquiries"
-              value="12"
-              change="3 pending"
-              icon={MessageSquare}
-            />
           </div>
 
           {/* Main Content Grid */}
@@ -541,31 +512,6 @@ function NavItem({
       <Icon className="h-5 w-5" />
       {children}
     </Link>
-  )
-}
-
-function StatCard({
-  title,
-  value,
-  change,
-  icon: Icon,
-}: {
-  title: string
-  value: string
-  change: string
-  icon: React.ElementType
-}) {
-  return (
-    <Card>
-      <CardContent className="p-4">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-sm text-muted-foreground">{title}</span>
-          <Icon className="h-4 w-4 text-muted-foreground" />
-        </div>
-        <p className="text-2xl font-bold text-foreground">{value}</p>
-        <p className="text-xs text-muted-foreground">{change}</p>
-      </CardContent>
-    </Card>
   )
 }
 
