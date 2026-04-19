@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   Calendar,
   MapPin,
@@ -14,18 +13,13 @@ import {
   Truck,
   Plus,
   Eye,
-  Star,
   MessageSquare,
   TrendingUp,
-  Users,
-  DollarSign,
   Settings,
   Edit,
-  ChevronRight,
   Bell,
   Menu,
 } from "lucide-react"
-import { foodTrucks } from "@/lib/data"
 import { createClient } from "@/lib/supabase/server"
 import { EVENT_TYPES } from "@/lib/booking-types"
 
@@ -130,18 +124,6 @@ export default async function DashboardPage() {
             <NavItem href="/dashboard/messages" icon={MessageSquare}>Messages</NavItem>
             <NavItem href="/dashboard/settings" icon={Settings}>Settings</NavItem>
           </nav>
-
-          <div className="p-4 border-t">
-            <Card className="bg-primary/5 border-primary/20">
-              <CardContent className="p-4">
-                <p className="text-sm font-medium mb-2">Go Premium</p>
-                <p className="text-xs text-muted-foreground mb-3">
-                  Get featured placement and advanced analytics
-                </p>
-                <Button size="sm" className="w-full">Upgrade</Button>
-              </CardContent>
-            </Card>
-          </div>
         </aside>
 
         {/* Main Content */}
@@ -277,76 +259,6 @@ export default async function DashboardPage() {
                   )}
                 </CardContent>
               </Card>
-
-              {/* Upcoming Schedule */}
-              <Card>
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <CardTitle>Upcoming Schedule</CardTitle>
-                    <Button variant="ghost" size="sm" asChild>
-                      <Link href="/dashboard/schedule" className="gap-1">
-                        Manage Schedule
-                        <ChevronRight className="h-3.5 w-3.5" />
-                      </Link>
-                    </Button>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {foodTrucks[0].schedule.slice(0, 3).map((item) => {
-                      const date = new Date(item.date)
-                      return (
-                        <div
-                          key={item.id}
-                          className="flex items-center gap-4 p-3 rounded-lg border"
-                        >
-                          <div className="text-center shrink-0 w-12">
-                            <p className="text-xs text-muted-foreground uppercase">
-                              {date.toLocaleDateString("en-US", { weekday: "short" })}
-                            </p>
-                            <p className="text-xl font-bold text-foreground">
-                              {date.getDate()}
-                            </p>
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="font-medium text-foreground truncate">
-                              {item.location}
-                            </p>
-                            <p className="text-sm text-muted-foreground">
-                              {item.startTime} - {item.endTime}
-                            </p>
-                          </div>
-                          <Button variant="ghost" size="icon">
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      )
-                    })}
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Quick Actions */}
-              <div className="grid sm:grid-cols-3 gap-4">
-                <QuickActionCard
-                  title="Update Menu"
-                  description="Keep your menu items current"
-                  href="/dashboard/profile#menu"
-                  icon={Edit}
-                />
-                <QuickActionCard
-                  title="View Analytics"
-                  description="See your performance metrics"
-                  href="/dashboard/analytics"
-                  icon={TrendingUp}
-                />
-                <QuickActionCard
-                  title="Apply for Events"
-                  description="Find upcoming opportunities"
-                  href="/dashboard/events"
-                  icon={Calendar}
-                />
-              </div>
             </div>
 
             {/* Right Column - Events & Tips */}
@@ -451,36 +363,6 @@ export default async function DashboardPage() {
                   </ul>
                 </CardContent>
               </Card>
-
-              {/* Recent Reviews */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Star className="h-5 w-5 text-accent" />
-                    Recent Reviews
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {[
-                      { name: "Sarah M.", rating: 5, text: "Best tacos in Charlotte! The al pastor is incredible." },
-                      { name: "Mike T.", rating: 5, text: "Great food, fast service. Will definitely be back!" },
-                    ].map((review, i) => (
-                      <div key={i} className="p-3 rounded-lg bg-muted/50">
-                        <div className="flex items-center gap-2 mb-2">
-                          <div className="flex">
-                            {[...Array(review.rating)].map((_, j) => (
-                              <Star key={j} className="h-3.5 w-3.5 fill-accent text-accent" />
-                            ))}
-                          </div>
-                          <span className="text-sm font-medium">{review.name}</span>
-                        </div>
-                        <p className="text-sm text-muted-foreground">{review.text}</p>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
             </div>
           </div>
         </main>
@@ -515,28 +397,3 @@ function NavItem({
   )
 }
 
-function QuickActionCard({
-  title,
-  description,
-  href,
-  icon: Icon,
-}: {
-  title: string
-  description: string
-  href: string
-  icon: React.ElementType
-}) {
-  return (
-    <Link href={href}>
-      <Card className="h-full hover:border-primary/50 hover:shadow-md transition-all cursor-pointer">
-        <CardContent className="p-4 flex flex-col items-center text-center">
-          <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center mb-3">
-            <Icon className="h-5 w-5 text-primary" />
-          </div>
-          <h3 className="font-medium text-foreground text-sm">{title}</h3>
-          <p className="text-xs text-muted-foreground mt-1">{description}</p>
-        </CardContent>
-      </Card>
-    </Link>
-  )
-}
