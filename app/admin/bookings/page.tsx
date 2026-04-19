@@ -37,7 +37,20 @@ function getStatusCounts(bookings: BookingRequest[]) {
   }
 }
 
-export default async function AdminBookingsPage() {
+export default async function AdminBookingsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ key?: string }>
+}) {
+  const key = (await searchParams)?.key
+  if (key !== process.env.ADMIN_KEY) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-muted-foreground">Page not found.</p>
+      </div>
+    )
+  }
+
   const bookings = await getBookings()
   const counts = getStatusCounts(bookings)
 
