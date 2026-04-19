@@ -141,6 +141,33 @@ export async function submitBookingRequest(
     }))
 
     await supabase.from("truck_opportunities").insert(opportunities)
+
+    // Send email notification to each target truck
+    const { Resend } = await import("resend")
+    const resend = new Resend(process.env.RESEND_API_KEY)
+
+    for (const truck of targetTrucks) {
+      if (!truck.email) continue
+      await resend.emails.send({
+        from: "FoodTruck CLT <noreply@foodtruckclt.com>",
+        to: truck.email,
+        subject: "New booking opportunity — " + (data.event_type || "Event"),
+        html: `
+          <h2>New Event Opportunity</h2>
+          <p>Hi ${truck.name},</p>
+          <p>A new booking request has been submitted that matches your truck.</p>
+          <ul>
+            <li><strong>Event type:</strong> ${data.event_type || "Not specified"}</li>
+            <li><strong>Date:</strong> ${data.event_date || "Not specified"}</li>
+            <li><strong>Location:</strong> ${data.city || "Charlotte"}</li>
+            <li><strong>Guest count:</strong> ${data.guest_count || "Not specified"}</li>
+          </ul>
+          <p>Log in to your dashboard to respond:</p>
+          <a href="https://www.foodtruckclt.com/vendor-login">View Opportunity</a>
+          <p>— FoodTruck CLT</p>
+        `
+      })
+    }
   }
 
   // Only redirect on confirmed success
