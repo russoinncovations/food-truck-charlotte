@@ -19,6 +19,10 @@ const navigation = {
     { name: "Facebook Group", href: "https://www.facebook.com/share/g/1DjV7rGgcU/" },
     { name: "About", href: "/about" },
   ],
+  legal: [
+    { name: "Privacy Policy", href: "/privacy" },
+    { name: "Terms of Service", href: "/terms" },
+  ],
 }
 
 const social = [
@@ -31,7 +35,7 @@ export function Footer() {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         {/* Main Footer */}
         <div className="py-12 md:py-16">
-          <div className="grid grid-cols-2 md:grid-cols-6 gap-8">
+          <div className="grid grid-cols-2 md:grid-cols-7 gap-8">
             {/* Brand */}
             <div className="col-span-2">
               <Link href="/" className="flex items-center gap-2 mb-4">
@@ -126,6 +130,22 @@ export function Footer() {
               <h3 className="font-semibold text-foreground mb-4">Community</h3>
               <ul className="space-y-3">
                 {navigation.community.map((item) => (
+                  <li key={item.name}>
+                    <Link
+                      href={item.href}
+                      className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      {item.name}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <div>
+              <h3 className="font-semibold text-foreground mb-4">Legal</h3>
+              <ul className="space-y-3">
+                {navigation.legal.map((item) => (
                   <li key={item.name}>
                     <Link
                       href={item.href}
