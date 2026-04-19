@@ -1,31 +1,71 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card } from "@/components/ui/card"
-import { Calendar, MapPin, Clock, ArrowRight, Truck } from "lucide-react"
-import { events, getTrucksForEvent, type Event } from "@/lib/data"
+import { MapPin, ArrowRight } from "lucide-react"
+import { createClient } from "@/lib/supabase/client"
 
-const typeLabels: Record<Event["type"], string> = {
-  market: "Food Truck Market",
-  brewery: "Brewery Event",
-  festival: "Festival",
-  private: "Private Event",
-  corporate: "Corporate",
+const FALLBACK_IMAGE =
+  "https://images.unsplash.com/photo-1687351977296-e909232009b4?w=400&h=300&fit=crop"
+
+type EventRow = {
+  id: string
+  title: string
+  slug: string
+  location_name: string | null
+  date: string
+  description: string | null
+  image_url: string | null
+  active: boolean | null
 }
 
-const typeColors: Record<Event["type"], string> = {
-  market: "bg-blue-500/10 text-blue-700",
-  brewery: "bg-amber-500/10 text-amber-700",
-  festival: "bg-pink-500/10 text-pink-700",
-  private: "bg-gray-500/10 text-gray-700",
-  corporate: "bg-emerald-500/10 text-emerald-700",
+function formatEventDateParts(dateStr: string) {
+  const [year, monthNum, dayNum] = dateStr.split("-").map(Number)
+  const eventDate = new Date(year, monthNum - 1, dayNum)
+  const day = dayNum
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+  const weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+  const month = months[monthNum - 1]
+  const weekday = weekdays[eventDate.getDay()]
+  const longDate = eventDate.toLocaleDateString("en-US", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  })
+  return { day, month, weekday, longDate }
 }
 
 export function EventsSection() {
-  const featuredEvents = events.filter((e) => e.isFeatured).slice(0, 3)
+  const [events, setEvents] = useState<EventRow[]>([])
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function load() {
+      const supabase = createClient()
+      const { data } = await supabase
+        .from("events")
+        .select("id, title, slug, location_name, date, description, image_url, active")
+        .eq("active", true)
+        .gte("date", new Date().toISOString().split("T")[0])
+        .order("date", { ascending: true })
+        .limit(3)
+
+      if (!cancelled) {
+        setEvents((data as EventRow[] | null) ?? [])
+      }
+    }
+
+    void load()
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   return (
     <section className="py-16 md:py-24">
@@ -42,7 +82,7 @@ export function EventsSection() {
           </div>
           <Button variant="outline" asChild className="hidden md:flex">
             <Link href="/events" className="flex items-center gap-2">
-              All {events.length} events
+              All events
               <ArrowRight className="h-4 w-4" />
             </Link>
           </Button>
@@ -50,7 +90,7 @@ export function EventsSection() {
 
         {/* Events Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {featuredEvents.map((event, index) => (
+          {events.map((event, index) => (
             <EventCard key={event.id} event={event} featured={index === 0} />
           ))}
         </div>
@@ -59,7 +99,7 @@ export function EventsSection() {
         <div className="mt-8 flex justify-center md:hidden">
           <Button variant="outline" asChild>
             <Link href="/events" className="flex items-center gap-2">
-              See all {events.length} events
+              See all events
               <ArrowRight className="h-4 w-4" />
             </Link>
           </Button>
@@ -69,16 +109,9 @@ export function EventsSection() {
   )
 }
 
-function EventCard({ event, featured = false }: { event: Event; featured?: boolean }) {
-  const trucks = getTrucksForEvent(event.id)
-  // Parse date parts directly from the date string to avoid timezone/hydration issues
-  const [year, monthNum, dayNum] = event.date.split("-").map(Number)
-  const eventDate = new Date(year, monthNum - 1, dayNum)
-  const day = dayNum
-  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
-  const weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
-  const month = months[monthNum - 1]
-  const weekday = weekdays[eventDate.getDay()]
+function EventCard({ event, featured = false }: { event: EventRow; featured?: boolean }) {
+  const { day, month, weekday, longDate } = formatEventDateParts(event.date)
+  const imageSrc = event.image_url?.trim() || FALLBACK_IMAGE
 
   return (
     <Card
@@ -90,8 +123,8 @@ function EventCard({ event, featured = false }: { event: Event; featured?: boole
         {/* Image */}
         <div className={`relative overflow-hidden ${featured ? "aspect-[16/9]" : "aspect-[16/10]"}`}>
           <Image
-            src={event.image}
-            alt={event.name}
+            src={imageSrc}
+            alt={event.title}
             fill
             className="object-cover transition-transform duration-300 group-hover:scale-105"
           />
@@ -106,88 +139,43 @@ function EventCard({ event, featured = false }: { event: Event; featured?: boole
 
           {/* Type Badge */}
           <div className="absolute top-4 right-4">
-            <Badge className={`${typeColors[event.type]} border-0`}>
-              {typeLabels[event.type]}
+            <Badge variant="secondary" className="border-0 backdrop-blur-sm">
+              Event
             </Badge>
           </div>
-
-          {/* Featured Tag */}
-          {event.isFeatured && featured && (
-            <div className="absolute bottom-4 left-4">
-              <Badge className="bg-primary text-primary-foreground border-0">
-                Featured Event
-              </Badge>
-            </div>
-          )}
         </div>
 
         {/* Content */}
         <div className={`flex flex-col flex-1 p-5 ${featured ? "p-6" : ""}`}>
-          <h3 className={`font-display font-semibold text-foreground group-hover:text-primary transition-colors mb-2 ${
-            featured ? "text-xl" : "text-lg"
-          }`}>
-            {event.name}
+          <h3
+            className={`font-display font-semibold text-foreground group-hover:text-primary transition-colors mb-2 ${
+              featured ? "text-xl" : "text-lg"
+            }`}
+          >
+            {event.title}
           </h3>
 
-          {featured && (
-            <p className="text-muted-foreground text-sm mb-4 line-clamp-2">
-              {event.description}
+          <p className="text-sm text-muted-foreground mb-2">{longDate}</p>
+
+          {event.description?.trim() ? (
+            <p
+              className={`text-muted-foreground text-sm mb-4 ${
+                featured ? "line-clamp-3" : "line-clamp-2"
+              }`}
+            >
+              {event.description.trim()}
             </p>
-          )}
+          ) : null}
 
           <div className="mt-auto space-y-2">
-            {/* Time */}
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Clock className="h-4 w-4 shrink-0" />
-              <span>{event.startTime} - {event.endTime}</span>
-            </div>
-
             {/* Location */}
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <MapPin className="h-4 w-4 shrink-0" />
-              <span className="truncate">{event.location}</span>
-            </div>
-
-            {/* Trucks Attending */}
-            <div className="flex items-center gap-2 text-sm">
-              <Truck className="h-4 w-4 text-primary shrink-0" />
-              <span className="text-foreground font-medium">
-                {trucks.length} trucks attending
-              </span>
-            </div>
-          </div>
-
-          {/* Truck Avatars */}
-          {featured && trucks.length > 0 && (
-            <div className="mt-4 pt-4 border-t">
-              <div className="flex items-center gap-2">
-                <div className="flex -space-x-2">
-                  {trucks.slice(0, 4).map((truck) => (
-                    <div
-                      key={truck.id}
-                      className="relative h-8 w-8 rounded-full border-2 border-background overflow-hidden"
-                    >
-                      <Image
-                        src={truck.image}
-                        alt={truck.name}
-                        fill
-                        className="object-cover"
-                      />
-                    </div>
-                  ))}
-                  {trucks.length > 4 && (
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-background bg-muted text-xs font-medium">
-                      +{trucks.length - 4}
-                    </div>
-                  )}
-                </div>
-                <span className="text-sm text-muted-foreground">
-                  {trucks.slice(0, 2).map((t) => t.name).join(", ")}
-                  {trucks.length > 2 && ` +${trucks.length - 2} more`}
-                </span>
+            {event.location_name ? (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <MapPin className="h-4 w-4 shrink-0" />
+                <span className="truncate">{event.location_name}</span>
               </div>
-            </div>
-          )}
+            ) : null}
+          </div>
         </div>
       </Link>
     </Card>
