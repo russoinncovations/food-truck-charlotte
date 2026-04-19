@@ -113,6 +113,7 @@ export default async function EventsPage() {
       "id, title, slug, location_name, address, date, description, image_url, featured, active"
     )
     .eq("active", true)
+    .gte("date", new Date().toISOString().split("T")[0])
     .order("date", { ascending: true })
 
   const list = (events ?? []) as EventRow[]
