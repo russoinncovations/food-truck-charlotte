@@ -61,26 +61,32 @@ async function addScheduleEntry(formData: FormData) {
   }
 
   const dayRaw = formData.get("day_of_week") as string | null
-  const day_of_week = dayRaw != null && dayRaw !== "" ? parseInt(dayRaw, 10) : NaN
+  const day_of_week = dayRaw ?? ""
   const location_name = ((formData.get("location_name") as string | null) ?? "").trim()
   const address = ((formData.get("address") as string | null) ?? "").trim()
   const start_time = (formData.get("start_time") as string | null) ?? ""
   const end_time = (formData.get("end_time") as string | null) ?? ""
 
-  if (Number.isNaN(day_of_week) || !location_name || !start_time || !end_time) {
+  console.log("Schedule form data:", { day_of_week: dayRaw, location_name, start_time, end_time })
+  if (!day_of_week || !location_name || !start_time || !end_time) {
     return
   }
 
   let latitude: number | null = null
   let longitude: number | null = null
   if (address) {
-    const geoRes = await fetch(
-      `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address)}&format=json&limit=1`,
-      { headers: { "User-Agent": "foodtruckclt.com" } }
-    )
-    const geoData = (await geoRes.json()) as { lat?: string; lon?: string }[]
-    latitude = geoData[0]?.lat ? parseFloat(geoData[0].lat) : null
-    longitude = geoData[0]?.lon ? parseFloat(geoData[0].lon) : null
+    try {
+      const geoRes = await fetch(
+        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address)}&format=json&limit=1`,
+        { headers: { "User-Agent": "foodtruckclt.com" }, signal: AbortSignal.timeout(3000) }
+      )
+      const geoData = (await geoRes.json()) as { lat?: string; lon?: string }[]
+      latitude = geoData[0]?.lat ? parseFloat(geoData[0].lat) : null
+      longitude = geoData[0]?.lon ? parseFloat(geoData[0].lon) : null
+    } catch {
+      latitude = null
+      longitude = null
+    }
   }
 
   await supabase.from("truck_schedule").insert({
