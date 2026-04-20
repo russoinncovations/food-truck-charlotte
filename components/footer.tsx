@@ -13,7 +13,7 @@ const navigation = {
   ],
   forHosts: [
     { name: "Browse Trucks", href: "/trucks" },
-    { name: "Book for an Event", href: "/book-trucks" },
+    { name: "Book for an Event", href: "/book-a-truck" },
   ],
   community: [
     { name: "Facebook Group", href: "https://www.facebook.com/share/g/1DjV7rGgcU/" },
