@@ -43,7 +43,7 @@ export default async function TrucksPage() {
   const supabase = await createClient()
   const { data: trucks } = await supabase
     .from("trucks")
-    .select("id, name, cuisine, slug, serving_today, today_location, show_in_directory")
+    .select("id, name, cuisine, slug, serving_today, today_location, show_in_directory, photo_url")
     .eq("show_in_directory", true)
     .order("name")
 
@@ -80,13 +80,15 @@ export default async function TrucksPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {(trucks ?? []).map((truck) => {
               const cuisineTags = [truck.cuisine].filter(Boolean) as string[]
+              const photoUrl = truck.photo_url?.trim()
+              const imageSrc = photoUrl ? photoUrl : getTruckImage(String(truck.id))
 
               return (
                 <Card key={truck.id} className="group overflow-hidden hover:shadow-lg hover:border-primary/50 transition-all">
                   <Link href={`/trucks/${truck.slug}`}>
                     <div className="relative aspect-[4/3] overflow-hidden">
                       <Image
-                        src={getTruckImage(truck.id)}
+                        src={imageSrc}
                         alt={truck.name}
                         fill
                         className="object-cover transition-transform duration-300 group-hover:scale-105"
