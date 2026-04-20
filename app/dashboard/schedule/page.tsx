@@ -63,8 +63,7 @@ async function addScheduleEntry(formData: FormData) {
   const dayRaw = formData.get("day_of_week") as string | null
   const day_of_week = dayRaw != null && dayRaw !== "" ? parseInt(dayRaw, 10) : NaN
   const location_name = ((formData.get("location_name") as string | null) ?? "").trim()
-  const latRaw = ((formData.get("latitude") as string | null) ?? "").trim()
-  const lngRaw = ((formData.get("longitude") as string | null) ?? "").trim()
+  const address = ((formData.get("address") as string | null) ?? "").trim()
   const start_time = (formData.get("start_time") as string | null) ?? ""
   const end_time = (formData.get("end_time") as string | null) ?? ""
 
@@ -72,15 +71,25 @@ async function addScheduleEntry(formData: FormData) {
     return
   }
 
-  const latitude = latRaw === "" ? null : parseFloat(latRaw)
-  const longitude = lngRaw === "" ? null : parseFloat(lngRaw)
+  let latitude: number | null = null
+  let longitude: number | null = null
+  if (address) {
+    const geoRes = await fetch(
+      `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address)}&format=json&limit=1`,
+      { headers: { "User-Agent": "foodtruckclt.com" } }
+    )
+    const geoData = (await geoRes.json()) as { lat?: string; lon?: string }[]
+    latitude = geoData[0]?.lat ? parseFloat(geoData[0].lat) : null
+    longitude = geoData[0]?.lon ? parseFloat(geoData[0].lon) : null
+  }
 
   await supabase.from("truck_schedule").insert({
     truck_id: truckId,
     day_of_week,
     location_name,
-    latitude: latitude != null && !Number.isNaN(latitude) ? latitude : null,
-    longitude: longitude != null && !Number.isNaN(longitude) ? longitude : null,
+    address,
+    latitude,
+    longitude,
     start_time,
     end_time,
   })
@@ -217,6 +226,19 @@ export default async function DashboardSchedulePage() {
                       />
                     </div>
 
+                    <div className="space-y-2">
+                      <Label htmlFor="address">Address</Label>
+                      <Input
+                        id="address"
+                        name="address"
+                        type="text"
+                        placeholder="e.g. 1320 S Tryon St, Charlotte NC"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        We&apos;ll automatically pin your location on the map
+                      </p>
+                    </div>
+
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label htmlFor="start_time">Start time</Label>
@@ -225,32 +247,6 @@ export default async function DashboardSchedulePage() {
                       <div className="space-y-2">
                         <Label htmlFor="end_time">End time</Label>
                         <Input id="end_time" name="end_time" type="time" required />
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <p className="text-sm font-medium text-foreground">GPS Coordinates (optional)</p>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="latitude">Latitude</Label>
-                          <Input
-                            id="latitude"
-                            name="latitude"
-                            type="text"
-                            inputMode="decimal"
-                            placeholder="35.2271"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="longitude">Longitude</Label>
-                          <Input
-                            id="longitude"
-                            name="longitude"
-                            type="text"
-                            inputMode="decimal"
-                            placeholder="-80.8431"
-                          />
-                        </div>
                       </div>
                     </div>
 
@@ -277,6 +273,7 @@ export default async function DashboardSchedulePage() {
                         const id = String(entry.id)
                         const dow = Number(entry.day_of_week)
                         const loc = String(entry.location_name ?? "")
+                        const addr = String(entry.address ?? "")
                         const start = formatTime(entry.start_time as string)
                         const end = formatTime(entry.end_time as string)
                         return (
@@ -287,6 +284,9 @@ export default async function DashboardSchedulePage() {
                             <div>
                               <p className="font-medium text-foreground">{dayLabel(dow)}</p>
                               <p className="text-sm text-muted-foreground">{loc}</p>
+                              {addr ? (
+                                <p className="text-sm text-muted-foreground">{addr}</p>
+                              ) : null}
                               <p className="text-sm text-muted-foreground">
                                 {start} – {end}
                               </p>
