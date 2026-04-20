@@ -136,13 +136,8 @@ export default async function DashboardPage() {
                 </Badge>
               </span>
             </NavItem>
-            <NavItem href="#" className="opacity-50 cursor-not-allowed pointer-events-none" icon={Settings}>
-              <span className="flex items-center gap-2">
-                Settings
-                <Badge variant="secondary" className="text-[10px] px-1.5 py-0 font-normal shrink-0 bg-muted text-muted-foreground border-0">
-                  Soon
-                </Badge>
-              </span>
+            <NavItem href="/dashboard/settings" icon={Settings}>
+              Settings
             </NavItem>
           </nav>
         </aside>
