@@ -5,7 +5,7 @@ import Link from "next/link"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
-import { MapPin, Navigation, ArrowRight } from "lucide-react"
+import { Navigation, ArrowRight } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 
 const TRUCK_IMAGES = [
@@ -98,30 +98,6 @@ export function MapPreview() {
                 }} />
               </div>
 
-              {/* Map markers */}
-              <div className="absolute inset-0 p-8">
-                {/* South End */}
-                <div className="absolute top-[60%] left-[30%] transform -translate-x-1/2 -translate-y-1/2">
-                  <MapMarker label="South End" count={3} />
-                </div>
-                {/* NoDa */}
-                <div className="absolute top-[25%] left-[55%] transform -translate-x-1/2 -translate-y-1/2">
-                  <MapMarker label="NoDa" count={2} />
-                </div>
-                {/* Plaza Midwood */}
-                <div className="absolute top-[40%] left-[70%] transform -translate-x-1/2 -translate-y-1/2">
-                  <MapMarker label="Plaza Midwood" count={2} />
-                </div>
-                {/* Uptown */}
-                <div className="absolute top-[45%] left-[45%] transform -translate-x-1/2 -translate-y-1/2">
-                  <MapMarker label="Uptown" count={4} active />
-                </div>
-                {/* Camp North End */}
-                <div className="absolute top-[30%] left-[35%] transform -translate-x-1/2 -translate-y-1/2">
-                  <MapMarker label="Camp North End" count={1} />
-                </div>
-              </div>
-
               {/* Overlay CTA */}
               <div className="absolute inset-0 flex items-center justify-center bg-foreground/10 opacity-0 hover:opacity-100 transition-opacity">
                 <Button size="lg" asChild>
@@ -206,51 +182,5 @@ export function MapPreview() {
         </Card>
       </div>
     </section>
-  )
-}
-
-function MapMarker({ 
-  label, 
-  count, 
-  active = false 
-}: { 
-  label: string
-  count: number
-  active?: boolean 
-}) {
-  return (
-    <div className="group cursor-pointer">
-      <div className={`relative flex flex-col items-center ${active ? "z-10" : ""}`}>
-        {/* Pin */}
-        <div className={`
-          flex items-center justify-center h-10 w-10 rounded-full shadow-lg
-          transition-transform group-hover:scale-110
-          ${active 
-            ? "bg-primary text-primary-foreground ring-4 ring-primary/30" 
-            : "bg-background text-foreground border-2 border-primary"
-          }
-        `}>
-          <span className="font-bold text-sm">{count}</span>
-        </div>
-        {/* Pin tail */}
-        <div className={`
-          w-0 h-0 border-l-[6px] border-r-[6px] border-t-[8px] -mt-1
-          border-l-transparent border-r-transparent
-          ${active ? "border-t-primary" : "border-t-background"}
-        `} />
-        {/* Label */}
-        <div className="absolute top-full mt-1 whitespace-nowrap">
-          <span className={`
-            text-xs font-medium px-2 py-0.5 rounded-full
-            ${active 
-              ? "bg-primary text-primary-foreground" 
-              : "bg-background/90 text-foreground shadow-sm"
-            }
-          `}>
-            {label}
-          </span>
-        </div>
-      </div>
-    </div>
   )
 }
