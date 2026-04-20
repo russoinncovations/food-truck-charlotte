@@ -28,35 +28,30 @@ async function approveVendor(formData: FormData) {
   const applicationId = formData.get("applicationId") as string | null
   if (!applicationId) return
 
+  const businessName = (formData.get("appBusinessName") as string | null) ?? ""
+  const email = (formData.get("appEmail") as string | null) ?? ""
+  const phone = (formData.get("appPhone") as string | null) ?? ""
+  const website = (formData.get("appWebsite") as string | null) ?? ""
+  const instagram = (formData.get("appInstagram") as string | null) ?? ""
+  const vendorDescription = (formData.get("appDescription") as string | null) ?? ""
+  const cuisine = (formData.get("appCuisine") as string | null) ?? "General"
+
   const supabase = await createClient()
-  const { data: application, error: fetchError } = await supabase
-    .from("vendor_applications")
-    .select("*")
-    .eq("id", applicationId)
-    .single()
-
-  if (fetchError || !application) return
-
-  const row = application as Record<string, unknown>
-  const businessName = row.business_name as string | null | undefined
-  let slug = slugFromBusinessName(businessName)
+  let slug = slugFromBusinessName(businessName || undefined)
 
   const { data: existing } = await supabase.from("trucks").select("id").eq("slug", slug).maybeSingle()
   if (existing) {
     slug = `${slug}-${applicationId.slice(0, 8)}`
   }
 
-  const cuisineTypes = row.cuisine_types as string[] | null | undefined
-  const cuisine = cuisineTypes?.[0] ?? "General"
-
   const { error: insertError } = await supabase.from("trucks").insert({
-    name: businessName ?? "Unnamed",
+    name: businessName.trim() || "Unnamed",
     slug,
-    email: row.email as string | null | undefined,
-    phone: row.phone as string | null | undefined,
-    website: row.website as string | null | undefined,
-    instagram: row.instagram as string | null | undefined,
-    description: row.vendor_description as string | null | undefined,
+    email: email.trim() || null,
+    phone: phone.trim() || null,
+    website: website.trim() || null,
+    instagram: instagram.trim() || null,
+    description: vendorDescription.trim() || null,
     cuisine,
     show_in_directory: true,
     status: "active",
@@ -120,26 +115,26 @@ export default async function AdminVendorsPage({
             <ul className="space-y-6">
               {list.map((app) => {
                 const id = String(app.id)
-                const businessName = (app.business_name as string | null | undefined) ?? "—"
+                const businessName = (app.business_name as string | null | undefined) ?? ""
                 const contactName = (app.contact_name as string | null | undefined) ?? "—"
-                const email = (app.email as string | null | undefined) ?? "—"
+                const email = (app.email as string | null | undefined) ?? ""
                 const cuisineTypes = app.cuisine_types as string[] | null | undefined
                 const cuisineLabel =
                   cuisineTypes && cuisineTypes.length > 0 ? cuisineTypes.join(", ") : "—"
-                const description = (app.vendor_description as string | null | undefined) ?? "—"
+                const description = (app.vendor_description as string | null | undefined) ?? ""
 
                 return (
                   <li key={id}>
                     <Card>
                       <CardHeader>
-                        <CardTitle className="text-lg">{businessName}</CardTitle>
+                        <CardTitle className="text-lg">{businessName || "—"}</CardTitle>
                       </CardHeader>
                       <CardContent className="space-y-3 text-sm">
                         <p>
                           <span className="font-medium text-foreground">Contact:</span> {contactName}
                         </p>
                         <p>
-                          <span className="font-medium text-foreground">Email:</span> {email}
+                          <span className="font-medium text-foreground">Email:</span> {email || "—"}
                         </p>
                         <p>
                           <span className="font-medium text-foreground">Cuisine types:</span>{" "}
@@ -147,11 +142,36 @@ export default async function AdminVendorsPage({
                         </p>
                         <p>
                           <span className="font-medium text-foreground">Description:</span>{" "}
-                          <span className="text-muted-foreground whitespace-pre-wrap">{description}</span>
+                          <span className="text-muted-foreground whitespace-pre-wrap">
+                            {description || "—"}
+                          </span>
                         </p>
                         <div className="flex flex-wrap gap-3 pt-2">
                           <form action={approveVendor}>
                             <input type="hidden" name="applicationId" value={id} />
+                            <input type="hidden" name="appBusinessName" value={businessName} />
+                            <input type="hidden" name="appEmail" value={email} />
+                            <input
+                              type="hidden"
+                              name="appPhone"
+                              value={(app.phone as string | null | undefined) ?? ""}
+                            />
+                            <input
+                              type="hidden"
+                              name="appWebsite"
+                              value={(app.website as string | null | undefined) ?? ""}
+                            />
+                            <input
+                              type="hidden"
+                              name="appInstagram"
+                              value={(app.instagram as string | null | undefined) ?? ""}
+                            />
+                            <input type="hidden" name="appDescription" value={description} />
+                            <input
+                              type="hidden"
+                              name="appCuisine"
+                              value={cuisineTypes?.[0] ?? "General"}
+                            />
                             <Button
                               type="submit"
                               className="bg-green-600 text-white hover:bg-green-700"
