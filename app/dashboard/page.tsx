@@ -117,12 +117,12 @@ export default async function DashboardPage() {
         <aside className="hidden md:flex flex-col w-64 bg-background border-r min-h-[calc(100vh-4rem)]">
           <nav className="flex-1 p-4 space-y-2">
             <NavItem href="/dashboard" icon={TrendingUp} active>Overview</NavItem>
-            <NavItem href="/dashboard/schedule" icon={Calendar}>Schedule</NavItem>
+            <NavItem href="#" className="opacity-50 cursor-not-allowed pointer-events-none" icon={Calendar}>Schedule</NavItem>
             <NavItem href="/dashboard/profile" icon={Truck}>Truck Profile</NavItem>
             <NavItem href="/dashboard/events" icon={MapPin}>Events</NavItem>
-            <NavItem href="/dashboard/analytics" icon={Eye}>Analytics</NavItem>
-            <NavItem href="/dashboard/messages" icon={MessageSquare}>Messages</NavItem>
-            <NavItem href="/dashboard/settings" icon={Settings}>Settings</NavItem>
+            <NavItem href="#" className="opacity-50 cursor-not-allowed pointer-events-none" icon={Eye}>Analytics</NavItem>
+            <NavItem href="#" className="opacity-50 cursor-not-allowed pointer-events-none" icon={MessageSquare}>Messages</NavItem>
+            <NavItem href="#" className="opacity-50 cursor-not-allowed pointer-events-none" icon={Settings}>Settings</NavItem>
           </nav>
         </aside>
 
@@ -376,11 +376,13 @@ function NavItem({
   icon: Icon,
   children,
   active = false,
+  className,
 }: {
   href: string
   icon: React.ElementType
   children: React.ReactNode
   active?: boolean
+  className?: string
 }) {
   return (
     <Link
@@ -389,7 +391,7 @@ function NavItem({
         active
           ? "bg-primary/10 text-primary font-medium"
           : "text-muted-foreground hover:bg-muted hover:text-foreground"
-      }`}
+      }${className ? ` ${className}` : ""}`}
     >
       <Icon className="h-5 w-5" />
       {children}
