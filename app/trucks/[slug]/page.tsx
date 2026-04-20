@@ -79,7 +79,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function TruckProfilePage({ params }: Props) {
   const { slug } = await params
   const supabase = await createClient()
-  const { data: truck } = await supabase.from("trucks").select("*").eq("slug", slug).single()
+  const { data: truck } = await supabase
+    .from("trucks")
+    .select(
+      "id, name, slug, short_description, description, full_description, cuisine, website, instagram, phone, booking_phone, serving_today, today_location, price_range, tagline, photo_url"
+    )
+    .eq("slug", slug)
+    .single()
 
   if (!truck) {
     notFound()
@@ -111,6 +117,9 @@ export default async function TruckProfilePage({ params }: Props) {
   const priceRange = (row.price_range as string | null | undefined) ?? null
   const tagline = (row.tagline as string | null | undefined) ?? null
 
+  const photoUrl = (row.photo_url as string | null | undefined)?.trim()
+  const heroSrc = photoUrl ? photoUrl : getTruckImage(String(row.id))
+
   return (
     <main className="min-h-screen bg-background">
       <Header />
@@ -118,7 +127,7 @@ export default async function TruckProfilePage({ params }: Props) {
       <section className="relative pt-16">
         <div className="relative h-64 md:h-96">
           <Image
-            src={getTruckImage(String(row.id))}
+            src={heroSrc}
             alt={name}
             fill
             className="object-cover"
