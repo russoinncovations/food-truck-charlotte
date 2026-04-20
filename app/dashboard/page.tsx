@@ -117,14 +117,7 @@ export default async function DashboardPage() {
         <aside className="hidden md:flex flex-col w-64 bg-background border-r min-h-[calc(100vh-4rem)]">
           <nav className="flex-1 p-4 space-y-2">
             <NavItem href="/dashboard" icon={TrendingUp} active>Overview</NavItem>
-            <NavItem href="#" className="opacity-50 cursor-not-allowed pointer-events-none" icon={Calendar}>
-              <span className="flex items-center gap-2">
-                Schedule
-                <Badge variant="secondary" className="text-[10px] px-1.5 py-0 font-normal shrink-0 bg-muted text-muted-foreground border-0">
-                  Soon
-                </Badge>
-              </span>
-            </NavItem>
+            <NavItem href="/dashboard/schedule" icon={Calendar}>Schedule</NavItem>
             <NavItem href="/dashboard/profile" icon={Truck}>Truck Profile</NavItem>
             <NavItem href="/dashboard/events" icon={MapPin}>Events</NavItem>
             <NavItem href="#" className="opacity-50 cursor-not-allowed pointer-events-none" icon={Eye}>
