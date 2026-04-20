@@ -98,7 +98,7 @@ export default async function DashboardPage() {
           </div>
 
           <div className="flex items-center gap-2">
-            <Link href="/dashboard/events">
+            <Link href="/dashboard">
               <Button variant="ghost" size="icon" className="relative">
                 <Bell className="h-5 w-5" />
                 {pendingCount > 0 && (
