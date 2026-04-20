@@ -117,12 +117,40 @@ export default async function DashboardPage() {
         <aside className="hidden md:flex flex-col w-64 bg-background border-r min-h-[calc(100vh-4rem)]">
           <nav className="flex-1 p-4 space-y-2">
             <NavItem href="/dashboard" icon={TrendingUp} active>Overview</NavItem>
-            <NavItem href="#" className="opacity-50 cursor-not-allowed pointer-events-none" icon={Calendar}>Schedule</NavItem>
+            <NavItem href="#" className="opacity-50 cursor-not-allowed pointer-events-none" icon={Calendar}>
+              <span className="flex items-center gap-2">
+                Schedule
+                <Badge variant="secondary" className="text-[10px] px-1.5 py-0 font-normal shrink-0 bg-muted text-muted-foreground border-0">
+                  Soon
+                </Badge>
+              </span>
+            </NavItem>
             <NavItem href="/dashboard/profile" icon={Truck}>Truck Profile</NavItem>
             <NavItem href="/dashboard/events" icon={MapPin}>Events</NavItem>
-            <NavItem href="#" className="opacity-50 cursor-not-allowed pointer-events-none" icon={Eye}>Analytics</NavItem>
-            <NavItem href="#" className="opacity-50 cursor-not-allowed pointer-events-none" icon={MessageSquare}>Messages</NavItem>
-            <NavItem href="#" className="opacity-50 cursor-not-allowed pointer-events-none" icon={Settings}>Settings</NavItem>
+            <NavItem href="#" className="opacity-50 cursor-not-allowed pointer-events-none" icon={Eye}>
+              <span className="flex items-center gap-2">
+                Analytics
+                <Badge variant="secondary" className="text-[10px] px-1.5 py-0 font-normal shrink-0 bg-muted text-muted-foreground border-0">
+                  Soon
+                </Badge>
+              </span>
+            </NavItem>
+            <NavItem href="#" className="opacity-50 cursor-not-allowed pointer-events-none" icon={MessageSquare}>
+              <span className="flex items-center gap-2">
+                Messages
+                <Badge variant="secondary" className="text-[10px] px-1.5 py-0 font-normal shrink-0 bg-muted text-muted-foreground border-0">
+                  Soon
+                </Badge>
+              </span>
+            </NavItem>
+            <NavItem href="#" className="opacity-50 cursor-not-allowed pointer-events-none" icon={Settings}>
+              <span className="flex items-center gap-2">
+                Settings
+                <Badge variant="secondary" className="text-[10px] px-1.5 py-0 font-normal shrink-0 bg-muted text-muted-foreground border-0">
+                  Soon
+                </Badge>
+              </span>
+            </NavItem>
           </nav>
         </aside>
 
