@@ -71,6 +71,8 @@ export default async function DashboardPage() {
     .order("created_at", { ascending: false })
     .limit(5)
 
+  const pendingCount = opportunities?.filter(o => o.status === "pending").length ?? 0
+
   const { data: truckData } = await supabase
     .from("trucks")
     .select("id, name, serving_today, today_location")
@@ -96,10 +98,14 @@ export default async function DashboardPage() {
           </div>
 
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon" className="relative">
-              <Bell className="h-5 w-5" />
-              <span className="absolute top-1.5 right-1.5 h-2 w-2 bg-red-500 rounded-full" />
-            </Button>
+            <Link href="/dashboard/events">
+              <Button variant="ghost" size="icon" className="relative">
+                <Bell className="h-5 w-5" />
+                {pendingCount > 0 && (
+                  <span className="absolute top-1.5 right-1.5 h-2 w-2 bg-red-500 rounded-full" />
+                )}
+              </Button>
+            </Link>
             <Button variant="ghost" size="icon" asChild>
               <Link href="/dashboard/settings">
                 <Settings className="h-5 w-5" />
