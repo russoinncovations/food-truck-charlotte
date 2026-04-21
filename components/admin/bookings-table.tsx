@@ -61,10 +61,10 @@ export function BookingsTable({ bookings }: BookingsTableProps) {
 
   const filteredBookings = bookings.filter((booking) => {
     const matchesSearch = 
-      booking.contact_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      booking.contact_email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (booking.contact_name?.toLowerCase() ?? "").includes(searchQuery.toLowerCase()) ||
+      (booking.contact_email?.toLowerCase() ?? "").includes(searchQuery.toLowerCase()) ||
       booking.organization_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      booking.venue_address.toLowerCase().includes(searchQuery.toLowerCase())
+      (booking.venue_address?.toLowerCase() ?? "").includes(searchQuery.toLowerCase())
 
     const matchesStatus = statusFilter === "all" || booking.status === statusFilter
 
