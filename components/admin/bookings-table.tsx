@@ -142,7 +142,7 @@ export function BookingsTable({ bookings }: BookingsTableProps) {
             ) : (
               filteredBookings.map((booking) => {
                 const eventType = EVENT_TYPES.find((t) => t.value === booking.event_type)
-                const statusConfig = STATUS_CONFIG[booking.status]
+                const statusConfig = STATUS_CONFIG[booking.status as keyof typeof STATUS_CONFIG] ?? { label: "Pending", variant: "secondary" as const }
 
                 return (
                   <TableRow key={booking.id} className="hover:bg-muted/30">
