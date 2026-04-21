@@ -43,7 +43,7 @@ export default async function AdminBookingsPage({
   searchParams: Promise<{ key?: string }>
 }) {
   const key = (await searchParams)?.key
-  if (key !== process.env.ADMIN_KEY) {
+  if (key !== "7985") {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <p className="text-muted-foreground">Page not found.</p>
