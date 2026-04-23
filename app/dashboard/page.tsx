@@ -251,12 +251,13 @@ export default async function DashboardPage() {
                             >
                               Current Location
                             </label>
-                            <Input
+                            <input
                               id="todayLocation-start"
                               name="todayLocation"
                               type="text"
                               placeholder="e.g. South End Brewery"
                               defaultValue={truckData.today_location ?? ""}
+                              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                             />
                           </div>
                           <Button type="submit" className="w-full sm:w-auto">
@@ -276,12 +277,13 @@ export default async function DashboardPage() {
                             >
                               Current Location
                             </label>
-                            <Input
+                            <input
                               id="todayLocation-stop"
                               name="todayLocation"
                               type="text"
                               placeholder="e.g. South End Brewery"
                               defaultValue={truckData.today_location ?? ""}
+                              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                             />
                           </div>
                           <Button type="submit" variant="outline" className="w-full sm:w-auto">
