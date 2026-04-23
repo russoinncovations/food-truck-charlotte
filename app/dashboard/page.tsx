@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   Calendar,
   MapPin,
@@ -22,21 +22,44 @@ import {
 } from "lucide-react"
 import { createClient } from "@/lib/supabase/server"
 import { EVENT_TYPES } from "@/lib/booking-types"
+import {
+  DashboardEventOpportunities,
+  type DashboardOpportunity,
+} from "@/components/dashboard-event-opportunities"
+
+type TruckOpportunityRow = {
+  id: string
+  status: string
+  booking_request_id: string | null
+  created_at?: string
+  booking_requests: unknown
+}
+
+function dedupeOpportunitiesByBookingId<T extends { id: string; booking_request_id?: string | null; created_at?: string }>(
+  rows: T[]
+): T[] {
+  const byKey = new Map<string, T>()
+  for (const row of rows) {
+    const key = row.booking_request_id ? String(row.booking_request_id) : `opp-${row.id}`
+    const existing = byKey.get(key)
+    if (!existing) {
+      byKey.set(key, row)
+      continue
+    }
+    const t0 = new Date(existing.created_at ?? 0).getTime()
+    const t1 = new Date(row.created_at ?? 0).getTime()
+    if (t1 >= t0) {
+      byKey.set(key, row)
+    }
+  }
+  return [...byKey.values()].sort(
+    (a, b) => new Date(b.created_at ?? 0).getTime() - new Date(a.created_at ?? 0).getTime()
+  )
+}
 
 export const metadata: Metadata = {
   title: "Vendor Dashboard | FoodTruck CLT",
   description: "Manage your food truck profile, schedule, and connect with the Charlotte community.",
-}
-
-async function updateTruckOpportunityStatus(formData: FormData) {
-  "use server"
-  const opportunityId = formData.get("opportunityId") as string | null
-  const status = formData.get("status") as string | null
-  if (!opportunityId || (status !== "interested" && status !== "pass")) return
-
-  const supabase = await createClient()
-  await supabase.from("truck_opportunities").update({ status }).eq("id", opportunityId)
-  revalidatePath("/dashboard")
 }
 
 async function updateServingStatus(formData: FormData) {
@@ -81,20 +104,105 @@ export default async function DashboardPage() {
   if (!user) {
     redirect("/vendor-login")
   }
-  const { data: opportunities } = await supabase
-    .from("truck_opportunities")
-    .select("*, booking_requests(*)")
-    .eq("status", "pending")
-    .order("created_at", { ascending: false })
-    .limit(5)
-
-  const pendingCount = opportunities?.filter(o => o.status === "pending").length ?? 0
-
   const { data: truckData } = await supabase
     .from("trucks")
-    .select("id, name, serving_today, today_location")
+    .select("id, name, slug, cuisine, cuisine_types, serving_today, today_location")
     .eq("email", user.email)
     .single()
+
+  const publicSiteBase = (() => {
+    const fromEnv = process.env.NEXT_PUBLIC_APP_URL
+    if (fromEnv) return fromEnv.replace(/\/$/, "")
+    const v = process.env.VERCEL_URL
+    if (v) {
+      const host = v.replace(/^https?:\/\//, "")
+      return `https://${host.replace(/\/$/, "")}`
+    }
+    return "https://www.foodtruckclt.com"
+  })()
+
+  const supportEmail = process.env.NEXT_PUBLIC_SUPPORT_EMAIL ?? "support@foodtruckclt.com"
+
+  const truckContext =
+    truckData != null
+      ? {
+          name: truckData.name,
+          slug: truckData.slug ?? "",
+          cuisineLine:
+            Array.isArray(truckData.cuisine_types) && truckData.cuisine_types.length > 0
+              ? truckData.cuisine_types.join(", ")
+              : (truckData.cuisine ?? "—"),
+        }
+      : null
+
+  let opportunityCards: DashboardOpportunity[] = []
+  let pendingCount = 0
+
+  if (truckData?.id) {
+    const { data: rawOpportunities } = await supabase
+      .from("truck_opportunities")
+      .select("*, booking_requests(*)")
+      .eq("truck_id", truckData.id)
+      .eq("status", "pending")
+      .order("created_at", { ascending: false })
+      .limit(50)
+
+    const uniques = dedupeOpportunitiesByBookingId(
+      (rawOpportunities ?? []) as TruckOpportunityRow[]
+    )
+    pendingCount = uniques.length
+
+    opportunityCards = uniques.slice(0, 5).map((opp) => {
+      const raw = opp.booking_requests
+      const br = Array.isArray(raw) ? raw[0] : raw
+      const row = br as
+        | {
+            event_type: string | null
+            event_date: string | null
+            city: string | null
+            guest_count: number | null
+            contact_email: string | null
+            venue_name: string | null
+            start_time: string | null
+            end_time: string | null
+            street_address: string | null
+            state: string | null
+            zip_code: string | null
+            additional_notes: string | null
+          }
+        | null
+        | undefined
+      const eventTypeLabel =
+        row != null
+          ? (EVENT_TYPES.find((t) => t.value === row.event_type)?.label ?? row.event_type ?? "Event")
+          : "Event"
+      const eventDisplayName =
+        row != null && row.venue_name != null && String(row.venue_name).trim() !== ""
+          ? String(row.venue_name).trim()
+          : eventTypeLabel
+      return {
+        id: opp.id,
+        status: String(opp.status),
+        booking: row
+          ? {
+              event_type: row.event_type,
+              event_date: row.event_date,
+              city: row.city,
+              guest_count: row.guest_count,
+              contact_email: row.contact_email,
+              venue_name: row.venue_name,
+              event_display_name: eventDisplayName,
+              start_time: row.start_time,
+              end_time: row.end_time,
+              street_address: row.street_address,
+              state: row.state,
+              zip_code: row.zip_code,
+              additional_notes: row.additional_notes,
+            }
+          : null,
+      }
+    })
+  }
 
   return (
     <div className="min-h-screen bg-muted/30">
@@ -304,82 +412,14 @@ export default async function DashboardPage() {
 
             {/* Right Column - Events & Tips */}
             <div className="space-y-6">
-              {/* Event Opportunities */}
+              {/* Event Opportunities — one row per booking for this truck (real data from truck_opportunities) */}
               <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Calendar className="h-5 w-5 text-primary" />
-                    Event Opportunities
-                  </CardTitle>
-                  <CardDescription>
-                    Events looking for food trucks in your area
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {(opportunities ?? []).map((opp) => {
-                      const raw = opp.booking_requests
-                      const br = Array.isArray(raw) ? raw[0] : raw
-                      const eventTypeLabel =
-                        EVENT_TYPES.find((t) => t.value === br?.event_type)?.label ??
-                        br?.event_type ??
-                        "—"
-                      const dateStr = br?.event_date
-                        ? new Date(br.event_date).toLocaleDateString("en-US", {
-                            month: "short",
-                            day: "numeric",
-                            year: "numeric",
-                          })
-                        : "—"
-                      return (
-                        <div
-                          key={opp.id}
-                          className="p-3 rounded-lg border hover:bg-muted/50 transition-colors space-y-3"
-                        >
-                          <div className="flex items-start gap-3">
-                            <div className="h-12 w-12 rounded-lg bg-muted flex items-center justify-center shrink-0">
-                              <Calendar className="h-6 w-6 text-muted-foreground" />
-                            </div>
-                            <div className="flex-1 min-w-0 space-y-1">
-                              <p className="font-medium text-foreground text-sm truncate">
-                                {eventTypeLabel}
-                              </p>
-                              <p className="text-xs text-muted-foreground">
-                                {dateStr}
-                                {br?.city != null && br.city !== "" ? ` · ${br.city}` : ""}
-                                {br?.guest_count != null ? ` · ${br.guest_count} guests` : ""}
-                              </p>
-                              <Badge variant="secondary" className="text-xs capitalize">
-                                {opp.status}
-                              </Badge>
-                            </div>
-                          </div>
-                          {opp.status === "pending" && (
-                            <div className="flex gap-2 pt-1">
-                              <form action={updateTruckOpportunityStatus} className="flex-1">
-                                <input type="hidden" name="opportunityId" value={opp.id} />
-                                <input type="hidden" name="status" value="interested" />
-                                <Button type="submit" size="sm" className="w-full">
-                                  Interested
-                                </Button>
-                              </form>
-                              <form action={updateTruckOpportunityStatus} className="flex-1">
-                                <input type="hidden" name="opportunityId" value={opp.id} />
-                                <input type="hidden" name="status" value="pass" />
-                                <Button type="submit" variant="outline" size="sm" className="w-full">
-                                  Pass
-                                </Button>
-                              </form>
-                            </div>
-                          )}
-                        </div>
-                      )
-                    })}
-                  </div>
-                  <Button variant="outline" className="w-full mt-4" asChild>
-                    <Link href="/dashboard/events">View All Events</Link>
-                  </Button>
-                </CardContent>
+                <DashboardEventOpportunities
+                  opportunities={opportunityCards}
+                  truckContext={truckContext}
+                  siteBaseUrl={publicSiteBase}
+                  supportEmail={supportEmail}
+                />
               </Card>
 
               {/* Tips Card */}

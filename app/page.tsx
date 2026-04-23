@@ -1,7 +1,7 @@
 import { Header } from "@/components/header"
 import { Hero } from "@/components/hero"
 import { FeaturedTrucks } from "@/components/featured-trucks"
-import { MapPreview } from "@/components/map-preview"
+import { MapPreviewClient } from "@/components/map-preview-client"
 import { EventsSection } from "@/components/events-section"
 import { VendorCTA } from "@/components/vendor-cta"
 import { Footer } from "@/components/footer"
@@ -12,7 +12,7 @@ export default function Home() {
       <Header />
       <Hero />
       <FeaturedTrucks />
-      <MapPreview />
+      <MapPreviewClient />
       <EventsSection />
       <VendorCTA />
       <Footer />

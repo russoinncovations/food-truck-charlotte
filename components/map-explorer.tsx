@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useMemo } from "react"
+import { useMinWidthLg } from "@/hooks/use-min-width-lg"
 import Link from "next/link"
 import Image from "next/image"
 import dynamic from "next/dynamic"
@@ -228,7 +229,7 @@ export function MapExplorer({ trucks }: { trucks: ServingTruckRow[] }) {
 
         {/* Map or List View */}
         <main className="flex-1 relative">
-          {viewMode === "map" || typeof window !== "undefined" && window.innerWidth >= 1024 ? (
+          {viewMode === "map" || isLg ? (
             <MapView
               trucks={filteredTrucks}
               selectedTruck={selectedTruck}

@@ -54,7 +54,7 @@ type MapPreviewMapPoint = {
   lng: number
 }
 
-export function MapPreview() {
+function MapPreview() {
   const [openTrucks, setOpenTrucks] = useState<ServingTruckRow[]>([])
 
   useEffect(() => {
@@ -201,3 +201,6 @@ export function MapPreview() {
     </section>
   )
 }
+
+export { MapPreview }
+export default MapPreview
