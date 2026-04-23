@@ -46,10 +46,27 @@ async function updateServingStatus(formData: FormData) {
   const todayLocation = (formData.get("todayLocation") as string | null) ?? ""
   if (!truckId) return
 
+  // Geocode the location if serving
+  let latitude: number | null = null
+  let longitude: number | null = null
+  if (servingToday && todayLocation) {
+    try {
+      const geo = await fetch(
+        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(todayLocation + ", Charlotte, NC")}&format=json&limit=1`,
+        { headers: { "User-Agent": "foodtruckclt.com" } }
+      )
+      const geoData = await geo.json()
+      if (geoData[0]) {
+        latitude = parseFloat(geoData[0].lat)
+        longitude = parseFloat(geoData[0].lon)
+      }
+    } catch {}
+  }
+
   const supabase = await createClient()
   await supabase
     .from("trucks")
-    .update({ serving_today: servingToday, today_location: todayLocation })
+    .update({ serving_today: servingToday, today_location: todayLocation, latitude, longitude })
     .eq("id", truckId)
   revalidatePath("/dashboard")
   revalidatePath("/map")
