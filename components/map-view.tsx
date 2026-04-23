@@ -90,6 +90,7 @@ export default function MapView({ trucks, selectedTruck, onSelectTruck }: MapVie
         <div class="map-popup">
           <strong>${truck.name}</strong>
           <div class="popup-cuisine">${truck.cuisine.join(", ")}</div>
+          ${truck.location?.address ? `<div class="popup-address">${truck.location.address}</div>` : ''}
           <div class="popup-status ${isOpen ? "open" : "closed"}">
             ${isOpen ? "Open Now" : "Closed"}
           </div>
@@ -200,6 +201,12 @@ export default function MapView({ trucks, selectedTruck, onSelectTruck }: MapVie
         .popup-cuisine {
           font-size: 12px;
           color: hsl(var(--muted-foreground));
+          margin-bottom: 4px;
+        }
+
+        .popup-address {
+          font-size: 12px;
+          color: hsl(var(--foreground));
           margin-bottom: 4px;
         }
 
