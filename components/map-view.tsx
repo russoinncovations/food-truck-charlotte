@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react"
 import L from "leaflet"
 import "leaflet/dist/leaflet.css"
 import { type FoodTruck } from "@/lib/data"
+import { CARTO_LIGHT_BASEMAP_URL, CARTO_LIGHT_TILE_OPTIONS } from "@/lib/leaflet-basemap"
 
 // Charlotte center coordinates
 const CHARLOTTE_CENTER: [number, number] = [35.2271, -80.8431]
@@ -41,12 +42,7 @@ export default function MapView({ trucks, selectedTruck, onSelectTruck }: MapVie
     // Add zoom control to bottom right
     L.control.zoom({ position: "bottomright" }).addTo(mapRef.current)
 
-    // Use CartoDB Positron tiles for a clean, modern look
-    L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-      subdomains: "abcd",
-      maxZoom: 20,
-    }).addTo(mapRef.current)
+    L.tileLayer(CARTO_LIGHT_BASEMAP_URL, { ...CARTO_LIGHT_TILE_OPTIONS }).addTo(mapRef.current)
 
     return () => {
       if (mapRef.current) {

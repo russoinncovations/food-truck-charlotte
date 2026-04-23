@@ -3,13 +3,11 @@
 import { useEffect, useRef, useState } from "react"
 import L from "leaflet"
 import "leaflet/dist/leaflet.css"
+import { CARTO_LIGHT_BASEMAP_URL, CARTO_LIGHT_TILE_OPTIONS } from "@/lib/leaflet-basemap"
 
 const CHARLOTTE_CENTER: [number, number] = [35.2271, -80.8431]
 const DEFAULT_ZOOM = 12
-const CARTO_TILE =
-  "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
-const CARTO_ATTRIB =
-  '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+const MAP_PREVIEW_LOG = "[MapPreviewLeaflet]"
 
 export type MapPreviewMapPoint = {
   id: string
@@ -49,13 +47,39 @@ export default function MapPreviewLeaflet({
       zoomControl: true,
     })
     mapRef.current = map
+    const isDev = process.env.NODE_ENV === "development"
+    if (isDev) {
+      console.log(MAP_PREVIEW_LOG, "map initialized", { center: map.getCenter(), zoom: map.getZoom() })
+    }
+
+    // Match /map: basemap first, then other layers.
+    const tileLayer = L.tileLayer(CARTO_LIGHT_BASEMAP_URL, { ...CARTO_LIGHT_TILE_OPTIONS })
+    tileLayer.addTo(map)
+    if (isDev) {
+      console.log(MAP_PREVIEW_LOG, "tile layer added to map", tileLayer)
+      tileLayer.on("tileload", (e: L.TileEvent) => {
+        console.log(MAP_PREVIEW_LOG, "tileload", (e as L.TileEvent & { tile: HTMLImageElement }).tile?.src)
+      })
+      tileLayer.on("tileerror", (e) => {
+        console.error(MAP_PREVIEW_LOG, "tileerror", e)
+      })
+    }
+
     markersLayerRef.current = L.layerGroup().addTo(map)
 
-    L.tileLayer(CARTO_TILE, {
-      attribution: CARTO_ATTRIB,
-      subdomains: "abcd",
-      maxZoom: 20,
-    }).addTo(map)
+    const bumpSize = () => {
+      map.invalidateSize({ animate: false })
+    }
+    map.whenReady(() => {
+      if (isDev) {
+        console.log(MAP_PREVIEW_LOG, "map whenReady (invalidateSize)")
+      }
+      bumpSize()
+      requestAnimationFrame(bumpSize)
+    })
+    requestAnimationFrame(bumpSize)
+    setTimeout(bumpSize, 0)
+    setTimeout(bumpSize, 100)
 
     setMapReady(true)
 
