@@ -17,7 +17,7 @@ export default async function MapPage() {
 
   const { data: trucks } = await supabase
     .from("trucks")
-    .select("id, name, cuisine, latitude, longitude, serving_today, today_location, today_specials")
+    .select("id, name, slug, cuisine, latitude, longitude, serving_today, today_location, today_specials")
     .eq("serving_today", true)
 
   const { data: scheduledTrucks } = await supabase
@@ -49,7 +49,7 @@ export default async function MapPage() {
   if (extraIds.length > 0) {
     const { data: extraTrucks } = await supabase
       .from("trucks")
-      .select("id, name, cuisine, latitude, longitude, serving_today, today_location, today_specials")
+      .select("id, name, slug, cuisine, latitude, longitude, serving_today, today_location, today_specials")
       .in("id", extraIds)
 
     for (const t of (extraTrucks ?? []) as ServingTruckRow[]) {

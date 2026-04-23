@@ -35,6 +35,7 @@ import { cuisineCategories, type FoodTruck } from "@/lib/data"
 export type ServingTruckRow = {
   id: string
   name: string
+  slug: string | null
   cuisine: string | string[] | null
   latitude: number | string | null
   longitude: number | string | null
@@ -52,10 +53,12 @@ function mapRowsToMapTrucks(rows: ServingTruckRow[]): FoodTruck[] {
       : truck.cuisine
         ? [truck.cuisine]
         : []
-    const slug = truck.name
+    const fallbackSlug = truck.name
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/(^-|-$)/g, "") || truck.id
+    const slug =
+      truck.slug && String(truck.slug).trim() !== "" ? String(truck.slug).trim() : fallbackSlug
 
     return {
       id: truck.id,
@@ -331,12 +334,16 @@ function SidebarContent({
       <ScrollArea className="flex-1">
         <div className="p-4 space-y-3">
           {filteredTrucks.map((truck) => (
-            <TruckCard
+            <Link
               key={truck.id}
-              truck={truck}
-              isSelected={selectedTruck?.id === truck.id}
-              onClick={() => setSelectedTruck(truck)}
-            />
+              href={`/trucks/${truck.slug}`}
+              className="block cursor-pointer rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            >
+              <TruckCard
+                truck={truck}
+                isSelected={selectedTruck?.id === truck.id}
+              />
+            </Link>
           ))}
           {filteredTrucks.length === 0 && (
             <div className="text-center py-12">
@@ -354,24 +361,25 @@ function SidebarContent({
 function TruckCard({
   truck,
   isSelected,
-  onClick,
   onClose,
   compact = false,
 }: {
   truck: FoodTruck
   isSelected?: boolean
-  onClick?: () => void
   onClose?: () => void
   compact?: boolean
 }) {
   const nextStop = truck.schedule[0]
+  const locationLine =
+    truck.location?.address && truck.location.address.trim() !== ""
+      ? truck.location.address
+      : null
 
   return (
     <div
       className={`relative bg-card rounded-xl border transition-all ${
         isSelected ? "border-primary shadow-lg" : "hover:border-primary/50"
-      } ${onClick ? "cursor-pointer" : ""} ${compact ? "shadow-xl" : ""}`}
-      onClick={onClick}
+      } ${compact ? "shadow-xl" : ""}`}
     >
       {onClose && (
         <Button
@@ -430,6 +438,18 @@ function TruckCard({
               </Badge>
             ))}
           </div>
+
+          {locationLine && (
+            <div className="mt-2 pt-2 border-t">
+              <div className="flex items-start gap-1.5 text-sm">
+                <MapPin className="h-3.5 w-3.5 text-primary shrink-0 mt-0.5" />
+                <div className="min-w-0">
+                  <p className="text-xs font-medium text-muted-foreground">Current location</p>
+                  <p className="text-sm text-foreground break-words leading-snug">{locationLine}</p>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Next Location */}
           {nextStop && (

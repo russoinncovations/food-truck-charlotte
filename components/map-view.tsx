@@ -9,6 +9,14 @@ import { type FoodTruck } from "@/lib/data"
 const CHARLOTTE_CENTER: [number, number] = [35.2271, -80.8431]
 const DEFAULT_ZOOM = 12
 
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+}
+
 interface MapViewProps {
   trucks: FoodTruck[]
   selectedTruck: FoodTruck | null
@@ -85,15 +93,35 @@ export default function MapView({ trucks, selectedTruck, onSelectTruck }: MapVie
         .addTo(mapRef.current!)
         .on("click", () => onSelectTruck(truck))
 
+      const nameSafe = escapeHtml(truck.name)
+      const cuisineSafe = escapeHtml(truck.cuisine.join(", ") || "—")
+      const addressRaw = truck.location?.address?.trim() ?? ""
+      const hasLocation = addressRaw.length > 0
+      const addressSafe = hasLocation ? escapeHtml(addressRaw) : ""
+      const statusLabel = isOpen ? "Open now" : "Not currently serving"
+      const viewHref = `/trucks/${encodeURIComponent(truck.slug)}`
+
       // Add popup
       marker.bindPopup(`
         <div class="map-popup">
-          <strong>${truck.name}</strong>
-          <div class="popup-cuisine">${truck.cuisine.join(", ")}</div>
-          ${truck.location?.address ? `<div class="popup-address">${truck.location.address}</div>` : ''}
-          <div class="popup-status ${isOpen ? "open" : "closed"}">
-            ${isOpen ? "Open Now" : "Closed"}
+          <strong class="popup-title">${nameSafe}</strong>
+          <div class="popup-section">
+            <span class="popup-label">Cuisine</span>
+            <div class="popup-cuisine">${cuisineSafe}</div>
           </div>
+          ${
+            hasLocation
+              ? `<div class="popup-section">
+            <span class="popup-label">Current location</span>
+            <div class="popup-address-block">${addressSafe}</div>
+          </div>`
+              : '<div class="popup-section"><span class="popup-label">Current location</span><div class="popup-address-muted">Not specified</div></div>'
+          }
+          <div class="popup-section">
+            <span class="popup-label">Status</span>
+            <div class="popup-status ${isOpen ? "open" : "closed"}">${statusLabel}</div>
+          </div>
+          <a class="popup-view-truck" href="${viewHref}">View Truck</a>
         </div>
       `)
 
@@ -188,34 +216,77 @@ export default function MapView({ trucks, selectedTruck, onSelectTruck }: MapVie
         }
 
         .map-popup {
-          padding: 4px;
-          min-width: 150px;
+          padding: 8px 10px 10px;
+          min-width: 200px;
+          max-width: 260px;
         }
 
-        .map-popup strong {
+        .map-popup .popup-title {
           display: block;
-          font-size: 14px;
-          margin-bottom: 4px;
+          font-size: 15px;
+          margin-bottom: 8px;
+          line-height: 1.3;
         }
 
-        .popup-cuisine {
+        .map-popup .popup-section {
+          margin-bottom: 8px;
+        }
+
+        .map-popup .popup-section:last-of-type {
+          margin-bottom: 0;
+        }
+
+        .map-popup .popup-label {
+          display: block;
+          font-size: 10px;
+          font-weight: 600;
+          text-transform: uppercase;
+          letter-spacing: 0.03em;
+          color: hsl(var(--muted-foreground));
+          margin-bottom: 2px;
+        }
+
+        .map-popup .popup-cuisine {
+          font-size: 13px;
+          color: hsl(var(--foreground));
+          line-height: 1.35;
+        }
+
+        .map-popup .popup-address-block {
+          font-size: 13px;
+          color: hsl(var(--foreground));
+          line-height: 1.4;
+          word-break: break-word;
+        }
+
+        .map-popup .popup-address-muted {
           font-size: 12px;
           color: hsl(var(--muted-foreground));
-          margin-bottom: 4px;
         }
 
-        .popup-address {
+        .map-popup .popup-status {
           font-size: 12px;
-          color: hsl(var(--foreground));
-          margin-bottom: 4px;
-        }
-
-        .popup-status {
-          font-size: 11px;
           font-weight: 600;
-          padding: 2px 8px;
+          padding: 4px 8px;
           border-radius: 4px;
           display: inline-block;
+        }
+
+        .map-popup .popup-view-truck {
+          display: block;
+          text-align: center;
+          margin-top: 10px;
+          padding: 8px 12px;
+          font-size: 13px;
+          font-weight: 600;
+          border-radius: 8px;
+          background: hsl(var(--primary));
+          color: hsl(var(--primary-foreground)) !important;
+          text-decoration: none !important;
+        }
+
+        .map-popup .popup-view-truck:hover {
+          filter: brightness(0.95);
         }
 
         .popup-status.open {
