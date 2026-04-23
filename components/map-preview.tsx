@@ -1,12 +1,21 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import Image from "next/image"
+import L from "leaflet"
+import "leaflet/dist/leaflet.css"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Navigation, ArrowRight } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
+
+const CHARLOTTE_CENTER: [number, number] = [35.2271, -80.8431]
+const DEFAULT_ZOOM = 12
+const CARTO_TILE =
+  "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+const CARTO_ATTRIB =
+  '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
 
 const TRUCK_IMAGES = [
   "https://images.unsplash.com/photo-1687351977296-e909232009b4?w=400&h=300&fit=crop",
@@ -29,8 +38,144 @@ type ServingTruckRow = {
   name: string
   slug: string
   cuisine: string | string[] | null
+  latitude: number | string | null
+  longitude: number | string | null
   serving_today: boolean | null
   today_location: string | null
+}
+
+type MapPoint = { id: string; name: string; slug: string; lat: number; lng: number }
+
+function escHtml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+}
+
+const MARKER_ORANGE = "#D94F1E"
+
+function MapPreviewLeaflet({ points }: { points: MapPoint[] }) {
+  const containerRef = useRef<HTMLDivElement>(null)
+  const mapRef = useRef<L.Map | null>(null)
+  const markersLayerRef = useRef<L.LayerGroup | null>(null)
+  const [mapReady, setMapReady] = useState(false)
+
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el || mapRef.current) return
+
+    const map = L.map(el, {
+      center: CHARLOTTE_CENTER,
+      zoom: DEFAULT_ZOOM,
+      zoomControl: true,
+    })
+    mapRef.current = map
+    markersLayerRef.current = L.layerGroup().addTo(map)
+
+    L.tileLayer(CARTO_TILE, {
+      attribution: CARTO_ATTRIB,
+      subdomains: "abcd",
+      maxZoom: 20,
+    }).addTo(map)
+
+    setMapReady(true)
+
+    return () => {
+      markersLayerRef.current = null
+      map.remove()
+      mapRef.current = null
+      setMapReady(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!mapReady || !mapRef.current || !containerRef.current) return
+    const map = mapRef.current
+    const el = containerRef.current
+
+    const invalidate = () => {
+      map.invalidateSize({ animate: false })
+    }
+
+    invalidate()
+    let rafInner = 0
+    const rafOuter = requestAnimationFrame(() => {
+      rafInner = requestAnimationFrame(invalidate)
+    })
+    const t1 = setTimeout(invalidate, 100)
+    const t2 = setTimeout(invalidate, 400)
+
+    const ro = new ResizeObserver(() => invalidate())
+    ro.observe(el)
+
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) {
+          invalidate()
+        }
+      },
+      { threshold: 0.01 },
+    )
+    io.observe(el)
+
+    window.addEventListener("resize", invalidate)
+
+    return () => {
+      cancelAnimationFrame(rafOuter)
+      cancelAnimationFrame(rafInner)
+      clearTimeout(t1)
+      clearTimeout(t2)
+      ro.disconnect()
+      io.disconnect()
+      window.removeEventListener("resize", invalidate)
+    }
+  }, [mapReady])
+
+  useEffect(() => {
+    if (!mapRef.current || !markersLayerRef.current) return
+    const map = mapRef.current
+    const layer = markersLayerRef.current
+    layer.clearLayers()
+
+    const valid = points.filter((p) => Number.isFinite(p.lat) && Number.isFinite(p.lng))
+    if (valid.length === 0) {
+      map.setView(CHARLOTTE_CENTER, DEFAULT_ZOOM)
+      return
+    }
+
+    const latLngs: L.LatLng[] = []
+    for (const p of valid) {
+      const ll = L.latLng(p.lat, p.lng)
+      latLngs.push(ll)
+      const m = L.circleMarker(ll, {
+        radius: 8,
+        color: MARKER_ORANGE,
+        weight: 2,
+        fillColor: MARKER_ORANGE,
+        fillOpacity: 0.85,
+      })
+      m.bindPopup(
+        `<strong>${escHtml(p.name)}</strong><br/><a href="/trucks/${encodeURIComponent(p.slug)}">View truck</a>`,
+      )
+      m.addTo(layer)
+    }
+
+    if (latLngs.length === 1) {
+      map.setView(latLngs[0], 13)
+    } else {
+      map.fitBounds(L.latLngBounds(latLngs), { padding: [40, 40], maxZoom: 14 })
+    }
+  }, [points, mapReady])
+
+  return (
+    <div
+      ref={containerRef}
+      className="h-full w-full min-h-[240px] lg:min-h-[500px]"
+      style={{ width: "100%", minWidth: "100%" }}
+    />
+  )
 }
 
 export function MapPreview() {
@@ -43,7 +188,7 @@ export function MapPreview() {
       const supabase = createClient()
       const { data } = await supabase
         .from("trucks")
-        .select("id, name, slug, cuisine, serving_today, today_location")
+        .select("id, name, slug, cuisine, latitude, longitude, serving_today, today_location")
         .eq("serving_today", true)
         .limit(5)
 
@@ -57,6 +202,15 @@ export function MapPreview() {
       cancelled = true
     }
   }, [])
+
+  const mapPoints: MapPoint[] = openTrucks
+    .map((t) => {
+      const lat = Number(t.latitude)
+      const lng = Number(t.longitude)
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null
+      return { id: t.id, name: t.name, slug: t.slug, lat, lng }
+    })
+    .filter((p): p is MapPoint => p !== null)
 
   return (
     <section className="py-16 md:py-24 bg-muted/30">
@@ -82,24 +236,12 @@ export function MapPreview() {
         {/* Map Preview Card */}
         <Card className="overflow-hidden">
           <div className="grid lg:grid-cols-3">
-            {/* Map Placeholder */}
-            <div className="lg:col-span-2 relative aspect-[4/3] lg:aspect-auto lg:min-h-[500px] bg-muted">
-              {/* Fake map background */}
-              <div className="absolute inset-0 bg-gradient-to-br from-secondary to-muted" />
-              
-              {/* Map grid lines */}
-              <div className="absolute inset-0 opacity-10">
-                <div className="h-full w-full" style={{
-                  backgroundImage: `
-                    linear-gradient(to right, currentColor 1px, transparent 1px),
-                    linear-gradient(to bottom, currentColor 1px, transparent 1px)
-                  `,
-                  backgroundSize: '40px 40px'
-                }} />
+            <div className="lg:col-span-2 group relative w-full aspect-[4/3] lg:aspect-auto lg:h-[500px] lg:min-h-[500px] bg-[#f2efe9]">
+              <div className="absolute inset-0 z-0 h-full w-full min-h-[inherit]">
+                <MapPreviewLeaflet points={mapPoints} />
               </div>
 
-              {/* Overlay CTA */}
-              <div className="absolute inset-0 flex items-center justify-center bg-foreground/10 opacity-0 hover:opacity-100 transition-opacity">
+              <div className="absolute inset-0 z-10 flex items-center justify-center bg-foreground/10 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none group-hover:pointer-events-auto">
                 <Button size="lg" asChild>
                   <Link href="/map" className="flex items-center gap-2">
                     <Navigation className="h-5 w-5" />
@@ -108,8 +250,7 @@ export function MapPreview() {
                 </Button>
               </div>
 
-              {/* Map Legend */}
-              <div className="absolute bottom-4 left-4 bg-background/95 backdrop-blur rounded-lg p-3 shadow-lg">
+              <div className="absolute bottom-4 left-4 z-20 bg-background/95 backdrop-blur rounded-lg p-3 shadow-lg pointer-events-none">
                 <div className="flex items-center gap-4 text-sm">
                   <div className="flex items-center gap-2">
                     <div className="h-3 w-3 rounded-full bg-primary" />
