@@ -132,15 +132,15 @@ export function ServingMapPreview({ latitude, longitude, onPositionChange, class
   }, [bindDragHandlers, pinIcon])
 
   // Sync from props (geocode / server pin) — also re-runs when map becomes ready if pin was set first.
+  // Do not filter by isValidTruckMapCoordinates here: parent has lat/lng; server will validate on submit.
   useEffect(() => {
     if (!mapReady) return
     const map = mapRef.current
     if (!map) return
     if (latitude == null || longitude == null) return
-    if (!isValidTruckMapCoordinates(latitude, longitude)) return
-
     const la = Number(latitude)
     const lo = Number(longitude)
+    if (!Number.isFinite(la) || !Number.isFinite(lo)) return
 
     if (markerRef.current) {
       markerRef.current.setLatLng([la, lo])

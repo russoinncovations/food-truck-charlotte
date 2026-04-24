@@ -1,6 +1,6 @@
 "use client"
 
-import { useActionState, useCallback, useMemo, useState, type FormEvent } from "react"
+import { useActionState, useMemo, useState, type FormEvent } from "react"
 import { startServingWithPin, stopServingAction, geocodeServingAddress, type ServingActionResult } from "@/app/dashboard/servingActions"
 import { isValidTruckMapCoordinates } from "@/lib/location/truck-map-coords"
 import { SERVING_REQUIRES_MAP_PIN_ERROR } from "@/lib/serving-location"
@@ -41,14 +41,11 @@ export function ServingLocationForm({ truck }: { truck: TruckServingFields }) {
 
   const [startState, startAction, startPending] = useActionState(startServingWithPin, initial)
 
-  const onPositionChange = useCallback((lat: number, lng: number) => {
-    setPinLat(lat)
-    setPinLng(lng)
-    setClientBlockError(null)
-  }, [])
+  const [geocodeSuccessMessage, setGeocodeSuccessMessage] = useState<string | null>(null)
 
   async function onGeocode() {
     setGeoError(null)
+    setGeocodeSuccessMessage(null)
     const line = [locationName.trim(), street.trim()].filter(Boolean).join(", ")
     if (!line) {
       setGeoError("Enter a place name or street address to search.")
@@ -65,15 +62,16 @@ export function ServingLocationForm({ truck }: { truck: TruckServingFields }) {
         setPinLat(r.lat)
         setPinLng(r.lng)
         setClientBlockError(null)
+        setGeocodeSuccessMessage("Location found — pin placed")
       } else {
-        setGeoError(r.error)
+        setGeoError("We couldn't find that location. Try a full address.")
       }
     } finally {
       setGeocoding(false)
     }
   }
 
-  const canSave = isValidTruckMapCoordinates(pinLat, pinLng)
+  const canSave = Boolean(pinLat && pinLng)
 
   function handleStartFormSubmit(e: FormEvent<HTMLFormElement>) {
     setClientBlockError(null)
@@ -89,15 +87,9 @@ export function ServingLocationForm({ truck }: { truck: TruckServingFields }) {
         hiddenLongitude: hiddenLng,
       })
     }
-    const nameOk = locationName.trim().length > 0
-    const coordsOk = pinLat != null && pinLng != null && isValidTruckMapCoordinates(pinLat, pinLng)
-    if (!coordsOk) {
+    if (!pinLat || !pinLng) {
       e.preventDefault()
       setClientBlockError(SERVING_REQUIRES_MAP_PIN_ERROR)
-      return
-    }
-    if (!nameOk) {
-      e.preventDefault()
       return
     }
     // Submits to startServingWithPin only (action={startAction}); no other path.
@@ -174,10 +166,22 @@ export function ServingLocationForm({ truck }: { truck: TruckServingFields }) {
           <span className="text-xs text-muted-foreground">Places or adjusts the pin (you can drag it after).</span>
         </div>
         {geoError && <p className="text-sm text-destructive">{geoError}</p>}
+        {geocodeSuccessMessage && (
+          <p className="text-sm text-emerald-700 dark:text-emerald-400">{geocodeSuccessMessage}</p>
+        )}
 
         <div className="space-y-1">
           <p className="text-sm font-medium text-foreground">Map preview</p>
-          <ServingMapPreview latitude={pinLat} longitude={pinLng} onPositionChange={onPositionChange} />
+          <ServingMapPreview
+            latitude={pinLat}
+            longitude={pinLng}
+            onPositionChange={(lat, lng) => {
+              setPinLat(lat)
+              setPinLng(lng)
+              setClientBlockError(null)
+              setGeocodeSuccessMessage(null)
+            }}
+          />
           <p className="text-xs text-muted-foreground">Click the map to drop a pin, or drag the pin to adjust.</p>
         </div>
 
