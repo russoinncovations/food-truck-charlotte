@@ -2,7 +2,6 @@ import { Metadata } from "next"
 import Link from "next/link"
 import { redirect } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
@@ -15,7 +14,6 @@ import {
   MessageSquare,
   TrendingUp,
   Settings,
-  Edit,
   Bell,
   Menu,
 } from "lucide-react"
@@ -273,16 +271,10 @@ export default async function DashboardPage() {
               {/* Today's Status */}
               <Card>
                 <CardHeader className="pb-4">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="flex items-center gap-2">
-                      <Clock className="h-5 w-5 text-primary" />
-                      Today&apos;s Status
-                    </CardTitle>
-                    <Button variant="outline" size="sm" className="gap-1">
-                      <Edit className="h-3.5 w-3.5" />
-                      Edit
-                    </Button>
-                  </div>
+                  <CardTitle className="flex items-center gap-2">
+                    <Clock className="h-5 w-5 text-primary" />
+                    Today&apos;s Status
+                  </CardTitle>
                 </CardHeader>
                 <CardContent>
                   {truckData?.id ? (
