@@ -51,7 +51,7 @@ export function ServingLocationForm({ truck }: { truck: TruckServingFields }) {
     setGeoError(null)
     const line = [locationName.trim(), street.trim()].filter(Boolean).join(", ")
     if (!line) {
-      setGeoError("Enter a location name or street first.")
+      setGeoError("Enter a place name or street address to search.")
       return
     }
     setGeocoding(true)
@@ -73,8 +73,7 @@ export function ServingLocationForm({ truck }: { truck: TruckServingFields }) {
     }
   }
 
-  const canSave =
-    locationName.trim().length > 0 && pinLat != null && pinLng != null && isValidTruckMapCoordinates(pinLat, pinLng)
+  const canSave = isValidTruckMapCoordinates(pinLat, pinLng)
 
   function handleStartFormSubmit(e: FormEvent<HTMLFormElement>) {
     setClientBlockError(null)
@@ -144,7 +143,7 @@ export function ServingLocationForm({ truck }: { truck: TruckServingFields }) {
 
         <div className="space-y-2">
           <label htmlFor="locationName" className="text-sm font-medium text-foreground">
-            Location name
+            Location name <span className="text-muted-foreground font-normal">(optional)</span>
           </label>
           <Input
             id="locationName"
@@ -152,12 +151,11 @@ export function ServingLocationForm({ truck }: { truck: TruckServingFields }) {
             value={locationName}
             onChange={(e) => setLocationName(e.target.value)}
             placeholder="e.g. South End Brewery, Food Truck Friday"
-            required
           />
         </div>
         <div className="space-y-2">
           <label htmlFor="streetAddress" className="text-sm font-medium text-foreground">
-            Street address (optional)
+            Street address <span className="text-muted-foreground font-normal">(optional, for search)</span>
           </label>
           <Input
             id="streetAddress"

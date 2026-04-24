@@ -79,9 +79,6 @@ export async function startServingWithPin(
   const lat = latRaw != null && latRaw !== "" ? parseFloat(latRaw) : NaN
   const lng = lngRaw != null && lngRaw !== "" ? parseFloat(lngRaw) : NaN
 
-  if (!locationName) {
-    return { success: false, error: "Enter a location name (e.g. where you’re parked)." }
-  }
   if (!isValidTruckMapCoordinates(lat, lng)) {
     return { success: false, error: SERVING_REQUIRES_MAP_PIN_ERROR }
   }
@@ -90,7 +87,7 @@ export async function startServingWithPin(
     .from("trucks")
     .update({
       serving_today: true,
-      today_location: locationName,
+      today_location: locationName || null,
       street_address: streetAddress || null,
       latitude: lat,
       longitude: lng,
