@@ -2,24 +2,13 @@ import { Metadata } from "next"
 import Link from "next/link"
 import { redirect } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import {
-  Calendar,
-  MapPin,
-  Clock,
-  Truck,
-  Plus,
-  Eye,
-  MessageSquare,
-  TrendingUp,
-  Settings,
-  Bell,
-  Menu,
-} from "lucide-react"
+import { Calendar, Clock, Plus, Eye, Inbox, Truck } from "lucide-react"
 import { createClient } from "@/lib/supabase/server"
 import { EVENT_TYPES } from "@/lib/booking-types"
 import { ServingLocationForm } from "@/components/dashboard/serving-location-form"
+import { VendorDashboardHeader } from "@/components/dashboard/vendor-dashboard-header"
+import { VendorNavLinks } from "@/components/dashboard/vendor-dashboard-nav"
 import {
   DashboardEventOpportunities,
   type DashboardOpportunity,
@@ -102,8 +91,27 @@ export default async function DashboardPage() {
 
   let opportunityCards: DashboardOpportunity[] = []
   let pendingCount = 0
+  let upcomingEventsCount = 0
+
+  /** YYYY-MM-DD in local time — matches `events.date` comparisons in /dashboard/events */
+  const todayStr = (() => {
+    const d = new Date()
+    const y = d.getFullYear()
+    const m = String(d.getMonth() + 1).padStart(2, "0")
+    const day = String(d.getDate()).padStart(2, "0")
+    return `${y}-${m}-${day}`
+  })()
 
   if (truckData?.id) {
+    const { count: upcomingN, error: upcomingErr } = await supabase
+      .from("events")
+      .select("*", { count: "exact", head: true })
+      .eq("submitted_by_truck_id", truckData.id)
+      .gte("date", todayStr)
+
+    if (!upcomingErr && upcomingN != null) {
+      upcomingEventsCount = upcomingN
+    }
     const { data: rawOpportunities } = await supabase
       .from("truck_opportunities")
       .select("*, booking_requests(*)")
@@ -171,76 +179,18 @@ export default async function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-muted/30">
-      {/* Dashboard Header */}
-      <header className="sticky top-0 z-50 bg-background border-b">
-        <div className="flex items-center justify-between h-16 px-4 md:px-6">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" className="md:hidden">
-              <Menu className="h-5 w-5" />
-            </Button>
-            <Link href="/" className="flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-                <Truck className="h-4 w-4 text-primary-foreground" />
-              </div>
-              <span className="font-display font-bold hidden sm:block">FoodTruck CLT</span>
-            </Link>
-            <Badge variant="secondary" className="hidden md:flex">Vendor Dashboard</Badge>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Link href="/dashboard">
-              <Button variant="ghost" size="icon" className="relative">
-                <Bell className="h-5 w-5" />
-                {pendingCount > 0 && (
-                  <span className="absolute top-1.5 right-1.5 h-2 w-2 bg-red-500 rounded-full" />
-                )}
-              </Button>
-            </Link>
-            <Button variant="ghost" size="icon" asChild>
-              <Link href="/dashboard/settings">
-                <Settings className="h-5 w-5" />
-              </Link>
-            </Button>
-            <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center text-white text-sm font-bold">
-              {truckData?.name?.[0] ?? "T"}
-            </div>
-          </div>
-        </div>
-      </header>
+      <VendorDashboardHeader truckNameInitial={truckData?.name?.[0] ?? "T"} />
 
       <div className="flex">
-        {/* Sidebar - Desktop */}
         <aside className="hidden md:flex flex-col w-64 bg-background border-r min-h-[calc(100vh-4rem)]">
-          <nav className="flex-1 p-4 space-y-2">
-            <NavItem href="/dashboard" icon={TrendingUp} active>Overview</NavItem>
-            <NavItem href="/dashboard/schedule" icon={Calendar}>Schedule</NavItem>
-            <NavItem href="/dashboard/profile" icon={Truck}>Truck Profile</NavItem>
-            <NavItem href="/dashboard/events" icon={MapPin}>Events</NavItem>
-            <NavItem href="#" className="opacity-50 cursor-not-allowed pointer-events-none" icon={Eye}>
-              <span className="flex items-center gap-2">
-                Analytics
-                <Badge variant="secondary" className="text-[10px] px-1.5 py-0 font-normal shrink-0 bg-muted text-muted-foreground border-0">
-                  Soon
-                </Badge>
-              </span>
-            </NavItem>
-            <NavItem href="#" className="opacity-50 cursor-not-allowed pointer-events-none" icon={MessageSquare}>
-              <span className="flex items-center gap-2">
-                Messages
-                <Badge variant="secondary" className="text-[10px] px-1.5 py-0 font-normal shrink-0 bg-muted text-muted-foreground border-0">
-                  Soon
-                </Badge>
-              </span>
-            </NavItem>
-            <NavItem href="/dashboard/settings" icon={Settings}>
-              Settings
-            </NavItem>
-          </nav>
+          <div className="flex-1 p-4">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide px-3 mb-2">Vendor</p>
+            <VendorNavLinks />
+          </div>
         </aside>
 
         {/* Main Content */}
         <main className="flex-1 p-4 md:p-6 space-y-6">
-          {/* Welcome Section */}
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
               <h1 className="font-display text-2xl md:text-3xl font-bold text-foreground">
@@ -257,14 +207,80 @@ export default async function DashboardPage() {
                   View Public Profile
                 </Link>
               </Button>
-              <Button className="gap-2">
-                <Plus className="h-4 w-4" />
-                Add Schedule
+              <Button className="gap-2" asChild>
+                <Link href="/dashboard/schedule">
+                  <Plus className="h-4 w-4" />
+                  Add Schedule
+                </Link>
               </Button>
             </div>
           </div>
 
-          {/* Main Content Grid */}
+          {truckData?.id && (
+            <Card>
+              <CardContent className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 py-4">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center shrink-0">
+                    <Calendar className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-foreground">Upcoming Events</p>
+                    <p className="text-xs text-muted-foreground">
+                      Your submitted events with a date on or after today. Past events are hidden from this count; open
+                      Events to see your full list.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 sm:shrink-0">
+                  <span className="text-2xl font-semibold tabular-nums" aria-live="polite">
+                    {upcomingEventsCount}
+                  </span>
+                  <Button variant="outline" size="sm" asChild>
+                    <Link href="/dashboard/events">Open Events</Link>
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          <div className="space-y-4">
+            {truckData?.id && pendingCount > 0 && (
+              <Card className="border-primary/25 bg-primary/5">
+                <CardContent className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 py-4">
+                  <div className="flex gap-3 min-w-0">
+                    <div className="h-10 w-10 rounded-lg bg-primary/15 flex items-center justify-center shrink-0">
+                      <Inbox className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                      <h2 className="font-medium text-foreground">Requests to confirm</h2>
+                      <p className="text-sm text-muted-foreground">
+                        {pendingCount} booking request{pendingCount === 1 ? "" : "s"} from hosts need a response. Open
+                        a card to view details, choose Interested or Pass, and email the organizer to finalize.
+                      </p>
+                    </div>
+                  </div>
+                  <Button variant="default" asChild>
+                    <a href="#vendor-booking-requests" className="shrink-0">
+                      View booking requests
+                    </a>
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
+            {truckData?.id && pendingCount === 0 && (
+              <p className="text-sm text-muted-foreground">
+                <Link
+                  href="/dashboard#vendor-booking-requests"
+                  className="text-foreground font-medium underline-offset-2 hover:underline"
+                >
+                  Booking Requests
+                </Link>{" "}
+                (right column) is where host inquiries appear. Use the sidebar or{" "}
+                <span className="text-foreground font-medium">menu</span> (mobile) to jump there.
+              </p>
+            )}
+          </div>
+
           <div className="grid lg:grid-cols-3 gap-6">
             {/* Left Column - Schedule & Profile */}
             <div className="lg:col-span-2 space-y-6">
@@ -300,10 +316,8 @@ export default async function DashboardPage() {
               </Card>
             </div>
 
-            {/* Right Column - Events & Tips */}
-            <div className="space-y-6">
-              {/* Event Opportunities — one row per booking for this truck (real data from truck_opportunities) */}
-              <Card>
+            <div className="space-y-6" aria-label="Booking requests and tips">
+              <Card id="vendor-booking-requests" className="scroll-mt-28">
                 <DashboardEventOpportunities
                   opportunities={opportunityCards}
                   truckContext={truckContext}
@@ -341,32 +355,3 @@ export default async function DashboardPage() {
     </div>
   )
 }
-
-function NavItem({
-  href,
-  icon: Icon,
-  children,
-  active = false,
-  className,
-}: {
-  href: string
-  icon: React.ElementType
-  children: React.ReactNode
-  active?: boolean
-  className?: string
-}) {
-  return (
-    <Link
-      href={href}
-      className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
-        active
-          ? "bg-primary/10 text-primary font-medium"
-          : "text-muted-foreground hover:bg-muted hover:text-foreground"
-      }${className ? ` ${className}` : ""}`}
-    >
-      <Icon className="h-5 w-5" />
-      {children}
-    </Link>
-  )
-}
-
