@@ -1,7 +1,6 @@
 import { Metadata } from "next"
 import Link from "next/link"
 import { redirect } from "next/navigation"
-import { revalidatePath } from "next/cache"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -22,6 +21,7 @@ import {
 } from "lucide-react"
 import { createClient } from "@/lib/supabase/server"
 import { EVENT_TYPES } from "@/lib/booking-types"
+import { ServingLocationForm } from "@/components/dashboard/serving-location-form"
 import {
   DashboardEventOpportunities,
   type DashboardOpportunity,
@@ -62,39 +62,6 @@ export const metadata: Metadata = {
   description: "Manage your food truck profile, schedule, and connect with the Charlotte community.",
 }
 
-async function updateServingStatus(formData: FormData) {
-  "use server"
-  const truckId = formData.get("truckId") as string | null
-  const servingToday = formData.get("servingToday") === "true"
-  const todayLocation = (formData.get("todayLocation") as string | null) ?? ""
-  if (!truckId) return
-
-  // Geocode the location if serving
-  let latitude: number | null = null
-  let longitude: number | null = null
-  if (servingToday && todayLocation) {
-    try {
-      const geo = await fetch(
-        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(todayLocation + ", Charlotte, NC")}&format=json&limit=1`,
-        { headers: { "User-Agent": "foodtruckclt.com" } }
-      )
-      const geoData = await geo.json()
-      if (geoData[0]) {
-        latitude = parseFloat(geoData[0].lat)
-        longitude = parseFloat(geoData[0].lon)
-      }
-    } catch {}
-  }
-
-  const supabase = await createClient()
-  await supabase
-    .from("trucks")
-    .update({ serving_today: servingToday, today_location: todayLocation, latitude, longitude })
-    .eq("id", truckId)
-  revalidatePath("/dashboard")
-  revalidatePath("/map")
-}
-
 // Mock vendor data - in production this would come from auth/database
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -106,7 +73,7 @@ export default async function DashboardPage() {
   }
   const { data: truckData } = await supabase
     .from("trucks")
-    .select("id, name, slug, cuisine, cuisine_types, serving_today, today_location")
+    .select("id, name, slug, cuisine, cuisine_types, serving_today, today_location, street_address, latitude, longitude, updated_at")
     .eq("email", user.email)
     .single()
 
@@ -319,87 +286,18 @@ export default async function DashboardPage() {
                 </CardHeader>
                 <CardContent>
                   {truckData?.id ? (
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between gap-4 rounded-lg border p-4">
-                        <div className="flex items-center gap-3">
-                          <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center">
-                            <MapPin className="h-6 w-6 text-muted-foreground" />
-                          </div>
-                          <div>
-                            <p className="text-sm font-medium text-foreground">Serving status</p>
-                            <p className="text-xs text-muted-foreground">
-                              {truckData.serving_today
-                                ? "You appear on the map as open today."
-                                : "You are not marked as serving today."}
-                            </p>
-                          </div>
-                        </div>
-                        <Badge
-                          className={
-                            truckData.serving_today
-                              ? "bg-green-500 text-white border-0"
-                              : "border-muted-foreground/30"
-                          }
-                          variant={truckData.serving_today ? "default" : "secondary"}
-                        >
-                          {truckData.serving_today ? "Serving today" : "Not serving"}
-                        </Badge>
-                      </div>
-                      <div className="flex flex-col gap-3 sm:flex-row">
-                        <form
-                          action={updateServingStatus}
-                          className="flex flex-1 flex-col gap-3 rounded-lg border p-4"
-                        >
-                          <input type="hidden" name="truckId" value={truckData.id} />
-                          <input type="hidden" name="servingToday" value="true" />
-                          <div className="space-y-2">
-                            <label
-                              htmlFor="todayLocation-start"
-                              className="text-sm font-medium text-foreground"
-                            >
-                              Current Location
-                            </label>
-                            <input
-                              id="todayLocation-start"
-                              name="todayLocation"
-                              type="text"
-                              placeholder="e.g. South End Brewery"
-                              defaultValue={truckData.today_location ?? ""}
-                              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                            />
-                          </div>
-                          <Button type="submit" className="w-full sm:w-auto">
-                            Start Serving
-                          </Button>
-                        </form>
-                        <form
-                          action={updateServingStatus}
-                          className="flex flex-1 flex-col gap-3 rounded-lg border p-4"
-                        >
-                          <input type="hidden" name="truckId" value={truckData.id} />
-                          <input type="hidden" name="servingToday" value="false" />
-                          <div className="space-y-2">
-                            <label
-                              htmlFor="todayLocation-stop"
-                              className="text-sm font-medium text-foreground"
-                            >
-                              Current Location
-                            </label>
-                            <input
-                              id="todayLocation-stop"
-                              name="todayLocation"
-                              type="text"
-                              placeholder="e.g. South End Brewery"
-                              defaultValue={truckData.today_location ?? ""}
-                              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                            />
-                          </div>
-                          <Button type="submit" variant="outline" className="w-full sm:w-auto">
-                            Stop Serving
-                          </Button>
-                        </form>
-                      </div>
-                    </div>
+                    <ServingLocationForm
+                      key={truckData.id}
+                      truck={{
+                        id: truckData.id,
+                        serving_today: truckData.serving_today,
+                        today_location: truckData.today_location,
+                        street_address: (truckData as { street_address?: string | null }).street_address ?? null,
+                        latitude: (truckData as { latitude?: number | string | null }).latitude ?? null,
+                        longitude: (truckData as { longitude?: number | string | null }).longitude ?? null,
+                        updated_at: (truckData as { updated_at?: string | null }).updated_at ?? null,
+                      }}
+                    />
                   ) : (
                     <div className="text-center py-8">
                       <Calendar className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />

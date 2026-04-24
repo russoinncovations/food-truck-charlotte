@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Navigation, ArrowRight } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
+import { isValidTruckMapCoordinates } from "@/lib/location/truck-map-coords"
 
 const MapPreviewLeaflet = dynamic(() => import("./MapPreviewLeaflet"), {
   ssr: false,
@@ -83,7 +84,7 @@ function MapPreview() {
     .map((t) => {
       const lat = Number(t.latitude)
       const lng = Number(t.longitude)
-      if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null
+      if (!isValidTruckMapCoordinates(lat, lng)) return null
       return { id: t.id, name: t.name, slug: t.slug, lat, lng }
     })
     .filter((p): p is MapPreviewMapPoint => p !== null)

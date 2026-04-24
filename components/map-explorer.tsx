@@ -32,6 +32,7 @@ import {
   Navigation,
 } from "lucide-react"
 import { cuisineCategories, type FoodTruck } from "@/lib/data"
+import { isValidTruckMapCoordinates } from "@/lib/location/truck-map-coords"
 
 export type ServingTruckRow = {
   id: string
@@ -49,6 +50,7 @@ function mapRowsToMapTrucks(rows: ServingTruckRow[]): FoodTruck[] {
   return rows.map((truck) => {
     const lat = Number(truck.latitude)
     const lng = Number(truck.longitude)
+    const hasMapPin = isValidTruckMapCoordinates(lat, lng)
     const cuisine = Array.isArray(truck.cuisine)
       ? truck.cuisine
       : truck.cuisine
@@ -73,14 +75,13 @@ function mapRowsToMapTrucks(rows: ServingTruckRow[]): FoodTruck[] {
       priceRange: "$",
       isOpen: Boolean(truck.serving_today),
       isFeatured: false,
-      location:
-        Number.isFinite(lat) && Number.isFinite(lng)
-          ? {
-              lat,
-              lng,
-              address: truck.today_location ?? "",
-            }
-          : undefined,
+      location: hasMapPin
+        ? {
+            lat,
+            lng,
+            address: [truck.today_location, truck.street_address].filter(Boolean).join(" · ") || "",
+          }
+        : undefined,
       schedule: [],
       menu: [],
       socialLinks: {},
