@@ -58,6 +58,10 @@ export function ServingLocationForm({ truck }: { truck: TruckServingFields }) {
     try {
       const r = await geocodeServingAddress(line)
       if (r.success) {
+        if (process.env.NODE_ENV === "development") {
+          // eslint-disable-next-line no-console
+          console.log("Geocode result:", r.lat, r.lng)
+        }
         setPinLat(r.lat)
         setPinLng(r.lng)
         setClientBlockError(null)
