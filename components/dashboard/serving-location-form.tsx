@@ -16,6 +16,8 @@ export type TruckServingFields = {
   street_address: string | null
   latitude: number | string | null
   longitude: number | string | null
+  /** Present when form is fed from the dashboard truck query; optional elsewhere */
+  updated_at?: string | null
 }
 
 const initial: ServingActionResult | null = null
@@ -72,6 +74,18 @@ export function ServingLocationForm({ truck }: { truck: TruckServingFields }) {
 
   function handleStartFormSubmit(e: FormEvent<HTMLFormElement>) {
     setClientBlockError(null)
+    if (process.env.NODE_ENV === "development") {
+      const form = e.currentTarget
+      const hiddenLat = form.querySelector<HTMLInputElement>('input[name="latitude"]')?.value
+      const hiddenLng = form.querySelector<HTMLInputElement>('input[name="longitude"]')?.value
+      // eslint-disable-next-line no-console
+      console.log("[ServingLocationForm] submit (start)", {
+        pinLat,
+        pinLng,
+        hiddenLatitude: hiddenLat,
+        hiddenLongitude: hiddenLng,
+      })
+    }
     const nameOk = locationName.trim().length > 0
     const coordsOk = pinLat != null && pinLng != null && isValidTruckMapCoordinates(pinLat, pinLng)
     if (!coordsOk) {
