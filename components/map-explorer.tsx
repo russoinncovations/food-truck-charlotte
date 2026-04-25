@@ -43,6 +43,7 @@ export type ServingTruckRow = {
   longitude: number | string | null
   serving_today: boolean | null
   today_location: string | null
+  street_address: string | null
   today_specials: string | null
 }
 

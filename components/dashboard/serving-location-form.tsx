@@ -1,9 +1,9 @@
 "use client"
 
-import { useActionState, useMemo, useState, type FormEvent } from "react"
+import { useActionState, useEffect, useMemo, useState, type FormEvent } from "react"
 import { startServingWithPin, stopServingAction, geocodeServingAddress, type ServingActionResult } from "@/app/dashboard/servingActions"
 import { isValidTruckMapCoordinates } from "@/lib/location/truck-map-coords"
-import { SERVING_REQUIRES_MAP_PIN_ERROR } from "@/lib/serving-location"
+import { servingAddressSearchLine, SERVING_REQUIRES_MAP_PIN_ERROR } from "@/lib/serving-location"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ServingMapPreview } from "@/components/dashboard/serving-map-preview"
@@ -35,6 +35,13 @@ export function ServingLocationForm({ truck }: { truck: TruckServingFields }) {
   const initialPin = useMemo(() => parsePin(truck), [truck])
   const [pinLat, setPinLat] = useState<number | null>(initialPin.lat)
   const [pinLng, setPinLng] = useState<number | null>(initialPin.lng)
+  const [pinKeyAtLastPlacement, setPinKeyAtLastPlacement] = useState<string | null>(() => {
+    if (initialPin.lat == null || initialPin.lng == null) return null
+    return servingAddressSearchLine(
+      (truck.today_location ?? "").trim() || "",
+      (truck.street_address ?? "").trim() || ""
+    )
+  })
   const [geoError, setGeoError] = useState<string | null>(null)
   const [geocoding, setGeocoding] = useState(false)
   const [clientBlockError, setClientBlockError] = useState<string | null>(null)
@@ -43,24 +50,34 @@ export function ServingLocationForm({ truck }: { truck: TruckServingFields }) {
 
   const [geocodeSuccessMessage, setGeocodeSuccessMessage] = useState<string | null>(null)
 
+  const addressLine = useMemo(
+    () => servingAddressSearchLine(locationName, street),
+    [locationName, street]
+  )
+
+  useEffect(() => {
+    if (pinLat == null || pinLng == null) return
+    if (pinKeyAtLastPlacement == null) return
+    if (addressLine === pinKeyAtLastPlacement) return
+    setPinLat(null)
+    setPinLng(null)
+    setPinKeyAtLastPlacement(null)
+  }, [addressLine, pinKeyAtLastPlacement, pinLat, pinLng])
+
   async function onGeocode() {
     setGeoError(null)
     setGeocodeSuccessMessage(null)
-    const line = [locationName.trim(), street.trim()].filter(Boolean).join(", ")
-    if (!line) {
+    if (!addressLine) {
       setGeoError("Enter a place name or street address to search.")
       return
     }
     setGeocoding(true)
     try {
-      const r = await geocodeServingAddress(line)
+      const r = await geocodeServingAddress(addressLine)
       if (r.success) {
-        if (process.env.NODE_ENV === "development") {
-          // eslint-disable-next-line no-console
-          console.log("Geocode result:", r.lat, r.lng)
-        }
         setPinLat(r.lat)
         setPinLng(r.lng)
+        setPinKeyAtLastPlacement(servingAddressSearchLine(locationName, street))
         setClientBlockError(null)
         setGeocodeSuccessMessage("Location found — pin placed")
       } else {
@@ -71,28 +88,22 @@ export function ServingLocationForm({ truck }: { truck: TruckServingFields }) {
     }
   }
 
-  const canSave = Boolean(pinLat && pinLng)
+  const pinKeyMatchesText =
+    pinKeyAtLastPlacement != null && addressLine === pinKeyAtLastPlacement
+  const canSave = pinLat != null && pinLng != null && pinKeyMatchesText
 
   function handleStartFormSubmit(e: FormEvent<HTMLFormElement>) {
     setClientBlockError(null)
-    if (process.env.NODE_ENV === "development") {
-      const form = e.currentTarget
-      const hiddenLat = form.querySelector<HTMLInputElement>('input[name="latitude"]')?.value
-      const hiddenLng = form.querySelector<HTMLInputElement>('input[name="longitude"]')?.value
-      // eslint-disable-next-line no-console
-      console.log("[ServingLocationForm] submit (start)", {
-        pinLat,
-        pinLng,
-        hiddenLatitude: hiddenLat,
-        hiddenLongitude: hiddenLng,
-      })
-    }
-    if (!pinLat || !pinLng) {
+    if (pinLat == null || pinLng == null) {
       e.preventDefault()
       setClientBlockError(SERVING_REQUIRES_MAP_PIN_ERROR)
       return
     }
-    // Submits to startServingWithPin only (action={startAction}); no other path.
+    if (!pinKeyMatchesText) {
+      e.preventDefault()
+      setClientBlockError(SERVING_REQUIRES_MAP_PIN_ERROR)
+      return
+    }
   }
 
   return (
@@ -124,8 +135,9 @@ export function ServingLocationForm({ truck }: { truck: TruckServingFields }) {
 
       <form action={startAction} onSubmit={handleStartFormSubmit} className="flex flex-col gap-3 rounded-lg border p-4">
         <input type="hidden" name="truckId" value={truck.id} />
-        <input type="hidden" name="latitude" value={pinLat ?? ""} />
-        <input type="hidden" name="longitude" value={pinLng ?? ""} />
+        <input type="hidden" name="latitude" value={pinLat != null ? String(pinLat) : ""} />
+        <input type="hidden" name="longitude" value={pinLng != null ? String(pinLng) : ""} />
+        <input type="hidden" name="addressPinKey" value={pinKeyAtLastPlacement ?? ""} />
 
         <p className="text-sm font-medium text-foreground">Start or update today&apos;s location</p>
         <p className="text-xs text-muted-foreground">
@@ -178,6 +190,7 @@ export function ServingLocationForm({ truck }: { truck: TruckServingFields }) {
             onPositionChange={(lat, lng) => {
               setPinLat(lat)
               setPinLng(lng)
+              setPinKeyAtLastPlacement(servingAddressSearchLine(locationName, street))
               setClientBlockError(null)
               setGeocodeSuccessMessage(null)
             }}

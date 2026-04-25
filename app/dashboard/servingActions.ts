@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
 import { geocodeCharlotteArea } from "@/lib/location/nominatim"
 import { isValidTruckMapCoordinates } from "@/lib/location/truck-map-coords"
-import { SERVING_REQUIRES_MAP_PIN_ERROR } from "@/lib/serving-location"
+import { servingAddressSearchLine, SERVING_REQUIRES_MAP_PIN_ERROR } from "@/lib/serving-location"
 
 export type ServingActionResult = { success: true } | { success: false; error: string }
 
@@ -74,6 +74,11 @@ export async function startServingWithPin(
 
   const locationName = ((formData.get("locationName") as string | null) ?? "").trim()
   const streetAddress = ((formData.get("streetAddress") as string | null) ?? "").trim()
+  const addressPinKey = ((formData.get("addressPinKey") as string | null) ?? "").trim()
+  const keyFromText = servingAddressSearchLine(locationName, streetAddress)
+  if (keyFromText !== addressPinKey) {
+    return { success: false, error: SERVING_REQUIRES_MAP_PIN_ERROR }
+  }
   const latRaw = formData.get("latitude") as string | null
   const lngRaw = formData.get("longitude") as string | null
   const lat = latRaw != null && latRaw !== "" ? parseFloat(latRaw) : NaN

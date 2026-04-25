@@ -295,7 +295,7 @@ export default async function DashboardPage() {
                 <CardContent>
                   {truckData?.id ? (
                     <ServingLocationForm
-                      key={truckData.id}
+                      key={`${truckData.id}-${(truckData as { updated_at?: string | null }).updated_at ?? ""}`}
                       truck={{
                         id: truckData.id,
                         serving_today: truckData.serving_today,
