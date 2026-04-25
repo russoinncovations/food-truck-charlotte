@@ -6,6 +6,7 @@ const navigation = {
     { name: "Live Map", href: "/map" },
     { name: "All Trucks", href: "/trucks" },
     { name: "Events", href: "/events" },
+    { name: "Promote an Event", href: "/promote-event" },
   ],
   forVendors: [
     { name: "List Your Truck", href: "/list-your-truck" },

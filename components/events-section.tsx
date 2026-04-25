@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge"
 import { Card } from "@/components/ui/card"
 import { MapPin, ArrowRight } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
+import { publicUpcomingEventsBase } from "@/lib/events/public-events"
 
 const FALLBACK_IMAGE =
   "https://images.unsplash.com/photo-1687351977296-e909232009b4?w=400&h=300&fit=crop"
@@ -48,11 +49,8 @@ export function EventsSection() {
 
     async function load() {
       const supabase = createClient()
-      const { data } = await supabase
-        .from("events")
+      const { data } = await publicUpcomingEventsBase(supabase)
         .select("id, title, slug, location_name, date, description, image_url, active")
-        .eq("active", true)
-        .gte("date", new Date().toISOString().split("T")[0])
         .order("date", { ascending: true })
         .limit(3)
 

@@ -139,27 +139,28 @@ export default function MapView({ trucks, selectedTruck, onSelectTruck }: MapVie
                 setInfoTruckId(null)
               }}
             >
-              <div className="max-w-[260px] p-1 pr-2 text-foreground text-sm">
-                <p className="font-semibold leading-tight mb-1">{infoTruck.name}</p>
+              <div className="max-w-[280px] p-1 pr-2 text-foreground text-sm">
+                <p className="font-semibold leading-tight mb-0.5">{infoTruck.name}</p>
                 <p className="text-xs text-muted-foreground mb-2">
                   {infoTruck.cuisine.length > 0 ? infoTruck.cuisine.join(", ") : "Cuisine TBD"}
                 </p>
-                <p className="text-xs mb-2">
-                  {infoTruck.location?.address?.trim() ? infoTruck.location.address : "Address not set"}
-                </p>
-                <p className="text-xs font-medium mb-2">
-                  {infoTruck.isOpen ? (
-                    <span className="text-emerald-700 dark:text-emerald-400">Open now</span>
-                  ) : (
-                    <span className="text-muted-foreground">Not currently serving</span>
-                  )}
-                </p>
-                <Link
-                  href={`/trucks/${encodeURIComponent(infoTruck.slug)}`}
-                  className="text-xs font-semibold text-primary hover:underline"
-                >
-                  View truck
-                </Link>
+                <div className="mb-3">
+                  <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Location</p>
+                  <p className="text-xs leading-snug">
+                    {infoTruck.location?.address?.trim() ? infoTruck.location.address : "Address not set"}
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-x-3 gap-y-1">
+                  <Link
+                    href={`/trucks/${encodeURIComponent(infoTruck.slug)}`}
+                    className="text-xs font-semibold text-primary hover:underline"
+                  >
+                    View profile
+                  </Link>
+                  <Link href="/book-a-truck" className="text-xs font-semibold text-primary hover:underline">
+                    Book this truck
+                  </Link>
+                </div>
               </div>
             </InfoWindow>
           )}

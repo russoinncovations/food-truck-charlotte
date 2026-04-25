@@ -7,14 +7,24 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Search, MapPin, ArrowRight, Users, Calendar, Truck } from "lucide-react"
 
-const stats = [
+const staticStats = [
   { label: "Trucks listed", value: "16+", icon: Truck },
-  { label: "Upcoming events", value: "5", icon: Calendar },
   { label: "Facebook group members", value: "35K", icon: Users },
-]
+] as const
 
-export function Hero() {
+type HeroProps = {
+  /** Upcoming, approved public events (Eastern “today” onward). */
+  upcomingEventCount: number
+}
+
+export function Hero({ upcomingEventCount }: HeroProps) {
   const [searchQuery, setSearchQuery] = useState("")
+
+  const stats = [
+    staticStats[0],
+    { label: "Upcoming events", value: String(upcomingEventCount), icon: Calendar },
+    staticStats[1],
+  ] as const
 
   return (
     <section className="relative pt-16">

@@ -49,7 +49,12 @@ function isEventTypeKey(x: string): x is EventTypeKey {
 
 async function fetchEventBySlug(slug: string) {
   const supabase = await createClient()
-  const { data } = await supabase.from("events").select("*").eq("slug", slug).single()
+  const { data } = await supabase
+    .from("events")
+    .select("*")
+    .eq("slug", slug)
+    .eq("active", true)
+    .single()
   return data
 }
 

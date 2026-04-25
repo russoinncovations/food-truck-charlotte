@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge"
 import { Card } from "@/components/ui/card"
 import { Calendar, MapPin, ArrowRight, Plus } from "lucide-react"
 import { createClient } from "@/lib/supabase/server"
+import { publicUpcomingEventsBase } from "@/lib/events/public-events"
 
 export const metadata: Metadata = {
   title: "Food Truck Events in Charlotte | FoodTruck CLT",
@@ -107,13 +108,10 @@ function EventCard({ event }: { event: EventRow }) {
 
 export default async function EventsPage() {
   const supabase = await createClient()
-  const { data: events } = await supabase
-    .from("events")
+  const { data: events } = await publicUpcomingEventsBase(supabase)
     .select(
-      "id, title, slug, location_name, address, date, description, image_url, featured, active"
+      "id, title, slug, location_name, address, date, description, image_url, featured, active, listing_status"
     )
-    .eq("active", true)
-    .gte("date", new Date().toISOString().split("T")[0])
     .order("date", { ascending: true })
 
   const list = (events ?? []) as EventRow[]
@@ -132,9 +130,9 @@ export default async function EventsPage() {
               </p>
             </div>
             <Button asChild>
-              <Link href="/book-trucks" className="flex items-center gap-2">
+              <Link href="/promote-event" className="flex items-center gap-2">
                 <Plus className="h-4 w-4" />
-                Host an Event
+                Promote an Event
               </Link>
             </Button>
           </div>

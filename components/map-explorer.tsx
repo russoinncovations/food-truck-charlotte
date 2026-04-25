@@ -103,7 +103,12 @@ const MapView = dynamic(() => import("@/components/map-view"), {
   ),
 })
 
+function truckWord(count: number): "truck" | "trucks" {
+  return count === 1 ? "truck" : "trucks"
+}
+
 export function MapExplorer({ trucks }: { trucks: ServingTruckRow[] }) {
+  const isLg = useMinWidthLg()
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedCuisine, setSelectedCuisine] = useState("all")
   const [showOpenOnly, setShowOpenOnly] = useState(false)
@@ -130,6 +135,8 @@ export function MapExplorer({ trucks }: { trucks: ServingTruckRow[] }) {
       return matchesSearch && matchesCuisine && matchesOpen
     })
   }, [mapTrucks, searchQuery, selectedCuisine, showOpenOnly])
+
+  const openCount = mapTrucks.filter((t) => t.isOpen).length
 
   return (
     <div className="h-screen flex flex-col">
@@ -182,6 +189,10 @@ export function MapExplorer({ trucks }: { trucks: ServingTruckRow[] }) {
           </Button>
         </div>
       </header>
+
+      <p className="shrink-0 border-b border-border/80 bg-muted/30 px-4 py-2 text-center text-xs text-muted-foreground">
+        Live locations are updated by food truck vendors.
+      </p>
 
       <div className="flex-1 flex overflow-hidden">
         {/* Sidebar - Desktop */}
@@ -329,7 +340,8 @@ function SidebarContent({
       {/* Results Count */}
       <div className="px-4 py-3 border-b bg-muted/50">
         <p className="text-sm text-muted-foreground">
-          <span className="font-medium text-foreground">{filteredTrucks.length}</span> trucks found
+          <span className="font-medium text-foreground">{filteredTrucks.length}</span>{" "}
+          {truckWord(filteredTrucks.length)} found.
         </p>
       </div>
 

@@ -284,6 +284,10 @@ export default async function DashboardPage() {
           <div className="grid lg:grid-cols-3 gap-6">
             {/* Left Column - Schedule & Profile */}
             <div className="lg:col-span-2 space-y-6">
+              <p className="text-sm text-muted-foreground rounded-lg border border-dashed border-border bg-muted/20 px-4 py-3">
+                Your schedule helps customers know where you plan to be. Your live location only updates when you
+                start serving or manually update your pin.
+              </p>
               {/* Today's Status */}
               <Card>
                 <CardHeader className="pb-4">

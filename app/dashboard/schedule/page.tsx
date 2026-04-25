@@ -67,7 +67,6 @@ async function addScheduleEntry(formData: FormData) {
   const start_time = (formData.get("start_time") as string | null) ?? ""
   const end_time = (formData.get("end_time") as string | null) ?? ""
 
-  console.log("Schedule form data:", { day_of_week: dayRaw, location_name, start_time, end_time })
   if (!day_of_week || !location_name || !start_time || !end_time) {
     return
   }
@@ -89,6 +88,8 @@ async function addScheduleEntry(formData: FormData) {
     }
   }
 
+  // Weekly schedule is stored in truck_schedule only. The live pin on `trucks` (latitude/longitude) is
+  // not updated by this form; it changes from the dashboard Today's Status / start serving flow, not here.
   await supabase.from("truck_schedule").insert({
     truck_id: truckId,
     day_of_week,
