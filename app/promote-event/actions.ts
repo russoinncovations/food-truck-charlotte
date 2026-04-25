@@ -1,7 +1,6 @@
 "use server"
 
 import { redirect } from "next/navigation"
-import { createAdminSupabaseClient } from "@/lib/supabase/admin"
 import { buildGeocodableLineFromPromote } from "@/lib/events/event-address"
 import { nextUniqueEventSlug } from "@/lib/events/slug"
 import { geocodeWithGoogleServer } from "@/lib/location/google-geocoding"
@@ -145,8 +144,20 @@ export async function submitEventPromotion(
     submissionInsert.longitude
   )
 
-  const supabase = await createClient()
-  const { data: sub, error } = await supabase
+  const { createAdminSupabaseClient } = await import("@/lib/supabase/admin")
+  const admin = createAdminSupabaseClient()
+  if (!admin) {
+    console.error(
+      "[promote-event] SUPABASE_SERVICE_ROLE_KEY or NEXT_PUBLIC_SUPABASE_URL is missing; cannot insert past RLS."
+    )
+    return {
+      success: false,
+      error:
+        "Event submission is temporarily unavailable. Please try again later or contact the site owner.",
+    }
+  }
+
+  const { data: sub, error } = await admin
     .from("event_submissions")
     .insert(submissionInsert)
     .select("id")
@@ -158,8 +169,7 @@ export async function submitEventPromotion(
   }
   console.log("[promote-event] event_submissions insert ok, id:", sub?.id)
 
-  const admin = createAdminSupabaseClient()
-  if (admin && sub?.id) {
+  if (sub?.id) {
     const slug = await nextUniqueEventSlug(admin, event_name)
     const eventsInsert = {
       title: event_name,
