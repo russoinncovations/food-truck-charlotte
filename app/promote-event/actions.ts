@@ -1,7 +1,6 @@
 "use server"
 
 import { redirect } from "next/navigation"
-import { createClient } from "@/lib/supabase/server"
 import { createAdminSupabaseClient } from "@/lib/supabase/admin"
 import { buildGeocodableLineFromPromote } from "@/lib/events/event-address"
 import { nextUniqueEventSlug } from "@/lib/events/slug"
@@ -196,11 +195,6 @@ export async function submitEventPromotion(
       console.error("[promote-event] public.events insert error:", evErr)
       console.error("[promote-event] Could not create pending `events` row (submission still saved):", evErr.message)
     }
-  } else if (!admin) {
-    console.warn(
-      "[promote-event] SUPABASE_SERVICE_ROLE_KEY is not set; only `event_submissions` was written. " +
-        "Set the service key on the server to also create a pending `public.events` row with coordinates for the public map after approval."
-    )
   }
 
   redirect("/promote-event/success")
