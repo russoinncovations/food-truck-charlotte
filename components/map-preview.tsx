@@ -1,7 +1,6 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import dynamic from "next/dynamic"
 import Link from "next/link"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
@@ -10,15 +9,16 @@ import { Navigation, ArrowRight } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { isValidTruckMapCoordinates } from "@/lib/location/truck-map-coords"
 
-const MapPreviewLeaflet = dynamic(() => import("./MapPreviewLeaflet"), {
-  ssr: false,
-  loading: () => (
-    <div
-      className="h-full w-full min-h-[240px] lg:min-h-[500px] bg-[#f2efe9]"
-      style={{ width: "100%", minWidth: "100%" }}
-    />
-  ),
-})
+function MapPreviewGooglePending({ pointCount }: { pointCount: number }) {
+  return (
+    <div className="h-full w-full min-h-[inherit] flex flex-col items-center justify-center bg-[#f2efe9] border border-dashed border-border/50 p-4 text-center">
+      <p className="text-sm font-medium text-foreground">Google Maps preview pending</p>
+      <p className="text-xs text-muted-foreground mt-1 tabular-nums">
+        {pointCount} location{pointCount === 1 ? "" : "s"}
+      </p>
+    </div>
+  )
+}
 
 const TRUCK_IMAGES = [
   "https://images.unsplash.com/photo-1687351977296-e909232009b4?w=400&h=300&fit=crop",
@@ -115,7 +115,7 @@ function MapPreview() {
           <div className="grid lg:grid-cols-3">
             <div className="lg:col-span-2 group relative w-full aspect-[4/3] lg:aspect-auto lg:h-[500px] lg:min-h-[500px] bg-[#f2efe9]">
               <div className="absolute inset-0 z-0 h-full w-full min-h-[inherit]">
-                <MapPreviewLeaflet points={mapPoints} />
+                <MapPreviewGooglePending pointCount={mapPoints.length} />
               </div>
 
               <div className="absolute inset-0 z-10 flex items-center justify-center bg-foreground/10 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none group-hover:pointer-events-auto">

@@ -142,6 +142,7 @@ function OpportunityActions({
 
   return (
     <div className={cn("space-y-2 pt-1", className)} onClick={(e) => e.stopPropagation()}>
+      <p className="text-xs font-medium text-foreground">Interested / Pass / Email Organizer</p>
       <div className="flex gap-2">
         <form action={onAction} className="flex-1">
           <input type="hidden" name="opportunityId" value={opp.id} />
@@ -171,7 +172,7 @@ function OpportunityActions({
         <Button variant="outline" size="sm" className="w-full" asChild>
           <a href={organizerMailto}>
             <Mail className="h-3.5 w-3.5 mr-1.5" />
-            Email organizer
+            Email Organizer
           </a>
         </Button>
       )}
@@ -321,14 +322,15 @@ export function DashboardEventOpportunities({
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Calendar className="h-5 w-5 text-primary" />
-            Event Opportunities
+            Requests to Confirm
           </CardTitle>
-          <CardDescription>Events looking for food trucks in your area</CardDescription>
+          <CardDescription>
+            Open a request for full details, then use Interested, Pass, or Email Organizer.
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground py-2">
-            No pending opportunities right now. When a host submits a request that includes your truck, it will show
-            up here.
+            No pending requests right now. When a host includes your truck in a booking, it will list here.
           </p>
           <Button variant="outline" className="w-full mt-4" asChild>
             <Link href="/dashboard/events">View All Events</Link>
@@ -343,9 +345,11 @@ export function DashboardEventOpportunities({
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Calendar className="h-5 w-5 text-primary" />
-          Event Opportunities
+          Requests to Confirm
         </CardTitle>
-        <CardDescription>Events looking for food trucks in your area</CardDescription>
+        <CardDescription>
+          Tap a request, then use Interested, Pass, or Email Organizer.
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">

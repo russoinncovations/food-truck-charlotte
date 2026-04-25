@@ -126,12 +126,6 @@
   }
 }
 
-/* Leaflet: Tailwind preflight’s img { max-width: 100% } can collapse basemap tiles to 0 width in
-   nested/aspect layouts (e.g. homepage preview). /map is less affected; apply globally. */
-.leaflet-container .leaflet-tile-pane img.leaflet-tile {
-  max-width: none !important;
-}
-
 @layer utilities {
   .font-display {
     font-family: var(--font-display);
