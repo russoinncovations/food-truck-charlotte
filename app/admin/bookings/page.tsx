@@ -1,11 +1,14 @@
 import { Metadata } from "next"
+import Link from "next/link"
 import { createClient } from "@/lib/supabase/server"
 import { Header } from "@/components/header"
 import { BookingsTable } from "@/components/admin/bookings-table"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Inbox, Clock, CheckCircle2, AlertCircle } from "lucide-react"
+import { Inbox, Clock, CheckCircle2, AlertCircle, Calendar, Plus, ExternalLink } from "lucide-react"
 import type { BookingRequest } from "@/lib/booking-types"
+import { easternDateStringToday } from "@/lib/events/public-events"
 
 export const metadata: Metadata = {
   title: "Booking Requests | Admin | Food Truck CLT",
@@ -30,11 +33,39 @@ async function getBookings(): Promise<BookingRequest[]> {
 
 function getStatusCounts(bookings: BookingRequest[]) {
   return {
-    new: bookings.filter(b => b.status === "new").length,
-    in_progress: bookings.filter(b => ["contacted", "in_progress", "quoted"].includes(b.status)).length,
-    confirmed: bookings.filter(b => b.status === "confirmed").length,
+    new: bookings.filter((b) => b.status === "new").length,
+    in_progress: bookings.filter((b) => ["contacted", "in_progress", "quoted"].includes(b.status)).length,
+    confirmed: bookings.filter((b) => b.status === "confirmed").length,
     total: bookings.length,
   }
+}
+
+type AdminEventRow = {
+  id: string
+  title: string
+  slug: string | null
+  date: string
+  location_name: string | null
+  address: string | null
+  active: boolean | null
+  listing_status: string | null
+  created_at: string | null
+  updated_at: string | null
+}
+
+async function getRecentEventsForAdmin(): Promise<AdminEventRow[]> {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from("events")
+    .select("id, title, slug, date, location_name, address, active, listing_status, created_at, updated_at")
+    .order("date", { ascending: false })
+    .limit(30)
+
+  if (error) {
+    console.error("[admin] events list:", error)
+    return []
+  }
+  return (data ?? []) as AdminEventRow[]
 }
 
 export default async function AdminBookingsPage({
@@ -43,7 +74,8 @@ export default async function AdminBookingsPage({
   searchParams: Promise<{ key?: string }>
 }) {
   const key = (await searchParams)?.key
-  if (key !== "7985") {
+  const adminKey = process.env.ADMIN_KEY ?? "7985"
+  if (key !== adminKey) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <p className="text-muted-foreground">Page not found.</p>
@@ -53,6 +85,11 @@ export default async function AdminBookingsPage({
 
   const bookings = await getBookings()
   const counts = getStatusCounts(bookings)
+  const adminEvents = await getRecentEventsForAdmin()
+  const todayStr = easternDateStringToday()
+  const keyQ = `?key=${encodeURIComponent(key)}`
+  const newEventHref = `/admin/events/new${keyQ}`
+  const eventsAdminHref = `/admin/events${keyQ}`
 
   return (
     <div className="min-h-screen bg-muted/30">
@@ -69,6 +106,92 @@ export default async function AdminBookingsPage({
               Manage and respond to food truck booking inquiries
             </p>
           </div>
+
+          <Card className="mb-8 border-primary/20">
+            <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Calendar className="h-5 w-5 text-primary" />
+                  Events
+                </CardTitle>
+                <CardDescription>
+                  Add or review events for the public calendar. Past events stay in the database but are hidden
+                  from the site. Quick Add defaults to <strong>approved</strong> (live when date is upcoming).
+                </CardDescription>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button asChild>
+                  <Link href={newEventHref} className="flex items-center gap-2">
+                    <Plus className="h-4 w-4" />
+                    Quick Add Event
+                  </Link>
+                </Button>
+                <Button variant="outline" asChild>
+                  <Link href={eventsAdminHref} className="flex items-center gap-2">
+                    Full events admin
+                    <ExternalLink className="h-4 w-4" />
+                  </Link>
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {adminEvents.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No events in the database yet.</p>
+              ) : (
+                <div className="overflow-x-auto rounded-md border border-border">
+                  <table className="w-full text-sm text-left">
+                    <thead className="bg-muted/50 border-b">
+                      <tr>
+                        <th className="p-2 font-medium">Name</th>
+                        <th className="p-2 font-medium">Date</th>
+                        <th className="p-2 font-medium">Venue</th>
+                        <th className="p-2 font-medium">Status</th>
+                        <th className="p-2 font-medium">When</th>
+                        <th className="p-2 font-medium" />
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {adminEvents.map((ev) => {
+                        const venue = [ev.location_name, ev.address].filter(Boolean).join(" · ") || "—"
+                        const ls = (ev.listing_status ?? "").toLowerCase()
+                        const statusLabel = ls || (ev.active ? "approved" : "inactive")
+                        const isPast = ev.date < todayStr
+                        return (
+                          <tr key={ev.id} className="border-b border-border/60 last:border-0">
+                            <td className="p-2 font-medium text-foreground max-w-[200px]">{ev.title}</td>
+                            <td className="p-2 text-muted-foreground whitespace-nowrap">{ev.date}</td>
+                            <td className="p-2 text-muted-foreground max-w-[200px]">{venue}</td>
+                            <td className="p-2">
+                              <Badge variant="outline" className="font-normal text-xs">
+                                {statusLabel}
+                              </Badge>
+                            </td>
+                            <td className="p-2">
+                              <span className={isPast ? "text-muted-foreground" : "text-foreground font-medium"}>
+                                {isPast ? "Past" : "Upcoming"}
+                              </span>
+                            </td>
+                            <td className="p-2 text-right">
+                              {ev.active && ev.slug ? (
+                                <Button variant="ghost" size="sm" asChild>
+                                  <Link href={`/events/${ev.slug}`} className="gap-1">
+                                    View
+                                    <ExternalLink className="h-3.5 w-3.5" />
+                                  </Link>
+                                </Button>
+                              ) : (
+                                "—"
+                              )}
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
           {/* Stats */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
