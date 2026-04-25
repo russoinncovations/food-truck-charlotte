@@ -43,7 +43,9 @@ export default function MapView({ trucks, selectedTruck, onSelectTruck }: MapVie
 
   const mappable = trucks.filter(hasMapLocation)
   const [infoTruckId, setInfoTruckId] = useState<string | null>(null)
-  const markerById = useRef(new Map<string, google.maps.marker.AdvancedMarkerElement | null>())
+  const markerById = useRef(
+    new globalThis.Map<string, google.maps.marker.AdvancedMarkerElement | null>()
+  )
   const [infoAnchor, setInfoAnchor] = useState<google.maps.marker.AdvancedMarkerElement | null>(null)
 
   useEffect(() => {
