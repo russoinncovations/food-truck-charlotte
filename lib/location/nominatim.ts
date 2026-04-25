@@ -1,42 +1,37 @@
-import { isValidTruckMapCoordinates } from "./truck-map-coords"
-
-const NOMINATIM = "https://nominatim.openstreetmap.org/search"
-
-export type GeocodeResult = { ok: true; lat: number; lng: number } | { ok: false; error: string }
+import { isValidTruckMapCoordinates } from "@/lib/location/truck-map-coords"
 
 /**
- * Geocode a freeform address/place string (bias toward Charlotte, NC).
+ * Nominatim (OpenStreetMap) — use sparingly; respect
+ * https://operations.osmfoundation.org/policies/nominatim/ (1 req/s, identify app).
  */
-export async function geocodeCharlotteArea(query: string): Promise<GeocodeResult> {
-  const q = query.trim()
-  if (!q) {
-    return { ok: false, error: "Enter a location to search." }
-  }
-
-  const searchQ = q.toLowerCase().includes("charlotte")
-    ? q
-    : `${q}, Charlotte, NC, USA`
-
+export async function geocodeNominatim(addressLine: string): Promise<{ lat: number; lng: number } | null> {
+  const q = addressLine.trim()
+  if (!q) return null
   try {
-    const url = new URL(NOMINATIM)
-    url.searchParams.set("q", searchQ)
-    url.searchParams.set("format", "json")
-    url.searchParams.set("limit", "1")
-    const res = await fetch(url.toString(), {
-      headers: { "User-Agent": "foodtruckclt.com/1.0 (serving location)" },
-      signal: AbortSignal.timeout(10_000),
-    })
-    if (!res.ok) {
-      return { ok: false, error: "Location search failed. Try again." }
-    }
-    const data = (await res.json()) as { lat?: string; lon?: string }[]
-    const lat = data[0]?.lat != null ? parseFloat(String(data[0].lat)) : NaN
-    const lng = data[0]?.lon != null ? parseFloat(String(data[0].lon)) : NaN
-    if (!isValidTruckMapCoordinates(lat, lng)) {
-      return { ok: false, error: "Could not find a valid point in the Charlotte area. Try another search or set the pin manually." }
-    }
-    return { ok: true, lat, lng }
+    const geoRes = await fetch(
+      `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=1`,
+      { headers: { "User-Agent": "FoodTruckCLT/1.0 (https://foodtruckclt.com)" }, signal: AbortSignal.timeout(8000) }
+    )
+    const geoData = (await geoRes.json()) as { lat?: string; lon?: string }[]
+    const la = geoData[0]?.lat != null ? parseFloat(geoData[0].lat) : undefined
+    const lo = geoData[0]?.lon != null ? parseFloat(geoData[0].lon) : undefined
+    if (la == null || lo == null || !Number.isFinite(la) || !Number.isFinite(lo)) return null
+    return { lat: la, lng: lo }
   } catch {
-    return { ok: false, error: "Location search failed. Check your connection and try again." }
+    return null
   }
+}
+
+/** Vendor serving flow: geocode and require a pin in the Charlotte map bounds. */
+export async function geocodeCharlotteArea(
+  addressLine: string
+): Promise<{ ok: true; lat: number; lng: number } | { ok: false; error: string }> {
+  const coords = await geocodeNominatim(addressLine)
+  if (!coords) {
+    return { ok: false, error: "Could not find that address. Try a street address in the Charlotte area." }
+  }
+  if (!isValidTruckMapCoordinates(coords.lat, coords.lng)) {
+    return { ok: false, error: "That location looks outside the Charlotte service area. Try a local address." }
+  }
+  return { ok: true, lat: coords.lat, lng: coords.lng }
 }

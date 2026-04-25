@@ -1,6 +1,7 @@
 "use client"
 
 import dynamic from "next/dynamic"
+import type { MapEventMarker } from "@/lib/events/map-event-markers"
 
 const MapPreview = dynamic(() => import("@/components/map-preview"), {
   ssr: false,
@@ -17,6 +18,6 @@ const MapPreview = dynamic(() => import("@/components/map-preview"), {
   ),
 })
 
-export function MapPreviewClient() {
-  return <MapPreview />
+export function MapPreviewClient({ mapEvents }: { mapEvents: MapEventMarker[] }) {
+  return <MapPreview mapEvents={mapEvents} />
 }

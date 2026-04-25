@@ -2,6 +2,9 @@
 
 import { revalidatePath } from "next/cache"
 import { createAdminSupabaseClient } from "@/lib/supabase/admin"
+import { buildGeocodableLineFromParts } from "@/lib/events/event-address"
+import { coordsAreValidForMap, geocodeEventAddressForStorage } from "@/lib/events/event-geocode"
+import { nextUniqueEventSlug } from "@/lib/events/slug"
 
 function expectedAdminKey(): string {
   return process.env.ADMIN_KEY ?? "7985"
@@ -10,17 +13,6 @@ function expectedAdminKey(): string {
 function verifyAdminKey(raw: string | null | undefined): boolean {
   const k = (raw ?? "").trim()
   return k === expectedAdminKey()
-}
-
-function slugFromTitle(title: string): string {
-  const base = title
-    .toLowerCase()
-    .trim()
-    .replace(/\s+/g, "-")
-    .replace(/[^a-z0-9-]/g, "")
-    .replace(/-+/g, "-")
-    .replace(/^-|-$/g, "")
-  return base || `event-${Date.now()}`
 }
 
 export type QuickAddEventResult = { success: true } | { success: false; error: string }
@@ -86,12 +78,26 @@ export async function submitQuickAddEvent(_prev: QuickAddEventResult | null, for
   }
 
   const active = listingStatus === "approved"
-  const baseSlug = slugFromTitle(title)
-  let slug = baseSlug
-  for (let i = 0; i < 5; i++) {
-    const { data: existing } = await admin.from("events").select("id").eq("slug", slug).maybeSingle()
-    if (!existing) break
-    slug = `${baseSlug}-${Math.random().toString(36).slice(2, 8)}`
+  const slug = await nextUniqueEventSlug(admin, title)
+
+  const geoLine = buildGeocodableLineFromParts({
+    address,
+    location_name,
+    address_line1: null,
+    city: null,
+    state: null,
+    zip: null,
+  })
+  let latitude: number | null = null
+  let longitude: number | null = null
+  if (geoLine) {
+    const c = await geocodeEventAddressForStorage(geoLine)
+    if (c) {
+      latitude = c.lat
+      longitude = c.lng
+    } else {
+      console.warn("[admin] Quick Add: geocode failed for line:", geoLine)
+    }
   }
 
   const row = {
@@ -117,6 +123,8 @@ export async function submitQuickAddEvent(_prev: QuickAddEventResult | null, for
     active,
     submitted_by_truck_id: null,
     slug,
+    latitude,
+    longitude,
   }
 
   const { error } = await admin.from("events").insert(row as never)
@@ -127,6 +135,8 @@ export async function submitQuickAddEvent(_prev: QuickAddEventResult | null, for
 
   revalidatePath("/events")
   revalidatePath("/admin/events")
+  revalidatePath("/")
+  revalidatePath("/map")
   return { success: true }
 }
 
@@ -138,12 +148,45 @@ export async function approveEventById(formData: FormData) {
   }
   const admin = createAdminSupabaseClient()
   if (!admin) return
+
+  const { data: ev } = await admin
+    .from("events")
+    .select("id, address, location_name, address_line1, city, state, zip, latitude, longitude")
+    .eq("id", id)
+    .maybeSingle()
+
+  if (ev) {
+    const row = ev as Record<string, unknown>
+    const line = buildGeocodableLineFromParts({
+      address: (row.address as string) ?? null,
+      location_name: (row.location_name as string) ?? null,
+      address_line1: (row.address_line1 as string) ?? null,
+      city: (row.city as string) ?? null,
+      state: (row.state as string) ?? null,
+      zip: (row.zip as string) ?? null,
+    })
+    const hasValidPin = coordsAreValidForMap(row.latitude, row.longitude)
+    if (!hasValidPin && line) {
+      const c = await geocodeEventAddressForStorage(line)
+      if (c) {
+        await admin.from("events").update({ latitude: c.lat, longitude: c.lng }).eq("id", id)
+      } else {
+        console.warn(
+          "[admin] approve: could not geocode event; lat/lng left unset (approval not blocked). id=",
+          id
+        )
+      }
+    }
+  }
+
   await admin
     .from("events")
     .update({ active: true, listing_status: "approved" as const })
     .eq("id", id)
   revalidatePath("/admin/events")
   revalidatePath("/events")
+  revalidatePath("/")
+  revalidatePath("/map")
 }
 
 export async function rejectEventById(formData: FormData) {
@@ -160,4 +203,6 @@ export async function rejectEventById(formData: FormData) {
     .eq("id", id)
   revalidatePath("/admin/events")
   revalidatePath("/events")
+  revalidatePath("/")
+  revalidatePath("/map")
 }

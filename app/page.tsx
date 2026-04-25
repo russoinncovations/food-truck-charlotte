@@ -7,6 +7,7 @@ import { VendorCTA } from "@/components/vendor-cta"
 import { Footer } from "@/components/footer"
 import { createClient } from "@/lib/supabase/server"
 import { countUpcomingPublicEvents } from "@/lib/events/public-events"
+import { fetchMapEventMarkers } from "@/lib/events/map-event-markers"
 
 export default async function Home() {
   const supabase = await createClient()
@@ -17,7 +18,7 @@ export default async function Home() {
       <Header />
       <Hero upcomingEventCount={upcomingEventCount} />
       <FeaturedTrucks />
-      <MapPreviewClient />
+      <MapPreviewClient mapEvents={mapEventsForPreview} />
       <EventsSection />
       <VendorCTA />
       <Footer />

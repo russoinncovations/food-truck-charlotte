@@ -3,6 +3,7 @@ import { Metadata } from "next"
 import { MapExplorer, type ServingTruckRow } from "@/components/map-explorer"
 import { Skeleton } from "@/components/ui/skeleton"
 import { createClient } from "@/lib/supabase/server"
+import { fetchMapEventMarkers } from "@/lib/events/map-event-markers"
 
 export const metadata: Metadata = {
   title: "Find Food Trucks Near You | FoodTruck CLT",
@@ -64,9 +65,11 @@ export default async function MapPage() {
     }
   }
 
+  const mapEvents = await fetchMapEventMarkers(supabase)
+
   return (
     <Suspense fallback={<MapSkeleton />}>
-      <MapExplorer trucks={merged} />
+      <MapExplorer trucks={merged} mapEvents={mapEvents} />
     </Suspense>
   )
 }

@@ -2,12 +2,25 @@
 
 import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
+import { createAdminSupabaseClient } from "@/lib/supabase/admin"
+import { buildGeocodableLineFromPromote } from "@/lib/events/event-address"
+import { nextUniqueEventSlug } from "@/lib/events/slug"
+import { geocodeWithGoogleServer } from "@/lib/location/google-geocoding"
 
 export type EventPromotionResult = { success: true } | { success: false; error: string }
 
 function emptyToNull(s: string | null | undefined): string | null {
   const t = (s ?? "").trim()
   return t === "" ? null : t
+}
+
+/** Prefer first matching key so the action stays aligned with the form. */
+function readFirstFormString(formData: FormData, keys: string[]): string | null {
+  for (const k of keys) {
+    const v = emptyToNull(formData.get(k) as string | null)
+    if (v) return v
+  }
+  return null
 }
 
 /** Normalize time from HTML <input type="time"> to timestamptz-friendly string or null. */
@@ -39,8 +52,19 @@ export async function submitEventPromotion(
   const event_date = ((formData.get("eventDate") as string) ?? "").trim()
   const start_time = normalizeTime(formData.get("startTime") as string | null)
   const end_time = normalizeTime(formData.get("endTime") as string | null)
-  const venue_name = emptyToNull(formData.get("venueName") as string | null)
-  const street_address = emptyToNull(formData.get("streetAddress") as string | null)
+  const venue_name = readFirstFormString(formData, [
+    "venueName",
+    "venue_name",
+    "locationName",
+    "location_name",
+  ])
+  const street_address = readFirstFormString(formData, [
+    "streetAddress",
+    "street_address",
+    "address",
+    "streetAddressField",
+    "street",
+  ])
   const description = emptyToNull(formData.get("description") as string | null)
   const participating_trucks = emptyToNull(formData.get("participatingTrucks") as string | null)
   const is_public_raw = (formData.get("isPublic") as string) ?? "true"
@@ -67,8 +91,37 @@ export async function submitEventPromotion(
     return { success: false, error: "Please enter valid http(s) URLs for website, ticket, or graphic links, or leave them blank." }
   }
 
-  const supabase = await createClient()
-  const { error } = await supabase.from("event_submissions").insert({
+  console.log("[promote-event] submitted venue name:", venue_name)
+  console.log("[promote-event] submitted street address (raw):", street_address)
+
+  const geocodeLine = buildGeocodableLineFromPromote({
+    streetAddress: street_address,
+    venueName: venue_name,
+  })
+  console.log("[promote-event] final geocode query:", geocodeLine)
+
+  let lat: number | null = null
+  let lng: number | null = null
+
+  if (geocodeLine) {
+    const outcome = await geocodeWithGoogleServer(geocodeLine)
+    console.log("[promote-event] Google geocode status:", outcome.status, outcome)
+    if (outcome.ok) {
+      lat = outcome.latitude
+      lng = outcome.longitude
+      console.log("[promote-event] returned lat/lng:", lat, lng)
+      console.log("[promote-event] formatted_address:", outcome.formatted_address, "place_id:", outcome.place_id)
+    } else {
+      console.warn(
+        "Event submitted but geocoding failed; latitude/longitude not saved.",
+        { query: geocodeLine, googleStatus: outcome.status, message: outcome.message }
+      )
+    }
+  } else {
+    console.log("[promote-event] no geocodable line (no street/venue to combine)")
+  }
+
+  const submissionInsert = {
     event_name,
     event_date,
     start_time,
@@ -83,11 +136,71 @@ export async function submitEventPromotion(
     organizer_name,
     organizer_email,
     organizer_phone,
-    status: "pending",
-  })
+    status: "pending" as const,
+    latitude: lat,
+    longitude: lng,
+  }
+  console.log(
+    "[promote-event] Supabase event_submissions insert payload latitude/longitude:",
+    submissionInsert.latitude,
+    submissionInsert.longitude
+  )
+
+  const supabase = await createClient()
+  const { data: sub, error } = await supabase
+    .from("event_submissions")
+    .insert(submissionInsert)
+    .select("id")
+    .single()
 
   if (error) {
+    console.error("[promote-event] event_submissions insert error:", error)
     return { success: false, error: error.message }
+  }
+  console.log("[promote-event] event_submissions insert ok, id:", sub?.id)
+
+  const admin = createAdminSupabaseClient()
+  if (admin && sub?.id) {
+    const slug = await nextUniqueEventSlug(admin, event_name)
+    const eventsInsert = {
+      title: event_name,
+      date: event_date,
+      start_time,
+      end_time,
+      location_name: venue_name,
+      address: street_address,
+      description,
+      participating_trucks,
+      is_public,
+      event_website_url: event_url,
+      image_url: graphic_url,
+      featured_image_url: graphic_url,
+      organizer_name,
+      organizer_email,
+      organizer_phone,
+      listing_status: "pending" as const,
+      active: false,
+      submitted_by_truck_id: null,
+      slug,
+      latitude: lat,
+      longitude: lng,
+      source_submission_id: sub.id,
+    }
+    console.log(
+      "[promote-event] public.events insert payload latitude/longitude:",
+      eventsInsert.latitude,
+      eventsInsert.longitude
+    )
+    const { error: evErr } = await admin.from("events").insert(eventsInsert as never)
+    if (evErr) {
+      console.error("[promote-event] public.events insert error:", evErr)
+      console.error("[promote-event] Could not create pending `events` row (submission still saved):", evErr.message)
+    }
+  } else if (!admin) {
+    console.warn(
+      "[promote-event] SUPABASE_SERVICE_ROLE_KEY is not set; only `event_submissions` was written. " +
+        "Set the service key on the server to also create a pending `public.events` row with coordinates for the public map after approval."
+    )
   }
 
   redirect("/promote-event/success")

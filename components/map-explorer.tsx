@@ -30,65 +30,13 @@ import {
   ChevronLeft,
   Truck,
   Navigation,
+  Calendar,
 } from "lucide-react"
 import { cuisineCategories, type FoodTruck } from "@/lib/data"
-import { isValidTruckMapCoordinates } from "@/lib/location/truck-map-coords"
+import { mapRowsToMapTrucks, type ServingTruckRow } from "@/lib/map/serving-row-to-food-truck"
+import { type MapEventMarker, formatMapEventDateTime } from "@/lib/events/map-event-markers"
 
-export type ServingTruckRow = {
-  id: string
-  name: string
-  slug: string | null
-  cuisine: string | string[] | null
-  latitude: number | string | null
-  longitude: number | string | null
-  serving_today: boolean | null
-  today_location: string | null
-  street_address: string | null
-  today_specials: string | null
-}
-
-function mapRowsToMapTrucks(rows: ServingTruckRow[]): FoodTruck[] {
-  return rows.map((truck) => {
-    const lat = Number(truck.latitude)
-    const lng = Number(truck.longitude)
-    const hasMapPin = isValidTruckMapCoordinates(lat, lng)
-    const cuisine = Array.isArray(truck.cuisine)
-      ? truck.cuisine
-      : truck.cuisine
-        ? [truck.cuisine]
-        : []
-    const fallbackSlug = truck.name
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/(^-|-$)/g, "") || truck.id
-    const slug =
-      truck.slug && String(truck.slug).trim() !== "" ? String(truck.slug).trim() : fallbackSlug
-
-    return {
-      id: truck.id,
-      name: truck.name,
-      slug,
-      cuisine,
-      description: "",
-      image: "/images/truck-tacos.jpg",
-      rating: 0,
-      reviewCount: 0,
-      priceRange: "$",
-      isOpen: Boolean(truck.serving_today),
-      isFeatured: false,
-      location: hasMapPin
-        ? {
-            lat,
-            lng,
-            address: [truck.today_location, truck.street_address].filter(Boolean).join(" · ") || "",
-          }
-        : undefined,
-      schedule: [],
-      menu: [],
-      socialLinks: {},
-    }
-  })
-}
+export type { ServingTruckRow }
 
 // Dynamically import map to avoid SSR issues
 const MapView = dynamic(() => import("@/components/map-view"), {
@@ -107,36 +55,54 @@ function truckWord(count: number): "truck" | "trucks" {
   return count === 1 ? "truck" : "trucks"
 }
 
-export function MapExplorer({ trucks }: { trucks: ServingTruckRow[] }) {
+export function MapExplorer({ trucks, mapEvents }: { trucks: ServingTruckRow[]; mapEvents: MapEventMarker[] }) {
   const isLg = useMinWidthLg()
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedCuisine, setSelectedCuisine] = useState("all")
   const [showOpenOnly, setShowOpenOnly] = useState(false)
   const [selectedTruck, setSelectedTruck] = useState<FoodTruck | null>(null)
+  const [selectedEvent, setSelectedEvent] = useState<MapEventMarker | null>(null)
   const [viewMode, setViewMode] = useState<"map" | "list">("map")
   const [isSidebarOpen, setIsSidebarOpen] = useState(true)
 
   const mapTrucks = useMemo(() => mapRowsToMapTrucks(trucks), [trucks])
+
+  const serverMappableTruckCount = useMemo(
+    () => mapTrucks.filter((t) => t.location != null).length,
+    [mapTrucks]
+  )
+  const showPolishedEmpty = serverMappableTruckCount === 0 && mapEvents.length === 0
+
+  const openTruckCount = useMemo(() => mapTrucks.filter((t) => t.isOpen).length, [mapTrucks])
 
   const filteredTrucks = useMemo(() => {
     return mapTrucks.filter((truck) => {
       const matchesSearch =
         searchQuery === "" ||
         truck.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        truck.cuisine.some((c) =>
-          c.toLowerCase().includes(searchQuery.toLowerCase())
-        )
+        truck.cuisine.some((c) => c.toLowerCase().includes(searchQuery.toLowerCase()))
       const matchesCuisine =
         selectedCuisine === "all" ||
-        truck.cuisine.some(
-          (c) => c.toLowerCase() === selectedCuisine.toLowerCase()
-        )
+        truck.cuisine.some((c) => c.toLowerCase() === selectedCuisine.toLowerCase())
       const matchesOpen = !showOpenOnly || truck.isOpen
       return matchesSearch && matchesCuisine && matchesOpen
     })
   }, [mapTrucks, searchQuery, selectedCuisine, showOpenOnly])
 
-  const openCount = mapTrucks.filter((t) => t.isOpen).length
+  const filteredMapEvents = useMemo(() => {
+    if (!searchQuery.trim()) return mapEvents
+    const q = searchQuery.toLowerCase()
+    return mapEvents.filter((e) => e.title.toLowerCase().includes(q))
+  }, [mapEvents, searchQuery])
+
+  const setSelectedTruckAndClearEvent = (t: FoodTruck | null) => {
+    setSelectedEvent(null)
+    setSelectedTruck(t)
+  }
+  const setSelectedEventAndClearTruck = (e: MapEventMarker | null) => {
+    setSelectedTruck(null)
+    setSelectedEvent(e)
+  }
 
   return (
     <div className="h-screen flex flex-col">
@@ -192,6 +158,9 @@ export function MapExplorer({ trucks }: { trucks: ServingTruckRow[] }) {
 
       <p className="shrink-0 border-b border-border/80 bg-muted/30 px-4 py-2 text-center text-xs text-muted-foreground">
         Live locations are updated by food truck vendors.
+        {mapEvents.length > 0
+          ? " Upcoming public events appear as orange pins on the map."
+          : ""}
       </p>
 
       <div className="flex-1 flex overflow-hidden">
@@ -209,8 +178,13 @@ export function MapExplorer({ trucks }: { trucks: ServingTruckRow[] }) {
             showOpenOnly={showOpenOnly}
             setShowOpenOnly={setShowOpenOnly}
             filteredTrucks={filteredTrucks}
+            filteredMapEvents={filteredMapEvents}
+            mapEventsCount={mapEvents.length}
+            openTruckCount={openTruckCount}
             selectedTruck={selectedTruck}
-            setSelectedTruck={setSelectedTruck}
+            selectedEvent={selectedEvent}
+            setSelectedTruck={setSelectedTruckAndClearEvent}
+            setSelectedEvent={setSelectedEventAndClearTruck}
           />
         </aside>
 
@@ -234,8 +208,13 @@ export function MapExplorer({ trucks }: { trucks: ServingTruckRow[] }) {
               showOpenOnly={showOpenOnly}
               setShowOpenOnly={setShowOpenOnly}
               filteredTrucks={filteredTrucks}
+              filteredMapEvents={filteredMapEvents}
+              mapEventsCount={mapEvents.length}
+              openTruckCount={openTruckCount}
               selectedTruck={selectedTruck}
-              setSelectedTruck={setSelectedTruck}
+              selectedEvent={selectedEvent}
+              setSelectedTruck={setSelectedTruckAndClearEvent}
+              setSelectedEvent={setSelectedEventAndClearTruck}
             />
           </SheetContent>
         </Sheet>
@@ -265,9 +244,14 @@ export function MapExplorer({ trucks }: { trucks: ServingTruckRow[] }) {
             <div className="lg:hidden absolute bottom-4 left-4 right-4 z-40">
               <TruckCard
                 truck={selectedTruck}
-                onClose={() => setSelectedTruck(null)}
+                onClose={() => setSelectedTruckAndClearEvent(null)}
                 compact
               />
+            </div>
+          )}
+          {selectedEvent && viewMode === "map" && (
+            <div className="lg:hidden absolute bottom-4 left-4 right-4 z-40">
+              <EventMapCard event={selectedEvent} onClose={() => setSelectedEventAndClearTruck(null)} />
             </div>
           )}
         </main>
@@ -284,8 +268,13 @@ function SidebarContent({
   showOpenOnly,
   setShowOpenOnly,
   filteredTrucks,
+  filteredMapEvents,
+  mapEventsCount,
+  openTruckCount,
   selectedTruck,
+  selectedEvent,
   setSelectedTruck,
+  setSelectedEvent,
 }: {
   searchQuery: string
   setSearchQuery: (v: string) => void
@@ -294,9 +283,16 @@ function SidebarContent({
   showOpenOnly: boolean
   setShowOpenOnly: (v: boolean) => void
   filteredTrucks: FoodTruck[]
+  filteredMapEvents: MapEventMarker[]
+  mapEventsCount: number
+  openTruckCount: number
   selectedTruck: FoodTruck | null
+  selectedEvent: MapEventMarker | null
   setSelectedTruck: (v: FoodTruck | null) => void
+  setSelectedEvent: (v: MapEventMarker | null) => void
 }) {
+  const noTrucksOnMapNow = openTruckCount === 0 && mapEventsCount > 0
+
   return (
     <>
       {/* Search & Filters */}
@@ -305,7 +301,7 @@ function SidebarContent({
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             type="text"
-            placeholder="Search trucks or cuisines..."
+            placeholder="Search trucks, cuisines, or events…"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-9"
@@ -337,39 +333,146 @@ function SidebarContent({
         </div>
       </div>
 
+      {noTrucksOnMapNow && (
+        <div className="px-4 py-3 border-b bg-orange-500/10 text-sm text-foreground">
+          <p className="font-medium">No trucks live right now</p>
+          <p className="text-muted-foreground mt-1">
+            Showing <span className="font-medium text-foreground">{mapEventsCount}</span> upcoming public
+            event{mapEventsCount === 1 ? "" : "s"} on the map (orange pins).{" "}
+            <Link href="/events" className="text-primary underline font-medium">
+              Browse all events
+            </Link>
+          </p>
+        </div>
+      )}
+
       {/* Results Count */}
-      <div className="px-4 py-3 border-b bg-muted/50">
+      <div className="px-4 py-3 border-b bg-muted/50 space-y-1">
         <p className="text-sm text-muted-foreground">
           <span className="font-medium text-foreground">{filteredTrucks.length}</span>{" "}
-          {truckWord(filteredTrucks.length)} found.
+          {truckWord(filteredTrucks.length)} on the list
+          {mapEventsCount > 0 ? (
+            <>
+              {" "}
+              ·{" "}
+              <span className="font-medium text-foreground">{filteredMapEvents.length}</span> upcoming event
+              {filteredMapEvents.length === 1 ? "" : "s"} on the map
+            </>
+          ) : null}
         </p>
       </div>
 
-      {/* Truck List */}
       <ScrollArea className="flex-1">
-        <div className="p-4 space-y-3">
-          {filteredTrucks.map((truck) => (
-            <Link
-              key={truck.id}
-              href={`/trucks/${truck.slug}`}
-              className="block cursor-pointer rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-            >
-              <TruckCard
-                truck={truck}
-                isSelected={selectedTruck?.id === truck.id}
-              />
-            </Link>
-          ))}
-          {filteredTrucks.length === 0 && (
-            <div className="text-center py-12">
-              <Truck className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
-              <p className="text-muted-foreground">No trucks found</p>
-              <p className="text-sm text-muted-foreground">Try adjusting your filters</p>
+        <div className="p-4 space-y-6">
+          {filteredMapEvents.length > 0 ? (
+            <div className="space-y-2">
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Upcoming on the map
+              </h3>
+              <div className="space-y-2">
+                {filteredMapEvents.map((ev) => (
+                  <button
+                    key={ev.id}
+                    type="button"
+                    className={`w-full text-left rounded-xl border transition-all ${
+                      selectedEvent?.id === ev.id
+                        ? "border-orange-500 shadow-md ring-1 ring-orange-500/30"
+                        : "border-border hover:border-orange-500/50"
+                    }`}
+                    onClick={() => setSelectedEvent(ev)}
+                  >
+                    <div className="p-3">
+                      <div className="flex items-start gap-2">
+                        <span
+                          className="mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full bg-orange-500"
+                          aria-hidden
+                        />
+                        <div className="min-w-0 flex-1">
+                          <p className="font-semibold text-sm text-foreground leading-snug">{ev.title}</p>
+                          <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                            <Calendar className="h-3 w-3 shrink-0" />
+                            {formatMapEventDateTime(ev.date, ev.startTime, ev.endTime)}
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{ev.locationLabel}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </button>
+                ))}
+                <p className="text-xs text-muted-foreground pl-1">
+                  Tap a pin or card to focus the map. Full listings on the{" "}
+                  <Link href="/events" className="text-primary underline">
+                    events page
+                  </Link>
+                  .
+                </p>
+              </div>
+            </div>
+          ) : null}
+
+          <div className="space-y-2">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Food trucks</h3>
+            <div className="space-y-3">
+              {filteredTrucks.map((truck) => (
+                <div key={truck.id} className="space-y-1">
+                  <button
+                    type="button"
+                    className="w-full text-left rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                    onClick={() => setSelectedTruck(truck)}
+                  >
+                    <TruckCard truck={truck} isSelected={selectedTruck?.id === truck.id} />
+                  </button>
+                  <Link
+                    href={`/trucks/${truck.slug}`}
+                    className="text-xs text-primary pl-1 hover:underline"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    View truck profile
+                  </Link>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {filteredTrucks.length === 0 && filteredMapEvents.length === 0 && (
+            <div className="text-center py-8">
+              <Truck className="h-10 w-10 mx-auto text-muted-foreground/50 mb-3" />
+              <p className="text-muted-foreground">No results</p>
+              <p className="text-sm text-muted-foreground">Try different search or filters</p>
             </div>
           )}
         </div>
       </ScrollArea>
     </>
+  )
+}
+
+function EventMapCard({ event, onClose }: { event: MapEventMarker; onClose: () => void }) {
+  const href =
+    event.slug && String(event.slug).trim() !== "" ? `/events/${encodeURIComponent(String(event.slug).trim())}` : "/events"
+  return (
+    <div className="relative bg-card rounded-xl border border-orange-500/40 shadow-xl p-4">
+      <Button variant="ghost" size="icon" className="absolute top-2 right-2 h-8 w-8" onClick={onClose}>
+        <X className="h-4 w-4" />
+      </Button>
+      <div className="pr-8">
+        <div className="flex items-center gap-2 mb-1">
+          <span className="h-2.5 w-2.5 rounded-full bg-orange-500 shrink-0" />
+          <h3 className="font-semibold text-foreground">{event.title}</h3>
+        </div>
+        <p className="text-xs text-muted-foreground flex items-center gap-1 mb-2">
+          <Calendar className="h-3.5 w-3.5 shrink-0" />
+          {formatMapEventDateTime(event.date, event.startTime, event.endTime)}
+        </p>
+        <p className="text-sm text-muted-foreground mb-3 flex items-start gap-1.5">
+          <MapPin className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+          <span>{event.locationLabel}</span>
+        </p>
+        <Button size="sm" className="w-full" asChild>
+          <Link href={href}>{event.slug ? "View event details" : "Browse events"}</Link>
+        </Button>
+      </div>
+    </div>
   )
 }
 

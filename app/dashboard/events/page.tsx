@@ -10,6 +10,8 @@ import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { createClient } from "@/lib/supabase/server"
+import { buildGeocodableLineFromParts } from "@/lib/events/event-address"
+import { geocodeEventAddressForStorage } from "@/lib/events/event-geocode"
 
 export const metadata: Metadata = {
   title: "Events | FoodTruck CLT",
@@ -56,6 +58,19 @@ async function submitEvent(formData: FormData) {
 
   const slug = slugFromTitle(title)
 
+  const geoLine = buildGeocodableLineFromParts({
+    address: address || null,
+    location_name: location_name || null,
+    address_line1: null,
+    city: null,
+    state: null,
+    zip: null,
+  })
+  const coords = geoLine ? await geocodeEventAddressForStorage(geoLine) : null
+  if (geoLine && !coords) {
+    console.warn("[dashboard/events] Geocode did not return coordinates for:", geoLine)
+  }
+
   await supabase.from("events").insert({
     title,
     date,
@@ -66,10 +81,15 @@ async function submitEvent(formData: FormData) {
     end_time: end_time || null,
     submitted_by_truck_id: truck.id,
     active: false,
+    listing_status: "pending",
     slug,
+    latitude: coords?.lat ?? null,
+    longitude: coords?.lng ?? null,
   })
 
   revalidatePath("/dashboard/events")
+  revalidatePath("/")
+  revalidatePath("/map")
 }
 
 export default async function DashboardEventsPage() {
