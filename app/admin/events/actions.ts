@@ -58,7 +58,10 @@ export async function submitQuickAddEvent(_prev: QuickAddEventResult | null, for
   const sourcePaste = ((formData.get("sourcePaste") as string) ?? "").trim() || null
   const listingRaw = ((formData.get("listing_status") as string) ?? "approved").trim()
   const listingStatus =
-    listingRaw === "draft" || listingRaw === "rejected" || listingRaw === "approved"
+    listingRaw === "draft" ||
+    listingRaw === "rejected" ||
+    listingRaw === "approved" ||
+    listingRaw === "pending"
       ? listingRaw
       : "approved"
 

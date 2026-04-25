@@ -108,13 +108,12 @@ function EventCard({ event }: { event: EventRow }) {
 
 export default async function EventsPage() {
   const supabase = await createClient()
-  const { data: events } = await publicUpcomingEventsBase(supabase)
-    .select(
-      "id, title, slug, location_name, address, date, description, image_url, featured, active, listing_status"
-    )
-    .order("date", { ascending: true })
+  const { data: events } = await publicUpcomingEventsBase(
+    supabase,
+    "id, title, slug, location_name, address, date, description, image_url, featured, active, listing_status"
+  ).order("date", { ascending: true })
 
-  const list = (events ?? []) as EventRow[]
+  const list = (events ?? []) as unknown as EventRow[]
 
   return (
     <main className="min-h-screen bg-background">

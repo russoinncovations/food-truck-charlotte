@@ -49,8 +49,10 @@ export function EventsSection() {
 
     async function load() {
       const supabase = createClient()
-      const { data } = await publicUpcomingEventsBase(supabase)
-        .select("id, title, slug, location_name, date, description, image_url, active")
+      const { data } = await publicUpcomingEventsBase(
+        supabase,
+        "id, title, slug, location_name, date, description, image_url, active"
+      )
         .order("date", { ascending: true })
         .limit(3)
 

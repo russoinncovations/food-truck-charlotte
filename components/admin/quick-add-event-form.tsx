@@ -134,13 +134,17 @@ export function QuickAddEventForm({ adminKey }: Props) {
 
       <div className="space-y-2">
         <Label htmlFor="listing_status">Status</Label>
-        <input type="hidden" name="listing_status" value="approved" id="listing-status-value" readOnly className="hidden" />
-        <StatusSelect
-          onChange={(v) => {
-            const el = document.getElementById("listing-status-value") as HTMLInputElement | null
-            if (el) el.value = v
-          }}
-        />
+        <select
+          id="listing_status"
+          name="listing_status"
+          defaultValue="approved"
+          className="flex h-10 w-full max-w-sm rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <option value="draft">draft</option>
+          <option value="approved">approved</option>
+          <option value="pending">pending</option>
+          <option value="rejected">rejected</option>
+        </select>
         <p className="text-xs text-muted-foreground">
           Default is <span className="text-foreground font-medium">approved</span> for admin-created events.
         </p>
