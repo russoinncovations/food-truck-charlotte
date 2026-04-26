@@ -18,7 +18,7 @@ export default async function Home() {
       <Header />
       <Hero upcomingEventCount={upcomingEventCount} />
       <FeaturedTrucks />
-      <MapPreviewClient mapEvents={mapEventsForPreview} />
+      <MapPreviewClient mapEvents={[]} />
       <EventsSection />
       <VendorCTA />
       <Footer />
