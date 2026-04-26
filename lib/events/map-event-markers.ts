@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 import { publicUpcomingEventsBase } from "@/lib/events/public-events"
 import { isValidTruckMapCoordinates } from "@/lib/location/truck-map-coords"
-import { toNumericCoord } from "@/lib/events/event-geocode"
+import { toNumericCoord } from "@/lib/location/numeric-coord"
 
 export type MapEventMarker = {
   id: string

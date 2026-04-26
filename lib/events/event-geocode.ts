@@ -34,11 +34,7 @@ export async function geocodeEventAddressForStorage(
   }
 }
 
-export function toNumericCoord(v: string | number | null | undefined): number | null {
-  if (v == null) return null
-  const n = typeof v === "string" ? parseFloat(v) : Number(v)
-  return Number.isFinite(n) ? n : null
-}
+export { toNumericCoord } from "@/lib/location/numeric-coord"
 
 export function coordsAreValidForMap(lat: unknown, lng: unknown): boolean {
   if (lat == null || lng == null) return false

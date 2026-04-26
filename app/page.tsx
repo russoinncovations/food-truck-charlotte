@@ -13,12 +13,19 @@ export default async function Home() {
   const supabase = await createClient()
   const upcomingEventCount = await countUpcomingPublicEvents(supabase)
 
+  let mapEvents: Awaited<ReturnType<typeof fetchMapEventMarkers>> = []
+  try {
+    mapEvents = await fetchMapEventMarkers(supabase)
+  } catch (error) {
+    console.error("[map] fetchMapEventMarkers failed", error)
+  }
+
   return (
     <main className="min-h-screen bg-background">
       <Header />
       <Hero upcomingEventCount={upcomingEventCount} />
       <FeaturedTrucks />
-      <MapPreviewClient mapEvents={[]} />
+      <MapPreviewClient mapEvents={mapEvents} />
       <EventsSection />
       <VendorCTA />
       <Footer />

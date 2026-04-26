@@ -224,8 +224,12 @@ export function MapExplorer({ trucks, mapEvents }: { trucks: ServingTruckRow[]; 
           {viewMode === "map" || isLg ? (
             <MapView
               trucks={filteredTrucks}
+              mapEvents={filteredMapEvents}
               selectedTruck={selectedTruck}
-              onSelectTruck={setSelectedTruck}
+              selectedEvent={selectedEvent}
+              onSelectTruck={setSelectedTruckAndClearEvent}
+              onSelectEvent={setSelectedEventAndClearTruck}
+              showPolishedEmpty={showPolishedEmpty}
             />
           ) : (
             <div className="lg:hidden h-full overflow-auto p-4">

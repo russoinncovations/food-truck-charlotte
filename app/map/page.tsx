@@ -65,7 +65,12 @@ export default async function MapPage() {
     }
   }
 
-  const mapEvents = await fetchMapEventMarkers(supabase)
+  let mapEvents: Awaited<ReturnType<typeof fetchMapEventMarkers>> = []
+  try {
+    mapEvents = await fetchMapEventMarkers(supabase)
+  } catch (error) {
+    console.error("[map] fetchMapEventMarkers failed", error)
+  }
 
   return (
     <Suspense fallback={<MapSkeleton />}>
