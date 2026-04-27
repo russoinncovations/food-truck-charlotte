@@ -23,6 +23,8 @@ interface MapViewProps {
   onSelectEvent: (event: MapEventMarker | null) => void
   /** Homepage map preview: friendlier empty copy (no “search / filters” messaging). */
   homeMapPreview?: boolean
+  /** When filters/search are inactive, show live-map empty copy instead of “adjust search”. */
+  filtersInactive?: boolean
 }
 
 function hasMapLocation(truck: FoodTruck): truck is FoodTruck & {
@@ -67,6 +69,7 @@ export default function MapView({
   onSelectTruck,
   onSelectEvent,
   homeMapPreview = false,
+  filtersInactive = false,
 }: MapViewProps) {
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? ""
   const mapId = process.env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID
@@ -159,32 +162,25 @@ export default function MapView({
         >
           <MapPanToSelected selectedTruck={selectedTruck} selectedEvent={selectedEvent} />
 
-          {mappable.map((truck) => {
-            const isListed = truck.mapDisplaySource === "listed"
-            const isUpcoming = truck.mapDisplaySource === "upcoming"
-            const isLive = truck.mapDisplaySource === "live"
-            const pinBg = isListed ? "#d4d4d8" : isUpcoming ? "#94a3b8" : isLive ? "#16a34a" : "#64748b"
-            const pinBorder = isListed ? "#a1a1aa" : isUpcoming ? "#64748b" : isLive ? "#15803d" : "#475569"
-            return (
-              <AdvancedMarker
-                key={`t-${truck.id}`}
-                ref={(el) => {
-                  if (el) markerById.current.set(truck.id, el)
-                  else markerById.current.delete(truck.id)
-                }}
-                position={{ lat: truck.location.lat, lng: truck.location.lng }}
-                title={truck.name}
-                onClick={() => {
-                  onSelectTruck(truck)
-                  onSelectEvent(null)
-                  setInfoTruckId(truck.id)
-                  setInfoEventId(null)
-                }}
-              >
-                <Pin background={pinBg} borderColor={pinBorder} glyphColor="#ffffff" />
-              </AdvancedMarker>
-            )
-          })}
+          {mappable.map((truck) => (
+            <AdvancedMarker
+              key={`t-${truck.id}`}
+              ref={(el) => {
+                if (el) markerById.current.set(truck.id, el)
+                else markerById.current.delete(truck.id)
+              }}
+              position={{ lat: truck.location.lat, lng: truck.location.lng }}
+              title={truck.name}
+              onClick={() => {
+                onSelectTruck(truck)
+                onSelectEvent(null)
+                setInfoTruckId(truck.id)
+                setInfoEventId(null)
+              }}
+            >
+              <Pin background="#16a34a" borderColor="#15803d" glyphColor="#ffffff" />
+            </AdvancedMarker>
+          ))}
 
           {mapEvents.map((ev) => (
             <AdvancedMarker
@@ -226,14 +222,6 @@ export default function MapView({
                     {infoTruck.location?.address?.trim() ? infoTruck.location.address : "Address not set"}
                   </p>
                 </div>
-                {infoTruck.mapDisplaySource === "upcoming" && infoTruck.schedule[0] && (
-                  <p className="text-xs text-muted-foreground mb-2">
-                    Scheduled · Starts {formatClockLabel(infoTruck.schedule[0].startTime)}
-                  </p>
-                )}
-                {infoTruck.mapDisplaySource === "listed" && (
-                  <p className="text-xs text-muted-foreground mb-2">Schedule not posted yet</p>
-                )}
                 <div className="flex flex-wrap gap-x-3 gap-y-1">
                   <Link
                     href={`/trucks/${encodeURIComponent(infoTruck.slug)}`}
@@ -241,11 +229,9 @@ export default function MapView({
                   >
                     View profile
                   </Link>
-                  {infoTruck.mapDisplaySource !== "listed" && (
-                    <Link href="/book-a-truck" className="text-xs font-semibold text-primary hover:underline">
-                      Book this truck
-                    </Link>
-                  )}
+                  <Link href="/book-a-truck" className="text-xs font-semibold text-primary hover:underline">
+                    Book this truck
+                  </Link>
                 </div>
               </div>
             </InfoWindow>
@@ -289,11 +275,21 @@ export default function MapView({
 
         {isEmpty && (
           <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center p-4">
-            <p className="pointer-events-auto rounded-lg border border-border/80 bg-background/90 px-4 py-2 text-sm text-muted-foreground shadow-sm backdrop-blur">
-              {homeMapPreview
-                ? "No live trucks right now — showing listed trucks"
-                : "No locations match your search. Try different keywords or clear filters."}
-            </p>
+            <div className="pointer-events-auto rounded-lg border border-border/80 bg-background/90 px-4 py-3 text-sm text-muted-foreground shadow-sm backdrop-blur text-center space-y-2 max-w-sm">
+              {homeMapPreview || filtersInactive ? (
+                <>
+                  <p>No trucks are live right now.</p>
+                  <Link
+                    href="/trucks"
+                    className="inline-flex text-xs font-semibold text-primary hover:underline"
+                  >
+                    View all trucks
+                  </Link>
+                </>
+              ) : (
+                <p>No locations match your search. Try different keywords or clear filters.</p>
+              )}
+            </div>
           </div>
         )}
       </div>
@@ -301,10 +297,3 @@ export default function MapView({
   )
 }
 
-function formatClockLabel(hhmm: string): string {
-  const [h, m] = hhmm.split(":").map(Number)
-  if (!Number.isFinite(h) || !Number.isFinite(m)) return hhmm
-  const d = new Date()
-  d.setHours(h, m, 0, 0)
-  return d.toLocaleTimeString("en-US", { timeStyle: "short" })
-}

@@ -42,13 +42,6 @@ function mappableTruckCount(mapped: FoodTruck[]) {
   ).length
 }
 
-function pinDotClass(source: FoodTruck["mapDisplaySource"]): string {
-  if (source === "live") return "bg-green-600"
-  if (source === "upcoming") return "bg-slate-400"
-  if (source === "listed") return "bg-zinc-300 border border-zinc-400"
-  return "bg-muted-foreground/40"
-}
-
 function truckLocationLine(truck: FoodTruck): string {
   const a = truck.location?.address?.trim()
   if (a) return a
@@ -73,57 +66,30 @@ function MapPreviewContent({
     [mapTrucks]
   )
 
-  const liveN = useMemo(() => mapTrucks.filter((t) => t.mapDisplaySource === "live").length, [mapTrucks])
-  const upcomingN = useMemo(() => mapTrucks.filter((t) => t.mapDisplaySource === "upcoming").length, [mapTrucks])
-  const listedN = useMemo(() => mapTrucks.filter((t) => t.mapDisplaySource === "listed").length, [mapTrucks])
-
+  const liveN = mapTrucks.length
   const mappableN = mappableTruckCount(mapTrucks)
   const eventN = mapEvents.length
   const totalPins = mappableN + eventN
+  const hasLive = liveN > 0
 
-  const statusBlurb =
-    liveN > 0 ? (
-      <>
-        <span className="font-medium text-foreground">{liveN}</span> live
-        {upcomingN > 0 ? (
-          <>
-            {" "}
-            · <span className="font-medium text-foreground">{upcomingN}</span> scheduled
-          </>
-        ) : null}
-        {listedN > 0 ? (
-          <>
-            {" "}
-            · <span className="font-medium text-foreground">{listedN}</span> listed
-          </>
-        ) : null}
-        {eventN > 0 ? (
-          <>
-            {" "}
-            · <span className="font-medium text-foreground">{eventN}</span> event{eventN === 1 ? "" : "s"}
-          </>
-        ) : null}
-      </>
-    ) : upcomingN > 0 ? (
-      <>
-        No live trucks — showing <span className="font-medium text-foreground">{upcomingN}</span> scheduled
-        {eventN > 0 ? (
-          <>
-            {" "}
-            · <span className="font-medium text-foreground">{eventN}</span> event{eventN === 1 ? "" : "s"}
-          </>
-        ) : null}
-      </>
-    ) : mapTrucks.length > 0 ? (
-      <span>No live trucks right now — showing listed trucks</span>
-    ) : eventN > 0 ? (
-      <>
-        <span className="font-medium text-foreground">{eventN}</span> upcoming event{eventN === 1 ? "" : "s"} on the
-        map
-      </>
-    ) : (
-      <span>No live trucks right now — showing listed trucks</span>
-    )
+  const statusBlurb = hasLive ? (
+    <>
+      <span className="font-medium text-foreground">{liveN}</span> live{" "}
+      {liveN === 1 ? "truck" : "trucks"}
+      {eventN > 0 ? (
+        <>
+          {" "}
+          · <span className="font-medium text-foreground">{eventN}</span> event{eventN === 1 ? "" : "s"} on the map
+        </>
+      ) : null}
+    </>
+  ) : eventN > 0 ? (
+    <>
+      <span className="font-medium text-foreground">{eventN}</span> event{eventN === 1 ? "" : "s"} on the map
+    </>
+  ) : (
+    <>No trucks are live right now</>
+  )
 
   const mapKeyLine =
     totalPins > 0 ? (
@@ -133,16 +99,16 @@ function MapPreviewContent({
         {mappableN > 0 && eventN > 0 ? (
           <span>
             {" "}
-            ({mappableN} truck{mappableN === 1 ? "" : "s"}, {eventN} event{eventN === 1 ? "" : "s"})
+            ({mappableN} live {mappableN === 1 ? "truck" : "trucks"}, {eventN} event{eventN === 1 ? "" : "s"})
           </span>
         ) : mappableN > 0 ? (
-          <span> · trucks by status below</span>
+          <span> · live trucks</span>
         ) : eventN > 0 ? (
           <span> · events only</span>
         ) : null}
       </>
     ) : (
-      <span>No live trucks right now — showing listed trucks</span>
+      <>No trucks are live right now</>
     )
 
   return (
@@ -152,7 +118,8 @@ function MapPreviewContent({
           <div>
             <h2 className="font-display text-2xl md:text-3xl font-bold text-foreground">Live truck map</h2>
             <p className="mt-2 text-muted-foreground">
-              See food trucks listed across Charlotte. Live locations will appear here as trucks update throughout the day.
+              Live truck locations across Charlotte when vendors turn on serving for the day. Orange pins are public
+              events.
             </p>
           </div>
           <Button variant="outline" asChild className="hidden md:flex">
@@ -198,15 +165,7 @@ function MapPreviewContent({
                 <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm mt-2">
                   <div className="flex items-center gap-2">
                     <div className="h-3 w-3 rounded-full bg-green-600 shrink-0" />
-                    <span className="text-muted-foreground">Live</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="h-3 w-3 rounded-full bg-slate-400 shrink-0" />
-                    <span className="text-muted-foreground">Scheduled</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="h-3 w-3 rounded-full bg-zinc-300 border border-zinc-400 shrink-0" />
-                    <span className="text-muted-foreground">Listed</span>
+                    <span className="text-muted-foreground">Live truck</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <div className="h-3 w-3 rounded-full bg-orange-500 shrink-0" />
@@ -221,6 +180,14 @@ function MapPreviewContent({
                 <h3 className="font-semibold text-foreground">On the map</h3>
               </div>
               <p className="text-sm text-muted-foreground mb-4">{statusBlurb}.</p>
+
+              {!hasLive && (
+                <div className="mb-4 space-y-2">
+                  <Button asChild variant="default" className="w-full">
+                    <Link href="/trucks">View all trucks</Link>
+                  </Button>
+                </div>
+              )}
 
               {mapEvents.length > 0 && (
                 <div className="mb-4 rounded-lg border border-orange-500/20 bg-orange-500/5 p-3 text-sm">
@@ -246,32 +213,33 @@ function MapPreviewContent({
               )}
 
               <div className="flex items-center justify-between mb-3">
-                <h3 className="font-semibold text-foreground">Trucks</h3>
+                <h3 className="font-semibold text-foreground">Live trucks</h3>
                 <span className="text-sm text-muted-foreground tabular-nums">{mapTrucks.length}</span>
               </div>
 
               <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
-                {mapTrucks.map((truck) => (
-                  <Link
-                    key={truck.id}
-                    href={`/trucks/${encodeURIComponent(truck.slug)}`}
-                    className="flex items-center gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors"
-                  >
-                    <div className="relative h-11 w-11 rounded-lg overflow-hidden shrink-0">
-                      <Image src={getTruckImage(truck.id)} alt={truck.name} fill className="object-cover" />
-                    </div>
-                    <div className="flex-1 min-w-0 flex items-start gap-2">
-                      <span
-                        className={`mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full ${pinDotClass(truck.mapDisplaySource)}`}
-                        aria-hidden
-                      />
-                      <div className="min-w-0">
-                        <p className="font-medium text-foreground truncate text-sm">{truck.name}</p>
-                        <p className="text-xs text-muted-foreground truncate">{truckLocationLine(truck)}</p>
+                {mapTrucks.length === 0 ? (
+                  <p className="text-sm text-muted-foreground py-2">None reporting live at the moment.</p>
+                ) : (
+                  mapTrucks.map((truck) => (
+                    <Link
+                      key={truck.id}
+                      href={`/trucks/${encodeURIComponent(truck.slug)}`}
+                      className="flex items-center gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors"
+                    >
+                      <div className="relative h-11 w-11 rounded-lg overflow-hidden shrink-0">
+                        <Image src={getTruckImage(truck.id)} alt={truck.name} fill className="object-cover" />
                       </div>
-                    </div>
-                  </Link>
-                ))}
+                      <div className="flex-1 min-w-0 flex items-start gap-2">
+                        <span className="mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full bg-green-600" aria-hidden />
+                        <div className="min-w-0">
+                          <p className="font-medium text-foreground truncate text-sm">{truck.name}</p>
+                          <p className="text-xs text-muted-foreground truncate">{truckLocationLine(truck)}</p>
+                        </div>
+                      </div>
+                    </Link>
+                  ))
+                )}
               </div>
 
               <div className="mt-4 flex flex-col gap-2">

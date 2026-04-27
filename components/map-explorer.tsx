@@ -55,33 +55,13 @@ function truckWord(count: number): "truck" | "trucks" {
   return count === 1 ? "truck" : "trucks"
 }
 
-function formatStartsAtLabel(startTime: string): string {
-  const [h, m] = startTime.split(":").map(Number)
-  if (!Number.isFinite(h) || !Number.isFinite(m)) return startTime
-  const target = new Date()
-  target.setHours(h, m, 0, 0)
-  const diffMin = Math.round((target.getTime() - Date.now()) / 60_000)
-  if (diffMin >= 0 && diffMin <= 90) return "Starting soon"
-  return `Today at ${target.toLocaleTimeString("en-US", { timeStyle: "short" })}`
-}
-
-function formatClockAmPm(startTime: string): string {
-  const [h, m] = startTime.split(":").map(Number)
-  if (!Number.isFinite(h) || !Number.isFinite(m)) return startTime
-  const d = new Date()
-  d.setHours(h, m, 0, 0)
-  return d.toLocaleTimeString("en-US", { timeStyle: "short" })
-}
-
 export function MapExplorer({
   trucks,
   mapEvents,
-  listedFallbackActive = false,
   hasAnyTrucksInDb = true,
 }: {
   trucks: ServingTruckRow[]
   mapEvents: MapEventMarker[]
-  listedFallbackActive?: boolean
   hasAnyTrucksInDb?: boolean
 }) {
   const isLg = useMinWidthLg()
@@ -176,17 +156,9 @@ export function MapExplorer({
               </span>
               {liveCount} {liveCount === 1 ? "truck" : "trucks"} live
             </Badge>
-          ) : listedFallbackActive ? (
-            <Badge variant="secondary" className="max-w-[16rem] text-left font-normal leading-snug text-muted-foreground">
-              No live trucks — showing listed trucks
-            </Badge>
-          ) : mapTrucks.length > 0 ? (
-            <Badge variant="secondary" className="max-w-[14rem] text-left font-normal leading-snug text-muted-foreground">
-              No trucks live — showing upcoming
-            </Badge>
           ) : (
-            <Badge variant="secondary" className="max-w-[14rem] text-left font-normal leading-snug text-muted-foreground">
-              {mapEvents.length > 0 ? "No trucks on the map — see events" : "No trucks on the map"}
+            <Badge variant="secondary" className="max-w-[16rem] text-left font-normal leading-snug text-muted-foreground">
+              {mapEvents.length > 0 ? "No trucks live — events on the map" : "No trucks are live right now"}
             </Badge>
           )}
           <Button
@@ -202,10 +174,8 @@ export function MapExplorer({
       <p className="shrink-0 border-b border-border/80 bg-muted/30 px-4 py-2 text-center text-xs text-muted-foreground">
         {anyLiveReporting
           ? "Live locations are updated by food truck vendors."
-          : listedFallbackActive
-            ? "No trucks are live right now — showing listed trucks across Charlotte."
-            : "No trucks currently reporting live — showing upcoming locations from vendor schedules."}
-        {mapEvents.length > 0 ? " Upcoming public events appear as orange pins on the map." : ""}
+          : "No trucks are live right now."}
+        {mapEvents.length > 0 ? " Public events appear as orange pins on the map." : ""}
       </p>
 
       <div className="flex-1 flex overflow-hidden">
@@ -231,7 +201,6 @@ export function MapExplorer({
             selectedEvent={selectedEvent}
             setSelectedTruck={setSelectedTruckAndClearEvent}
             setSelectedEvent={setSelectedEventAndClearTruck}
-            listedFallbackActive={listedFallbackActive}
             hasAnyTrucksInDb={hasAnyTrucksInDb}
           />
         </aside>
@@ -264,7 +233,6 @@ export function MapExplorer({
               selectedEvent={selectedEvent}
               setSelectedTruck={setSelectedTruckAndClearEvent}
               setSelectedEvent={setSelectedEventAndClearTruck}
-              listedFallbackActive={listedFallbackActive}
               hasAnyTrucksInDb={hasAnyTrucksInDb}
             />
           </SheetContent>
@@ -280,6 +248,9 @@ export function MapExplorer({
               selectedEvent={selectedEvent}
               onSelectTruck={setSelectedTruckAndClearEvent}
               onSelectEvent={setSelectedEventAndClearTruck}
+              filtersInactive={
+                searchQuery.trim() === "" && selectedCuisine === "all" && !showOpenOnly
+              }
             />
           ) : (
             <div className="lg:hidden h-full overflow-auto p-4">
@@ -330,7 +301,6 @@ function SidebarContent({
   selectedEvent,
   setSelectedTruck,
   setSelectedEvent,
-  listedFallbackActive,
   hasAnyTrucksInDb,
 }: {
   searchQuery: string
@@ -348,7 +318,6 @@ function SidebarContent({
   selectedEvent: MapEventMarker | null
   setSelectedTruck: (v: FoodTruck | null) => void
   setSelectedEvent: (v: MapEventMarker | null) => void
-  listedFallbackActive: boolean
   hasAnyTrucksInDb: boolean
 }) {
   const noTrucksOnMapNow = liveCount === 0 && mapEventsCount > 0
@@ -396,47 +365,28 @@ function SidebarContent({
       </div>
 
       {noTrucksOnMapNow && (
-        <div className="px-4 py-3 border-b bg-orange-500/10 text-sm text-foreground">
+        <div className="px-4 py-3 border-b bg-orange-500/10 text-sm text-foreground space-y-2">
           <p className="text-muted-foreground">
-            {listedFallbackActive
-              ? "Listed trucks use muted pins. "
-              : "No trucks currently reporting live — showing upcoming locations. "}
-            Also on the map:{" "}
+            No trucks are live right now. On the map:{" "}
             <span className="font-medium text-foreground">{mapEventsCount}</span> public event
             {mapEventsCount === 1 ? "" : "s"} (orange pins).{" "}
             <Link href="/events" className="text-primary underline font-medium">
               Browse all events
             </Link>
           </p>
+          {hasAnyTrucksInDb ? (
+            <Button asChild variant="outline" size="sm" className="w-full sm:w-auto">
+              <Link href="/trucks">View all trucks</Link>
+            </Button>
+          ) : null}
         </div>
       )}
 
       {/* Results Count */}
       <div className="px-4 py-3 border-b bg-muted/50 space-y-1">
-        {!anyLiveReporting && listedFallbackActive ? (
+        {!anyLiveReporting ? (
           <p className="text-sm text-muted-foreground">
-            No live trucks — showing{" "}
-            <span className="font-medium text-foreground">{filteredTrucks.length}</span> listed{" "}
-            {truckWord(filteredTrucks.length)}
-            {mapEventsCount > 0 ? (
-              <>
-                {" "}
-                ·{" "}
-                <span className="font-medium text-foreground">{filteredMapEvents.length}</span> event
-                {filteredMapEvents.length === 1 ? "" : "s"} on the map
-              </>
-            ) : null}
-          </p>
-        ) : !anyLiveReporting ? (
-          <p className="text-sm text-muted-foreground">
-            No trucks currently reporting live — showing upcoming locations
-            {filteredTrucks.length > 0 ? (
-              <>
-                {" "}
-                ·{" "}
-                <span className="font-medium text-foreground">{filteredTrucks.length}</span> scheduled on the list
-              </>
-            ) : null}
+            No trucks are live right now
             {mapEventsCount > 0 ? (
               <>
                 {" "}
@@ -448,13 +398,13 @@ function SidebarContent({
           </p>
         ) : (
           <p className="text-sm text-muted-foreground">
-            <span className="font-medium text-foreground">{filteredTrucks.length}</span>{" "}
+            <span className="font-medium text-foreground">{filteredTrucks.length}</span> live{" "}
             {truckWord(filteredTrucks.length)} on the list
             {mapEventsCount > 0 ? (
               <>
                 {" "}
                 ·{" "}
-                <span className="font-medium text-foreground">{filteredMapEvents.length}</span> upcoming event
+                <span className="font-medium text-foreground">{filteredMapEvents.length}</span> event
                 {filteredMapEvents.length === 1 ? "" : "s"} on the map
               </>
             ) : null}
@@ -510,21 +460,19 @@ function SidebarContent({
             </div>
           ) : null}
 
-          <div className="space-y-2">
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              {listedFallbackActive ? "Listed trucks — schedule not posted yet" : "Food trucks"}
-            </h3>
-            <div className="space-y-3">
-              {filteredTrucks.map((truck) => (
-                <div key={truck.id} className="space-y-1">
-                  <button
-                    type="button"
-                    className="w-full text-left rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                    onClick={() => setSelectedTruck(truck)}
-                  >
-                    <TruckCard truck={truck} isSelected={selectedTruck?.id === truck.id} />
-                  </button>
-                  {truck.mapDisplaySource !== "listed" && (
+          {filteredTrucks.length > 0 ? (
+            <div className="space-y-2">
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Live trucks</h3>
+              <div className="space-y-3">
+                {filteredTrucks.map((truck) => (
+                  <div key={truck.id} className="space-y-1">
+                    <button
+                      type="button"
+                      className="w-full text-left rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                      onClick={() => setSelectedTruck(truck)}
+                    >
+                      <TruckCard truck={truck} isSelected={selectedTruck?.id === truck.id} />
+                    </button>
                     <Link
                       href={`/trucks/${truck.slug}`}
                       className="text-xs text-primary pl-1 hover:underline"
@@ -532,25 +480,26 @@ function SidebarContent({
                     >
                       View truck profile
                     </Link>
-                  )}
-                </div>
-              ))}
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
+          ) : null}
 
           {filteredTrucks.length === 0 && filteredMapEvents.length === 0 && (
-            <div className="text-center py-8">
-              <Truck className="h-10 w-10 mx-auto text-muted-foreground/50 mb-3" />
+            <div className="text-center py-8 space-y-4">
+              <Truck className="h-10 w-10 mx-auto text-muted-foreground/50" />
               {!hasAnyTrucksInDb ? (
                 <p className="text-muted-foreground text-sm">Trucks are being added now — check back soon.</p>
               ) : (
                 <>
-                  <p className="text-muted-foreground text-sm">
-                    No trucks currently reporting live — showing upcoming locations
-                  </p>
-                  <p className="text-sm text-muted-foreground mt-2">
+                  <p className="text-muted-foreground text-sm">No trucks are live right now.</p>
+                  <p className="text-sm text-muted-foreground">
                     Nothing matched your search. Try different keywords or clear filters.
                   </p>
+                  <Button asChild variant="default" size="sm">
+                    <Link href="/trucks">View all trucks</Link>
+                  </Button>
                 </>
               )}
             </div>
@@ -673,51 +622,19 @@ function TruckCard({
             ))}
           </div>
 
-          {truck.mapDisplaySource === "upcoming" && truck.schedule[0] && (
-            <Badge variant="outline" className="mt-2 text-[10px] font-normal border-amber-500/40 text-amber-900 dark:text-amber-200">
-              {formatStartsAtLabel(truck.schedule[0].startTime)}
-            </Badge>
-          )}
-
           {locationLine && (
             <div className="mt-2 pt-2 border-t">
               <div className="flex items-start gap-1.5 text-sm">
                 <MapPin className="h-3.5 w-3.5 text-primary shrink-0 mt-0.5" />
                 <div className="min-w-0">
-                  <p className="text-xs font-medium text-muted-foreground">
-                    {truck.mapDisplaySource === "upcoming"
-                      ? "Scheduled location"
-                      : truck.mapDisplaySource === "listed"
-                        ? "Saved location"
-                        : "Current location"}
-                  </p>
+                  <p className="text-xs font-medium text-muted-foreground">Current location</p>
                   <p className="text-sm text-foreground break-words leading-snug">{locationLine}</p>
                 </div>
               </div>
             </div>
           )}
 
-          {truck.mapDisplaySource === "upcoming" && truck.schedule[0] && (
-            <div className="flex items-center gap-1 text-xs text-muted-foreground mt-2">
-              <Clock className="h-3 w-3 shrink-0" />
-              <span>Starts at {formatClockAmPm(truck.schedule[0].startTime)}</span>
-            </div>
-          )}
-
-          {truck.mapDisplaySource === "listed" && (
-            <p className="text-xs text-muted-foreground mt-2">Schedule not posted yet</p>
-          )}
-
-          {truck.mapDisplaySource === "listed" && !compact && (
-            <div className="flex flex-wrap items-center gap-2 mt-3 pt-2 border-t">
-              <Button size="sm" className="shrink-0" asChild>
-                <Link href={`/trucks/${truck.slug}`}>View profile</Link>
-              </Button>
-            </div>
-          )}
-
-          {/* Next Location (skip for map upcoming rows — schedule block above covers it) */}
-          {nextStop && truck.mapDisplaySource !== "upcoming" && (
+          {nextStop && (
             <div className="mt-2 pt-2 border-t">
               <div className="flex items-center gap-1 text-sm">
                 <MapPin className="h-3.5 w-3.5 text-primary shrink-0" />
@@ -733,21 +650,13 @@ function TruckCard({
           {/* Actions */}
           {compact && (
             <div className="flex gap-2 mt-3 flex-wrap items-center">
-              {truck.mapDisplaySource === "listed" ? (
-                <Button size="sm" className="flex-1 min-w-[8rem]" asChild>
-                  <Link href={`/trucks/${truck.slug}`}>View profile</Link>
-                </Button>
-              ) : (
-                <>
-                  <Button size="sm" className="flex-1" asChild>
-                    <Link href={`/trucks/${truck.slug}`}>View Details</Link>
-                  </Button>
-                  <Button size="sm" variant="outline" className="gap-1">
-                    <Navigation className="h-3.5 w-3.5" />
-                    Directions
-                  </Button>
-                </>
-              )}
+              <Button size="sm" className="flex-1" asChild>
+                <Link href={`/trucks/${truck.slug}`}>View Details</Link>
+              </Button>
+              <Button size="sm" variant="outline" className="gap-1">
+                <Navigation className="h-3.5 w-3.5" />
+                Directions
+              </Button>
             </div>
           )}
         </div>

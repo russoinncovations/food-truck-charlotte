@@ -115,6 +115,18 @@ export async function getMapTruckDisplayLayers(supabase: SupabaseClient): Promis
   return { liveTrucks, upcomingTrucks, listedDirectoryTrucks }
 }
 
+/** Public map (/ and /map): live trucks only — directory and scheduled rows stay off the map. */
+export async function getPublicMapLiveTruckRows(supabase: SupabaseClient): Promise<ServingTruckRow[]> {
+  const { data: liveData } = await supabase
+    .from("trucks")
+    .select(MAP_DISPLAY_TRUCK_SELECT)
+    .eq("serving_today", true)
+  return ((liveData ?? []) as ServingTruckRow[]).map((t) => ({
+    ...t,
+    mapDisplaySource: "live" as const,
+  }))
+}
+
 /**
  * Same truck display priority as /map: live → upcoming (12h window) → directory listings.
  */

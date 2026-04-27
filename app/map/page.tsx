@@ -4,8 +4,7 @@ import { MapExplorer } from "@/components/map-explorer"
 import { Skeleton } from "@/components/ui/skeleton"
 import { createClient } from "@/lib/supabase/server"
 import { fetchMapEventMarkers } from "@/lib/events/map-event-markers"
-import { getDisplayTrucks } from "@/lib/map/get-display-trucks"
-import { getMapTruckDisplayLayers } from "@/lib/map/load-map-display-trucks"
+import { getPublicMapLiveTruckRows } from "@/lib/map/load-map-display-trucks"
 
 export const metadata: Metadata = {
   title: "Find Food Trucks Near You | FoodTruck CLT",
@@ -15,11 +14,7 @@ export const metadata: Metadata = {
 export default async function MapPage() {
   const supabase = await createClient()
 
-  const { liveTrucks, upcomingTrucks, listedDirectoryTrucks } = await getMapTruckDisplayLayers(supabase)
-  const displayTrucks = getDisplayTrucks(liveTrucks, upcomingTrucks, listedDirectoryTrucks)
-
-  const listedFallbackActive =
-    liveTrucks.length === 0 && upcomingTrucks.length === 0 && displayTrucks.length > 0
+  const displayTrucks = await getPublicMapLiveTruckRows(supabase)
 
   const { count: truckTableCount } = await supabase.from("trucks").select("id", { count: "exact", head: true })
   const hasAnyTrucksInDb = (truckTableCount ?? 0) > 0
@@ -33,12 +28,7 @@ export default async function MapPage() {
 
   return (
     <Suspense fallback={<MapSkeleton />}>
-      <MapExplorer
-        trucks={displayTrucks}
-        mapEvents={mapEvents}
-        listedFallbackActive={listedFallbackActive}
-        hasAnyTrucksInDb={hasAnyTrucksInDb}
-      />
+      <MapExplorer trucks={displayTrucks} mapEvents={mapEvents} hasAnyTrucksInDb={hasAnyTrucksInDb} />
     </Suspense>
   )
 }
