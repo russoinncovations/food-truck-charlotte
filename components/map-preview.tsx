@@ -152,7 +152,7 @@ function MapPreviewContent({
           <div>
             <h2 className="font-display text-2xl md:text-3xl font-bold text-foreground">Live truck map</h2>
             <p className="mt-2 text-muted-foreground">
-              Same live, scheduled, and listed trucks as the full map. Orange pins are public events.
+              See food trucks listed across Charlotte. Live locations will appear here as trucks update throughout the day.
             </p>
           </div>
           <Button variant="outline" asChild className="hidden md:flex">

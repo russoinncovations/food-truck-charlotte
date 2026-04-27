@@ -247,9 +247,6 @@ export default function MapView({
                     </Link>
                   )}
                 </div>
-                {infoTruck.mapDisplaySource === "listed" && (
-                  <p className="text-xs text-muted-foreground mt-2">Check back later</p>
-                )}
               </div>
             </InfoWindow>
           )}

@@ -1,7 +1,8 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import Link from "next/link"
+import { useSearchParams } from "next/navigation"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -26,20 +27,31 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { 
-  Search, 
-  MoreHorizontal, 
-  Eye, 
-  Mail, 
-  CheckCircle, 
+import {
+  Search,
+  MoreHorizontal,
+  Eye,
+  Mail,
+  CheckCircle,
   XCircle,
   Calendar,
   Users,
   MapPin,
+  Trash2,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { BookingRequest, BookingStatus } from "@/lib/booking-types"
 import { EVENT_TYPES } from "@/lib/booking-types"
+import { deleteBookingRequest } from "@/lib/admin/booking-requests-queries"
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
 interface BookingsTableProps {
   bookings: BookingRequest[]
@@ -56,10 +68,20 @@ const STATUS_CONFIG: Record<BookingStatus, { label: string; variant: "default" |
 }
 
 export function BookingsTable({ bookings }: BookingsTableProps) {
+  const searchParams = useSearchParams()
+  const adminKey = searchParams.get("key") ?? ""
+
+  const [rows, setRows] = useState<BookingRequest[]>(bookings)
   const [searchQuery, setSearchQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState<string>("all")
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null)
+  const [deleteLoading, setDeleteLoading] = useState(false)
 
-  const filteredBookings = bookings.filter((booking) => {
+  useEffect(() => {
+    setRows(bookings)
+  }, [bookings])
+
+  const filteredBookings = rows.filter((booking) => {
     const matchesSearch = 
       (booking.contact_name?.toLowerCase() ?? "").includes(searchQuery.toLowerCase()) ||
       (booking.contact_email?.toLowerCase() ?? "").includes(searchQuery.toLowerCase()) ||
@@ -70,6 +92,22 @@ export function BookingsTable({ bookings }: BookingsTableProps) {
 
     return matchesSearch && matchesStatus
   })
+
+  async function confirmDelete() {
+    if (!deleteTargetId) return
+    setDeleteLoading(true)
+    try {
+      const result = await deleteBookingRequest(deleteTargetId, adminKey)
+      if (result.ok) {
+        setRows((prev) => prev.filter((b) => b.id !== deleteTargetId))
+        setDeleteTargetId(null)
+      } else {
+        window.alert(result.error ?? "Could not delete booking")
+      }
+    } finally {
+      setDeleteLoading(false)
+    }
+  }
 
   const formatDate = (dateString: string) => {
     const [year, month, day] = dateString.split("-").map(Number)
@@ -92,6 +130,28 @@ export function BookingsTable({ bookings }: BookingsTableProps) {
 
   return (
     <div className="space-y-4">
+      <AlertDialog open={deleteTargetId !== null} onOpenChange={(open) => !open && !deleteLoading && setDeleteTargetId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete booking request</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this booking request?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteLoading}>Cancel</AlertDialogCancel>
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={deleteLoading}
+              onClick={() => void confirmDelete()}
+            >
+              {deleteLoading ? "Deleting…" : "Delete"}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
@@ -129,13 +189,14 @@ export function BookingsTable({ bookings }: BookingsTableProps) {
               <TableHead className="hidden sm:table-cell">Guests</TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="hidden lg:table-cell">Submitted</TableHead>
+              <TableHead className="w-[100px]">Delete</TableHead>
               <TableHead className="w-[50px]"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {filteredBookings.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                   No bookings found matching your criteria
                 </TableCell>
               </TableRow>
@@ -199,6 +260,19 @@ export function BookingsTable({ bookings }: BookingsTableProps) {
                       {formatCreatedAt(booking.created_at)}
                     </TableCell>
                     <TableCell>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="text-destructive border-destructive/30 hover:bg-destructive/10"
+                        disabled={deleteLoading}
+                        onClick={() => setDeleteTargetId(booking.id)}
+                      >
+                        <Trash2 className="h-4 w-4 sm:mr-1" />
+                        <span className="hidden sm:inline">Delete</span>
+                      </Button>
+                    </TableCell>
+                    <TableCell>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant="ghost" size="icon" className="h-8 w-8">
@@ -238,7 +312,7 @@ export function BookingsTable({ bookings }: BookingsTableProps) {
 
       {/* Results count */}
       <p className="text-sm text-muted-foreground">
-        Showing {filteredBookings.length} of {bookings.length} requests
+        Showing {filteredBookings.length} of {rows.length} requests
       </p>
     </div>
   )

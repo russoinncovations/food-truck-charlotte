@@ -15,11 +15,9 @@ import {
   Users,
   TrendingUp,
   Star,
-  Check,
   ArrowRight,
   Smartphone,
   Bell,
-  BarChart3,
 } from "lucide-react"
 import { VendorSignupForm } from "@/components/forms/vendor-signup-form"
 
@@ -53,52 +51,6 @@ const features = [
     icon: Smartphone,
     title: "Mobile-First Design",
     description: "Update your schedule on the go with our mobile-optimized dashboard.",
-  },
-]
-
-const plans = [
-  {
-    name: "Basic",
-    price: "Free",
-    description: "Get started and reach local food lovers",
-    features: [
-      "Profile listing",
-      "Basic schedule posting",
-      "Map presence",
-      "Community access",
-    ],
-    cta: "Get Started Free",
-    popular: false,
-  },
-  {
-    name: "Pro",
-    price: "$29",
-    period: "/month",
-    description: "Grow your business with premium features",
-    features: [
-      "Everything in Basic",
-      "Featured placement",
-      "Push notifications to followers",
-      "Advanced analytics",
-      "Event matching",
-      "Priority support",
-    ],
-    cta: "Start Pro Trial",
-    popular: true,
-  },
-  {
-    name: "Enterprise",
-    price: "Custom",
-    description: "For food truck fleets and franchises",
-    features: [
-      "Everything in Pro",
-      "Multi-truck management",
-      "Custom branding",
-      "API access",
-      "Dedicated account manager",
-    ],
-    cta: "Contact Sales",
-    popular: false,
   },
 ]
 
@@ -292,63 +244,6 @@ export default function ListYourTruckPage() {
                   <p className="text-muted-foreground">
                     {feature.description}
                   </p>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Pricing Section */}
-      <section className="py-16 md:py-24 bg-muted/30">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h2 className="font-display text-3xl md:text-4xl font-bold text-foreground mb-4">
-              Simple, Transparent Pricing
-            </h2>
-            <p className="text-muted-foreground max-w-2xl mx-auto">
-              Start free, upgrade when you&apos;re ready
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-            {plans.map((plan) => (
-              <Card
-                key={plan.name}
-                className={`relative ${plan.popular ? "border-primary border-2 shadow-lg" : ""}`}
-              >
-                {plan.popular && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                    <Badge className="bg-primary text-primary-foreground">Most Popular</Badge>
-                  </div>
-                )}
-                <CardContent className="p-6">
-                  <h3 className="font-display font-semibold text-xl text-foreground mb-2">
-                    {plan.name}
-                  </h3>
-                  <div className="flex items-baseline gap-1 mb-2">
-                    <span className="text-4xl font-bold text-foreground">{plan.price}</span>
-                    {plan.period && (
-                      <span className="text-muted-foreground">{plan.period}</span>
-                    )}
-                  </div>
-                  <p className="text-sm text-muted-foreground mb-6">
-                    {plan.description}
-                  </p>
-                  <ul className="space-y-3 mb-6">
-                    {plan.features.map((feature) => (
-                      <li key={feature} className="flex items-center gap-2 text-sm">
-                        <Check className="h-4 w-4 text-primary shrink-0" />
-                        <span>{feature}</span>
-                      </li>
-                    ))}
-                  </ul>
-                  <Button
-                    className="w-full"
-                    variant={plan.popular ? "default" : "outline"}
-                  >
-                    {plan.cta}
-                  </Button>
                 </CardContent>
               </Card>
             ))}

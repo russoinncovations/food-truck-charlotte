@@ -203,7 +203,7 @@ export function MapExplorer({
         {anyLiveReporting
           ? "Live locations are updated by food truck vendors."
           : listedFallbackActive
-            ? "No live trucks and no schedule in the next 12 hours — showing directory listings. Muted pins use saved coordinates only."
+            ? "No trucks are live right now — showing listed trucks across Charlotte."
             : "No trucks currently reporting live — showing upcoming locations from vendor schedules."}
         {mapEvents.length > 0 ? " Upcoming public events appear as orange pins on the map." : ""}
       </p>
@@ -713,7 +713,6 @@ function TruckCard({
               <Button size="sm" className="shrink-0" asChild>
                 <Link href={`/trucks/${truck.slug}`}>View profile</Link>
               </Button>
-              <span className="text-xs text-muted-foreground">Check back later</span>
             </div>
           )}
 
@@ -735,12 +734,9 @@ function TruckCard({
           {compact && (
             <div className="flex gap-2 mt-3 flex-wrap items-center">
               {truck.mapDisplaySource === "listed" ? (
-                <>
-                  <Button size="sm" className="flex-1 min-w-[8rem]" asChild>
-                    <Link href={`/trucks/${truck.slug}`}>View profile</Link>
-                  </Button>
-                  <span className="text-xs text-muted-foreground px-1">Check back later</span>
-                </>
+                <Button size="sm" className="flex-1 min-w-[8rem]" asChild>
+                  <Link href={`/trucks/${truck.slug}`}>View profile</Link>
+                </Button>
               ) : (
                 <>
                   <Button size="sm" className="flex-1" asChild>
