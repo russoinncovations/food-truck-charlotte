@@ -21,6 +21,8 @@ interface MapViewProps {
   selectedEvent: MapEventMarker | null
   onSelectTruck: (truck: FoodTruck | null) => void
   onSelectEvent: (event: MapEventMarker | null) => void
+  /** Homepage map preview: friendlier empty copy (no “search / filters” messaging). */
+  homeMapPreview?: boolean
 }
 
 function hasMapLocation(truck: FoodTruck): truck is FoodTruck & {
@@ -64,6 +66,7 @@ export default function MapView({
   selectedEvent,
   onSelectTruck,
   onSelectEvent,
+  homeMapPreview = false,
 }: MapViewProps) {
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? ""
   const mapId = process.env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID
@@ -290,7 +293,9 @@ export default function MapView({
         {isEmpty && (
           <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center p-4">
             <p className="pointer-events-auto rounded-lg border border-border/80 bg-background/90 px-4 py-2 text-sm text-muted-foreground shadow-sm backdrop-blur">
-              No locations match your search. Try different keywords or clear filters.
+              {homeMapPreview
+                ? "No live trucks right now — showing listed trucks"
+                : "No locations match your search. Try different keywords or clear filters."}
             </p>
           </div>
         )}

@@ -8,10 +8,15 @@ import { Footer } from "@/components/footer"
 import { createClient } from "@/lib/supabase/server"
 import { countUpcomingPublicEvents } from "@/lib/events/public-events"
 import { fetchMapEventMarkers } from "@/lib/events/map-event-markers"
+import { getDisplayTrucks } from "@/lib/map/get-display-trucks"
+import { getMapTruckDisplayLayers } from "@/lib/map/load-map-display-trucks"
 
 export default async function Home() {
   const supabase = await createClient()
   const upcomingEventCount = await countUpcomingPublicEvents(supabase)
+
+  const { liveTrucks, upcomingTrucks, listedDirectoryTrucks } = await getMapTruckDisplayLayers(supabase)
+  const displayTrucks = getDisplayTrucks(liveTrucks, upcomingTrucks, listedDirectoryTrucks)
 
   let mapEvents: Awaited<ReturnType<typeof fetchMapEventMarkers>> = []
   try {
@@ -25,7 +30,7 @@ export default async function Home() {
       <Header />
       <Hero upcomingEventCount={upcomingEventCount} />
       <FeaturedTrucks />
-      <MapPreviewClient mapEvents={mapEvents} />
+      <MapPreviewClient trucks={displayTrucks} mapEvents={mapEvents} />
       <EventsSection />
       <VendorCTA />
       <Footer />

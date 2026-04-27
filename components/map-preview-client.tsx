@@ -2,6 +2,7 @@
 
 import dynamic from "next/dynamic"
 import type { MapEventMarker } from "@/lib/events/map-event-markers"
+import type { ServingTruckRow } from "@/lib/map/serving-row-to-food-truck"
 
 const MapPreview = dynamic(() => import("@/components/map-preview"), {
   ssr: false,
@@ -18,6 +19,12 @@ const MapPreview = dynamic(() => import("@/components/map-preview"), {
   ),
 })
 
-export function MapPreviewClient({ mapEvents }: { mapEvents: MapEventMarker[] }) {
-  return <MapPreview mapEvents={mapEvents} />
+export function MapPreviewClient({
+  trucks,
+  mapEvents,
+}: {
+  trucks: ServingTruckRow[]
+  mapEvents: MapEventMarker[]
+}) {
+  return <MapPreview trucks={trucks} mapEvents={mapEvents} />
 }
