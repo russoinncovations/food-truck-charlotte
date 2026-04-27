@@ -9,48 +9,29 @@ import { Footer } from "@/components/footer"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import {
-  MapPin,
-  Calendar,
-  Users,
-  TrendingUp,
-  Star,
-  ArrowRight,
-  Smartphone,
-  Bell,
-} from "lucide-react"
+import { MapPin, Calendar, Users, Star, ArrowRight, ClipboardList } from "lucide-react"
 import { VendorSignupForm } from "@/components/forms/vendor-signup-form"
 
 const features = [
   {
-    icon: MapPin,
-    title: "Real-Time Location Updates",
-    description: "Post where you'll be and let customers find you instantly on our interactive map.",
+    icon: ClipboardList,
+    title: "Free Truck Profile",
+    description: "List your truck with cuisine, story, and contact details—no paid tier required.",
   },
   {
-    icon: Calendar,
-    title: "Easy Schedule Management",
-    description: "Update your weekly schedule in seconds. Your followers get notified automatically.",
+    icon: MapPin,
+    title: "Live Location Visibility",
+    description: "When you mark yourself as serving, customers can see you on the live map.",
   },
   {
     icon: Users,
-    title: "Built-In Audience",
-    description: "Tap into our community of 35,000+ Charlotte food lovers actively looking for trucks.",
+    title: "Built-In Charlotte Audience",
+    description: "Get discovered by locals already browsing Charlotte food trucks and the directory.",
   },
   {
-    icon: TrendingUp,
-    title: "Growth Analytics",
-    description: "Track profile views, follower growth, and see which locations drive the most traffic.",
-  },
-  {
-    icon: Bell,
-    title: "Event Opportunities",
-    description: "Get notified about catering requests, festivals, and private events in your area.",
-  },
-  {
-    icon: Smartphone,
-    title: "Mobile-First Design",
-    description: "Update your schedule on the go with our mobile-optimized dashboard.",
+    icon: Calendar,
+    title: "Event & Booking Exposure",
+    description: "Your profile links you to the wider site—events and booking inquiries visitors already use.",
   },
 ]
 
@@ -150,11 +131,10 @@ export default function ListYourTruckPage() {
           <div className="text-center max-w-3xl mx-auto">
             <Badge className="mb-4">For Food Truck Owners</Badge>
             <h1 className="font-display text-4xl md:text-5xl lg:text-6xl font-bold text-foreground mb-6 text-balance">
-              Reach 35,000+ Charlotte Food Lovers
+              Join Charlotte&apos;s local food truck community.
             </h1>
             <p className="text-lg md:text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-              Join Charlotte&apos;s most trusted food truck platform. Post your schedule, 
-              grow your following, and let hungry customers find you.
+              Create a free truck profile, share your location, and help customers find you when you&apos;re live.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button size="lg" className="gap-2" asChild>
@@ -182,7 +162,7 @@ export default function ListYourTruckPage() {
               Apply to Join
             </h2>
             <p className="text-muted-foreground">
-              Fill out the form below and we&apos;ll get you set up within 2-3 business days.
+              Fill out the form below and we&apos;ll help get your truck listed.
             </p>
           </div>
           <Card className="p-6 md:p-8">
@@ -198,22 +178,16 @@ export default function ListYourTruckPage() {
       {/* Stats Section */}
       <section className="py-12 border-y bg-muted/30">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 text-center max-w-2xl mx-auto">
             <div>
               <p className="text-3xl md:text-4xl font-bold text-foreground">35K+</p>
-              <p className="text-sm text-muted-foreground">Active Users</p>
+              <p className="text-sm text-muted-foreground">Community Members</p>
             </div>
-            <div>
-              <p className="text-3xl md:text-4xl font-bold text-foreground">35,000+</p>
-              <p className="text-sm text-muted-foreground">Food Trucks</p>
-            </div>
-            <div>
-              <p className="text-3xl md:text-4xl font-bold text-foreground">80+</p>
-              <p className="text-sm text-muted-foreground">Monthly Events</p>
-            </div>
-            <div>
-              <p className="text-3xl md:text-4xl font-bold text-foreground">4.8</p>
-              <p className="text-sm text-muted-foreground">Avg. Rating</p>
+            <div className="flex flex-col justify-center">
+              <p className="text-xl md:text-2xl font-bold text-foreground leading-snug">
+                Charlotte Food Truck Community
+              </p>
+              <p className="text-sm text-muted-foreground mt-1">Local trucks &amp; hungry neighbors</p>
             </div>
           </div>
         </div>
@@ -224,14 +198,14 @@ export default function ListYourTruckPage() {
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
             <h2 className="font-display text-3xl md:text-4xl font-bold text-foreground mb-4">
-              Everything You Need to Grow
+              What you get today
             </h2>
             <p className="text-muted-foreground max-w-2xl mx-auto">
-              Powerful tools designed specifically for food truck owners
+              Straightforward benefits—no hype, no roadmap promises.
             </p>
           </div>
 
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid sm:grid-cols-2 gap-8 max-w-4xl mx-auto">
             {features.map((feature) => (
               <Card key={feature.title} className="border-2 hover:border-primary/50 transition-colors">
                 <CardContent className="p-6">
@@ -248,6 +222,46 @@ export default function ListYourTruckPage() {
               </Card>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* Pricing — single free tier */}
+      <section className="py-16 md:py-24 bg-muted/30">
+        <div className="mx-auto max-w-lg px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-8">
+            <h2 className="font-display text-3xl md:text-4xl font-bold text-foreground mb-2">Simple listing</h2>
+            <p className="text-muted-foreground text-sm">One option—the one we offer right now.</p>
+          </div>
+          <Card className="border-2 border-primary/30 shadow-md">
+            <CardContent className="p-8 text-left">
+              <h3 className="font-display text-2xl font-bold text-foreground mb-2">Free Truck Listing</h3>
+              <p className="text-sm text-muted-foreground mb-6">Everything below is included at no charge.</p>
+              <ul className="space-y-3 text-foreground text-sm mb-8">
+                <li className="flex gap-2">
+                  <span className="text-primary font-bold shrink-0">·</span>
+                  <span>Truck profile</span>
+                </li>
+                <li className="flex gap-2">
+                  <span className="text-primary font-bold shrink-0">·</span>
+                  <span>Live map visibility when you update your location</span>
+                </li>
+                <li className="flex gap-2">
+                  <span className="text-primary font-bold shrink-0">·</span>
+                  <span>Link to your menu/socials</span>
+                </li>
+                <li className="flex gap-2">
+                  <span className="text-primary font-bold shrink-0">·</span>
+                  <span>Booking inquiry exposure</span>
+                </li>
+              </ul>
+              <Button size="lg" className="w-full gap-2" asChild>
+                <a href="#apply">
+                  List Your Truck Free
+                  <ArrowRight className="h-4 w-4" />
+                </a>
+              </Button>
+            </CardContent>
+          </Card>
         </div>
       </section>
 
@@ -297,7 +311,7 @@ export default function ListYourTruckPage() {
             Ready to Grow Your Business?
           </h2>
           <p className="text-primary-foreground/80 mb-8 max-w-xl mx-auto">
-            Charlotte&apos;s original food truck community — trusted by 35,000+ locals since 2020.
+            List once, stay discoverable when you&apos;re out serving Charlotte.
           </p>
           <Button size="lg" variant="secondary" className="gap-2" asChild>
             <a href="#apply">
