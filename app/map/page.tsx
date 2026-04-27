@@ -1,69 +1,129 @@
 import { Suspense } from "react"
 import { Metadata } from "next"
-import { MapExplorer, type ServingTruckRow } from "@/components/map-explorer"
+import { MapExplorer } from "@/components/map-explorer"
 import { Skeleton } from "@/components/ui/skeleton"
+import type { SupabaseClient } from "@supabase/supabase-js"
 import { createClient } from "@/lib/supabase/server"
 import { fetchMapEventMarkers } from "@/lib/events/map-event-markers"
+import { getDisplayTrucks, parseTimeToMinutes } from "@/lib/map/get-display-trucks"
+import type { ServingTruckRow } from "@/lib/map/serving-row-to-food-truck"
 
 export const metadata: Metadata = {
   title: "Find Food Trucks Near You | FoodTruck CLT",
   description: "Interactive map showing real-time food truck locations across Charlotte, NC. Filter by cuisine, distance, and availability.",
 }
 
-export default async function MapPage() {
-  const supabase = await createClient()
+const TRUCK_SELECT =
+  "id, name, slug, cuisine, latitude, longitude, serving_today, today_location, street_address, today_specials"
 
-  const todayDow = new Date().getDay().toString()
-  const todayTime = `${String(new Date().getHours()).padStart(2, "0")}:${String(new Date().getMinutes()).padStart(2, "0")}`
+function easternNowMinutesAndDow(): { dow: string; nowM: number } {
+  const s = new Date().toLocaleString("en-US", { timeZone: "America/New_York" })
+  const d = new Date(s)
+  return {
+    dow: String(d.getDay()),
+    nowM: d.getHours() * 60 + d.getMinutes(),
+  }
+}
 
-  const { data: trucks } = await supabase
-    .from("trucks")
-    .select("id, name, slug, cuisine, latitude, longitude, serving_today, today_location, street_address, today_specials")
-    .eq("serving_today", true)
+async function buildUpcomingFromSchedule(supabase: SupabaseClient): Promise<ServingTruckRow[]> {
+  const { dow, nowM } = easternNowMinutesAndDow()
+  const windowEnd = nowM + 12 * 60
 
-  const { data: scheduledTrucks } = await supabase
+  const { data: scheduleRows } = await supabase
     .from("truck_schedule")
-    .select("truck_id, location_name, latitude, longitude, start_time, end_time")
-    .eq("day_of_week", todayDow)
+    .select("truck_id, location_name, latitude, longitude, start_time, end_time, day_of_week")
+    .eq("day_of_week", dow)
 
-  const servingList = (trucks ?? []) as ServingTruckRow[]
-  const servingIds = new Set(servingList.map((t) => t.id))
+  type Cand = {
+    truck_id: string
+    location_name: string | null
+    latitude: unknown
+    longitude: unknown
+    start_time: string | null
+    end_time: string | null
+    startM: number
+    endM: number | null
+  }
 
-  const scheduleRows = scheduledTrucks ?? []
-  const scheduleByTruckId = new Map<
-    string,
-    { location_name: string | null; latitude: unknown; longitude: unknown }
-  >()
-  for (const row of scheduleRows) {
-    const tid = row.truck_id as string
-    if (!tid || servingIds.has(tid) || scheduleByTruckId.has(tid)) continue
-    scheduleByTruckId.set(tid, {
-      location_name: row.location_name,
+  const candidates: Cand[] = []
+
+  for (const row of scheduleRows ?? []) {
+    const sm = parseTimeToMinutes(row.start_time as string | null)
+    if (sm == null) continue
+    const em = parseTimeToMinutes(row.end_time as string | null)
+    const endEffective = em == null ? sm + 4 * 60 : em
+    const inProgress = sm <= nowM && endEffective > nowM
+    const upcomingSoon = sm > nowM && sm <= windowEnd
+    if (!inProgress && !upcomingSoon) continue
+    candidates.push({
+      truck_id: row.truck_id as string,
+      location_name: row.location_name as string | null,
       latitude: row.latitude,
       longitude: row.longitude,
+      start_time: row.start_time as string | null,
+      end_time: row.end_time as string | null,
+      startM: sm,
+      endM: em,
     })
   }
 
-  const extraIds = [...scheduleByTruckId.keys()]
-  let merged: ServingTruckRow[] = [...servingList]
+  candidates.sort((a, b) => a.startM - b.startM)
+  const seen = new Set<string>()
+  const deduped = candidates.filter((c) => {
+    if (!c.truck_id || seen.has(c.truck_id)) return false
+    seen.add(c.truck_id)
+    return true
+  })
 
-  if (extraIds.length > 0) {
-    const { data: extraTrucks } = await supabase
-      .from("trucks")
-      .select("id, name, slug, cuisine, latitude, longitude, serving_today, today_location, street_address, today_specials")
-      .in("id", extraIds)
+  if (deduped.length === 0) return []
 
-    for (const t of (extraTrucks ?? []) as ServingTruckRow[]) {
-      const sch = scheduleByTruckId.get(t.id)
-      if (!sch) continue
-      merged.push({
-        ...t,
-        latitude: sch.latitude != null ? (sch.latitude as number | string) : t.latitude,
-        longitude: sch.longitude != null ? (sch.longitude as number | string) : t.longitude,
-        today_location: sch.location_name ?? t.today_location,
-      })
-    }
+  const ids = deduped.map((c) => c.truck_id)
+  const { data: truckRows } = await supabase.from("trucks").select(TRUCK_SELECT).in("id", ids)
+  const byId = new Map((truckRows ?? []).map((t) => [(t as ServingTruckRow).id, t as ServingTruckRow]))
+
+  const out: ServingTruckRow[] = []
+  for (const c of deduped) {
+    const t = byId.get(c.truck_id)
+    if (!t) continue
+    const lat = c.latitude != null && c.latitude !== "" ? c.latitude : t.latitude
+    const lng = c.longitude != null && c.longitude !== "" ? c.longitude : t.longitude
+    out.push({
+      ...t,
+      serving_today: false,
+      latitude: lat as number | string,
+      longitude: lng as number | string,
+      today_location: c.location_name ?? t.today_location,
+      mapDisplaySource: "upcoming",
+      scheduledStartTime: c.start_time,
+      scheduledEndTime: c.end_time,
+    })
   }
+  return out
+}
+
+export default async function MapPage() {
+  const supabase = await createClient()
+
+  const { data: liveData } = await supabase.from("trucks").select(TRUCK_SELECT).eq("serving_today", true)
+  const liveTrucks = (liveData ?? []) as ServingTruckRow[]
+
+  const upcomingTrucks = liveTrucks.length === 0 ? await buildUpcomingFromSchedule(supabase) : []
+
+  const { data: listedData } = await supabase
+    .from("trucks")
+    .select(TRUCK_SELECT)
+    .eq("show_in_directory", true)
+    .order("name")
+
+  const listedPool = (listedData ?? []) as ServingTruckRow[]
+
+  const displayTrucks = getDisplayTrucks(liveTrucks, upcomingTrucks, listedPool)
+
+  const { count: truckTableCount } = await supabase.from("trucks").select("id", { count: "exact", head: true })
+  const hasAnyTrucksInDb = (truckTableCount ?? 0) > 0
+
+  const listedFallbackActive =
+    liveTrucks.length === 0 && upcomingTrucks.length === 0 && displayTrucks.length > 0
 
   let mapEvents: Awaited<ReturnType<typeof fetchMapEventMarkers>> = []
   try {
@@ -74,7 +134,12 @@ export default async function MapPage() {
 
   return (
     <Suspense fallback={<MapSkeleton />}>
-      <MapExplorer trucks={merged} mapEvents={mapEvents} />
+      <MapExplorer
+        trucks={displayTrucks}
+        mapEvents={mapEvents}
+        listedFallbackActive={listedFallbackActive}
+        hasAnyTrucksInDb={hasAnyTrucksInDb}
+      />
     </Suspense>
   )
 }

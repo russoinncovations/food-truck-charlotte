@@ -13,11 +13,15 @@ export interface FoodTruck {
   priceRange: "$" | "$$" | "$$$"
   isOpen: boolean
   isFeatured: boolean
+  /** Map page: live reporting vs scheduled upcoming pin styling */
+  mapDisplaySource?: "live" | "upcoming" | "listed"
   location?: {
     lat: number
     lng: number
     address: string
   }
+  /** Listed on map without coordinates — show as text only (e.g. city / saved address). */
+  directoryLocationHint?: string
   schedule: ScheduleItem[]
   menu: MenuItem[]
   socialLinks: {

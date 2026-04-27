@@ -1,4 +1,5 @@
 import { type FoodTruck } from "@/lib/data"
+import { easternDateStringToday } from "@/lib/events/public-events"
 import { isValidTruckMapCoordinates } from "@/lib/location/truck-map-coords"
 
 export type ServingTruckRow = {
@@ -12,6 +13,29 @@ export type ServingTruckRow = {
   today_location: string | null
   street_address: string | null
   today_specials: string | null
+  mapDisplaySource?: "live" | "upcoming" | "listed"
+  scheduledStartTime?: string | null
+  scheduledEndTime?: string | null
+}
+
+function buildScheduleFromRow(truck: ServingTruckRow): FoodTruck["schedule"] {
+  if (!truck.scheduledStartTime) return []
+  const lat = Number(truck.latitude)
+  const lng = Number(truck.longitude)
+  const start = String(truck.scheduledStartTime).slice(0, 5)
+  const end = truck.scheduledEndTime ? String(truck.scheduledEndTime).slice(0, 5) : ""
+  return [
+    {
+      id: `map-slot-${truck.id}`,
+      date: easternDateStringToday(),
+      startTime: start,
+      endTime: end,
+      location: truck.today_location ?? "",
+      address: truck.street_address ?? "",
+      lat: Number.isFinite(lat) ? lat : 0,
+      lng: Number.isFinite(lng) ? lng : 0,
+    },
+  ]
 }
 
 export function mapRowsToMapTrucks(rows: ServingTruckRow[]): FoodTruck[] {
@@ -32,6 +56,14 @@ export function mapRowsToMapTrucks(rows: ServingTruckRow[]): FoodTruck[] {
     const slug =
       truck.slug && String(truck.slug).trim() !== "" ? String(truck.slug).trim() : fallbackSlug
 
+    const displaySource: "live" | "upcoming" | "listed" =
+      truck.mapDisplaySource ?? (truck.serving_today ? "live" : "upcoming")
+    const isOpen = displaySource === "live"
+
+    const addressParts = [truck.today_location, truck.street_address].filter(Boolean).join(" · ") || ""
+    const directoryLocationHint =
+      displaySource === "listed" && !hasMapPin && addressParts.trim() !== "" ? addressParts : undefined
+
     return {
       id: truck.id,
       name: truck.name,
@@ -42,16 +74,18 @@ export function mapRowsToMapTrucks(rows: ServingTruckRow[]): FoodTruck[] {
       rating: 0,
       reviewCount: 0,
       priceRange: "$",
-      isOpen: Boolean(truck.serving_today),
+      isOpen,
       isFeatured: false,
+      mapDisplaySource: displaySource,
       location: hasMapPin
         ? {
             lat,
             lng,
-            address: [truck.today_location, truck.street_address].filter(Boolean).join(" · ") || "",
+            address: addressParts || "Charlotte area",
           }
         : undefined,
-      schedule: [],
+      directoryLocationHint,
+      schedule: buildScheduleFromRow(truck),
       menu: [],
       socialLinks: {},
     }

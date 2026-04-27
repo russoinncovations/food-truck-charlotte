@@ -21,8 +21,6 @@ interface MapViewProps {
   selectedEvent: MapEventMarker | null
   onSelectTruck: (truck: FoodTruck | null) => void
   onSelectEvent: (event: MapEventMarker | null) => void
-  /** When there is no mappable data from the server at all (not just filtered out). */
-  showPolishedEmpty: boolean
 }
 
 function hasMapLocation(truck: FoodTruck): truck is FoodTruck & {
@@ -66,7 +64,6 @@ export default function MapView({
   selectedEvent,
   onSelectTruck,
   onSelectEvent,
-  showPolishedEmpty,
 }: MapViewProps) {
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? ""
   const mapId = process.env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID
@@ -160,7 +157,11 @@ export default function MapView({
           <MapPanToSelected selectedTruck={selectedTruck} selectedEvent={selectedEvent} />
 
           {mappable.map((truck) => {
-            const open = truck.isOpen
+            const isListed = truck.mapDisplaySource === "listed"
+            const isUpcoming = truck.mapDisplaySource === "upcoming"
+            const isLive = truck.mapDisplaySource === "live"
+            const pinBg = isListed ? "#d4d4d8" : isUpcoming ? "#94a3b8" : isLive ? "#16a34a" : "#64748b"
+            const pinBorder = isListed ? "#a1a1aa" : isUpcoming ? "#64748b" : isLive ? "#15803d" : "#475569"
             return (
               <AdvancedMarker
                 key={`t-${truck.id}`}
@@ -177,11 +178,7 @@ export default function MapView({
                   setInfoEventId(null)
                 }}
               >
-                <Pin
-                  background={open ? "#16a34a" : "#64748b"}
-                  borderColor={open ? "#15803d" : "#475569"}
-                  glyphColor="#ffffff"
-                />
+                <Pin background={pinBg} borderColor={pinBorder} glyphColor="#ffffff" />
               </AdvancedMarker>
             )
           })}
@@ -226,6 +223,14 @@ export default function MapView({
                     {infoTruck.location?.address?.trim() ? infoTruck.location.address : "Address not set"}
                   </p>
                 </div>
+                {infoTruck.mapDisplaySource === "upcoming" && infoTruck.schedule[0] && (
+                  <p className="text-xs text-muted-foreground mb-2">
+                    Scheduled · Starts {formatClockLabel(infoTruck.schedule[0].startTime)}
+                  </p>
+                )}
+                {infoTruck.mapDisplaySource === "listed" && (
+                  <p className="text-xs text-muted-foreground mb-2">Schedule not posted yet</p>
+                )}
                 <div className="flex flex-wrap gap-x-3 gap-y-1">
                   <Link
                     href={`/trucks/${encodeURIComponent(infoTruck.slug)}`}
@@ -233,10 +238,15 @@ export default function MapView({
                   >
                     View profile
                   </Link>
-                  <Link href="/book-a-truck" className="text-xs font-semibold text-primary hover:underline">
-                    Book this truck
-                  </Link>
+                  {infoTruck.mapDisplaySource !== "listed" && (
+                    <Link href="/book-a-truck" className="text-xs font-semibold text-primary hover:underline">
+                      Book this truck
+                    </Link>
+                  )}
                 </div>
+                {infoTruck.mapDisplaySource === "listed" && (
+                  <p className="text-xs text-muted-foreground mt-2">Check back later</p>
+                )}
               </div>
             </InfoWindow>
           )}
@@ -277,29 +287,7 @@ export default function MapView({
           )}
         </Map>
 
-        {isEmpty && showPolishedEmpty && (
-          <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center p-4">
-            <div className="pointer-events-auto max-w-md rounded-2xl border border-border/80 bg-background/95 px-5 py-6 text-center shadow-lg backdrop-blur">
-              <h3 className="font-display text-lg font-bold text-foreground">Live Map Coming Online</h3>
-              <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
-                Food trucks will be able to drop their real-time location here soon. For now,{" "}
-                <Link className="font-medium text-primary underline" href="/trucks">
-                  browse trucks
-                </Link>
-                , view{" "}
-                <Link className="font-medium text-primary underline" href="/events">
-                  events
-                </Link>
-                , or{" "}
-                <Link className="font-medium text-primary underline" href="/book-a-truck">
-                  book a truck
-                </Link>{" "}
-                for your next event.
-              </p>
-            </div>
-          </div>
-        )}
-        {isEmpty && !showPolishedEmpty && (
+        {isEmpty && (
           <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center p-4">
             <p className="pointer-events-auto rounded-lg border border-border/80 bg-background/90 px-4 py-2 text-sm text-muted-foreground shadow-sm backdrop-blur">
               No locations match your search. Try different keywords or clear filters.
@@ -309,4 +297,12 @@ export default function MapView({
       </div>
     </APIProvider>
   )
+}
+
+function formatClockLabel(hhmm: string): string {
+  const [h, m] = hhmm.split(":").map(Number)
+  if (!Number.isFinite(h) || !Number.isFinite(m)) return hhmm
+  const d = new Date()
+  d.setHours(h, m, 0, 0)
+  return d.toLocaleTimeString("en-US", { timeStyle: "short" })
 }

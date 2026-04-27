@@ -81,7 +81,6 @@ function MapPreviewContent({ mapEvents }: { mapEvents: MapEventMarker[] }) {
   const mappableN = mappableTruckCount(mapTrucks)
   const eventN = mapEvents.length
   const totalPins = mappableN + eventN
-  const showPolishedEmpty = fetchDone && totalPins === 0
 
   return (
     <section className="py-16 md:py-24 bg-muted/30">
@@ -118,7 +117,6 @@ function MapPreviewContent({ mapEvents }: { mapEvents: MapEventMarker[] }) {
                     setSelectedTruck(null)
                     setSelectedEvent(e)
                   }}
-                  showPolishedEmpty={showPolishedEmpty}
                 />
               </div>
 
