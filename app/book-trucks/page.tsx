@@ -15,7 +15,7 @@ const benefits = [
   {
     icon: Truck,
     title: "90+ trucks to choose from",
-    description: "Access to Charlotte's largest network of vetted food trucks",
+    description: "Browse Charlotte food trucks listed on our directory",
   },
   {
     icon: MessageSquare,

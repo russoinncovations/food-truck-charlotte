@@ -33,6 +33,11 @@ export default function BookingSuccessPage() {
                 will be in touch within 1-2 business days.
               </p>
 
+              <p className="text-sm text-muted-foreground mb-8 max-w-lg mx-auto">
+                FoodTruckCLT connects you with independent vendors. Please verify details and do not
+                send payment until you&apos;re comfortable with the arrangement.
+              </p>
+
               <div className="bg-muted/50 rounded-lg p-6 mb-8 text-left">
                 <h2 className="font-semibold text-foreground mb-4">What happens next?</h2>
                 <ul className="space-y-3">

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { updateTruckOpportunityStatus } from "@/app/dashboard/actions"
+import { BOOKING_REQUEST_TYPE } from "@/lib/booking/booking-request-constants"
 import { EVENT_TYPES } from "@/lib/booking-types"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -37,6 +38,10 @@ export type DashboardOpportunity = {
     state: string | null
     zip_code: string | null
     additional_notes: string | null
+    request_type: string | null
+    booking_truck_id: string | null
+    cuisines: string[] | null
+    vendor_type: string | null
   } | null
 }
 
@@ -64,6 +69,15 @@ function formatTimeRange(start: string | null | undefined, end: string | null | 
   if (!s && !e) return "—"
   if (s && e) return `${s} – ${e}`
   return s || e || "—"
+}
+
+function requestVisibilityLabel(br: NonNullable<DashboardOpportunity["booking"]> | null | undefined) {
+  const rt = br?.request_type
+  if (rt === BOOKING_REQUEST_TYPE.SPECIFIC_VENDOR) return "Requested for your truck"
+  if (rt === BOOKING_REQUEST_TYPE.OPEN_REQUEST) return "Open request"
+  if (rt === BOOKING_REQUEST_TYPE.CUISINE_MATCH) return "Cuisine request"
+  if (br?.booking_truck_id) return "Requested for your truck"
+  return "Booking request"
 }
 
 function formatLocation(br: NonNullable<DashboardOpportunity["booking"]>) {
@@ -142,7 +156,7 @@ function OpportunityActions({
 
   return (
     <div className={cn("space-y-2 pt-1", className)} onClick={(e) => e.stopPropagation()}>
-      <p className="text-xs font-medium text-foreground">Interested / Pass / Email Organizer</p>
+      <p className="text-xs font-medium text-foreground">I’m interested / Not available / Email organizer</p>
       <div className="flex gap-2">
         <form action={onAction} className="flex-1">
           <input type="hidden" name="opportunityId" value={opp.id} />
@@ -157,14 +171,14 @@ function OpportunityActions({
               ? "Saving…"
               : interestRecorded
                 ? "Interest saved"
-                : "Interested"}
+                : "I’m interested"}
           </Button>
         </form>
         <form action={onAction} className="flex-1">
           <input type="hidden" name="opportunityId" value={opp.id} />
           <input type="hidden" name="status" value="pass" />
           <Button type="submit" variant="outline" size="sm" className="w-full" disabled={!!busy || interestRecorded}>
-            {busy && submitting === "pass" ? "Saving…" : "Pass"}
+            {busy && submitting === "pass" ? "Saving…" : "Not available"}
           </Button>
         </form>
       </div>
@@ -195,6 +209,9 @@ function OpportunityDetailBody({ opp }: { opp: DashboardOpportunity }) {
     EVENT_TYPES.find((t) => t.value === br?.event_type)?.label ?? br?.event_type ?? "—"
   const locationLines = br ? formatLocation(br) : ["—"]
   const notes = br?.additional_notes?.trim()
+  const cuisineList =
+    br?.cuisines?.filter((c) => String(c).trim() !== "").map((c) => String(c).trim()) ?? []
+  const vendorFmt = br?.vendor_type?.trim()
 
   return (
     <div className="space-y-4 text-sm">
@@ -202,6 +219,23 @@ function OpportunityDetailBody({ opp }: { opp: DashboardOpportunity }) {
         <p className="text-xs font-medium text-muted-foreground">Event type</p>
         <p className="text-foreground mt-0.5">{eventTypeLabel}</p>
       </div>
+      {(vendorFmt || cuisineList.length > 0) && (
+        <>
+          <Separator />
+          {vendorFmt ? (
+            <div>
+              <p className="text-xs font-medium text-muted-foreground">Vendor format</p>
+              <p className="text-foreground mt-0.5 capitalize">{vendorFmt}</p>
+            </div>
+          ) : null}
+          {cuisineList.length > 0 ? (
+            <div>
+              <p className="text-xs font-medium text-muted-foreground">Requested cuisines</p>
+              <p className="text-foreground mt-0.5">{cuisineList.join(", ")}</p>
+            </div>
+          ) : null}
+        </>
+      )}
       <Separator />
       <div className="flex gap-3">
         <Calendar className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
@@ -291,13 +325,13 @@ export function DashboardEventOpportunities({
         if (nextStatus === "interested") {
           setInterestSentIds((d) => ({ ...d, [id]: true }))
           toast({
-            title: "You’re interested",
+            title: "Marked as interested",
             description: "We’ve saved your response. Email the organizer to confirm details and payment terms.",
           })
         } else {
           toast({
-            title: "Passed",
-            description: "We’ve recorded that. Other events will still appear here when they match you.",
+            title: "Marked as not available",
+            description: "We’ve recorded that. Open and cuisine requests may still appear for other events.",
           })
         }
         setDetailOpp((open) => (open?.id === id ? null : open))
@@ -325,12 +359,17 @@ export function DashboardEventOpportunities({
             Requests to Confirm
           </CardTitle>
           <CardDescription>
-            Open a request for full details, then use Interested, Pass, or Email Organizer.
+            Open a request for details, then choose I’m interested, Not available, or email the organizer.
           </CardDescription>
+          <p className="text-xs text-muted-foreground pt-1">
+            FoodTruckCLT shares booking opportunities from customers. All agreements and payments
+            are handled directly between you and the customer.
+          </p>
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground py-2">
-            No pending requests right now. When a host includes your truck in a booking, it will list here.
+            No pending requests right now. Direct bookings to your truck, citywide open calls, and cuisine
+            matches appear here when hosts submit them.
           </p>
           <Button variant="outline" className="w-full mt-4" asChild>
             <Link href="/dashboard/events">View All Events</Link>
@@ -348,8 +387,12 @@ export function DashboardEventOpportunities({
           Requests to Confirm
         </CardTitle>
         <CardDescription>
-          Tap a request, then use Interested, Pass, or Email Organizer.
+          Tap a request for full details. Use I’m interested or Not available, or email the organizer.
         </CardDescription>
+        <p className="text-xs text-muted-foreground pt-1">
+          FoodTruckCLT shares booking opportunities from customers. All agreements and payments are
+          handled directly between you and the customer.
+        </p>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
@@ -367,6 +410,7 @@ export function DashboardEventOpportunities({
             const isPending = opp.status === "pending"
             const busy = activeOppId === opp.id
             const interestRecorded = interestSentIds[opp.id] === true
+            const visibilityLabel = requestVisibilityLabel(br)
 
             return (
               <div key={opp.id} className="relative rounded-lg border transition-colors hover:bg-muted/50">
@@ -388,9 +432,14 @@ export function DashboardEventOpportunities({
                         {br?.city != null && br.city !== "" ? ` · ${br.city}` : ""}
                         {br?.guest_count != null ? ` · ${br.guest_count} guests` : ""}
                       </p>
-                      <Badge variant="secondary" className="text-xs capitalize">
-                        {opp.status}
-                      </Badge>
+                      <div className="flex flex-wrap gap-1.5 pt-0.5">
+                        <Badge variant="outline" className="text-xs font-normal max-w-full truncate">
+                          {visibilityLabel}
+                        </Badge>
+                        <Badge variant="secondary" className="text-xs capitalize">
+                          {opp.status}
+                        </Badge>
+                      </div>
                     </div>
                   </div>
                   {isPending && (
@@ -431,6 +480,11 @@ export function DashboardEventOpportunities({
                     EVENT_TYPES.find((t) => t.value === detailOpp.booking?.event_type)?.label ??
                     "Event details"}
                 </SheetTitle>
+                <div className="pt-1">
+                  <Badge variant="outline" className="text-xs font-normal">
+                    {requestVisibilityLabel(detailOpp.booking)}
+                  </Badge>
+                </div>
                 <SheetDescription className="sr-only">Booking request details and actions</SheetDescription>
               </SheetHeader>
               <div className="flex-1 overflow-y-auto px-4 pb-4">

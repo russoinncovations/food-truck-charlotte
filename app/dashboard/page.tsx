@@ -18,28 +18,13 @@ type TruckOpportunityRow = {
   id: string
   status: string
   booking_request_id: string | null
+  truck_id?: string | null
   created_at?: string
   booking_requests: unknown
 }
 
-function dedupeOpportunitiesByBookingId<T extends { id: string; booking_request_id?: string | null; created_at?: string }>(
-  rows: T[]
-): T[] {
-  const byKey = new Map<string, T>()
-  for (const row of rows) {
-    const key = row.booking_request_id ? String(row.booking_request_id) : `opp-${row.id}`
-    const existing = byKey.get(key)
-    if (!existing) {
-      byKey.set(key, row)
-      continue
-    }
-    const t0 = new Date(existing.created_at ?? 0).getTime()
-    const t1 = new Date(row.created_at ?? 0).getTime()
-    if (t1 >= t0) {
-      byKey.set(key, row)
-    }
-  }
-  return [...byKey.values()].sort(
+function sortOpportunitiesNewestFirst<T extends { created_at?: string }>(rows: T[]): T[] {
+  return [...rows].sort(
     (a, b) => new Date(b.created_at ?? 0).getTime() - new Date(a.created_at ?? 0).getTime()
   )
 }
@@ -120,12 +105,10 @@ export default async function DashboardPage() {
       .order("created_at", { ascending: false })
       .limit(50)
 
-    const uniques = dedupeOpportunitiesByBookingId(
-      (rawOpportunities ?? []) as TruckOpportunityRow[]
-    )
-    pendingCount = uniques.length
+    const sorted = sortOpportunitiesNewestFirst((rawOpportunities ?? []) as TruckOpportunityRow[])
+    pendingCount = sorted.length
 
-    opportunityCards = uniques.slice(0, 5).map((opp) => {
+    opportunityCards = sorted.slice(0, 5).map((opp) => {
       const raw = opp.booking_requests
       const br = Array.isArray(raw) ? raw[0] : raw
       const row = br as
@@ -142,6 +125,10 @@ export default async function DashboardPage() {
             state: string | null
             zip_code: string | null
             additional_notes: string | null
+            request_type: string | null
+            truck_id: string | null
+            cuisines: string[] | null
+            vendor_type: string | null
           }
         | null
         | undefined
@@ -171,6 +158,10 @@ export default async function DashboardPage() {
               state: row.state,
               zip_code: row.zip_code,
               additional_notes: row.additional_notes,
+              request_type: row.request_type,
+              booking_truck_id: row.truck_id,
+              cuisines: row.cuisines,
+              vendor_type: row.vendor_type,
             }
           : null,
       }

@@ -32,6 +32,22 @@ export default function TermsPage() {
                 their own licensing, insurance, and compliance with local regulations. We reserve
                 the right to remove any listing that violates community standards.
               </p>
+              <p>
+                FoodTruck CLT is not responsible for any disputes, damages, losses, or issues that
+                arise between users.
+              </p>
+              <p>
+                All communication, agreements, and payments are handled directly between customers
+                and vendors. FoodTruck CLT does not process payments and is not responsible for any
+                financial transactions.
+              </p>
+              <p>
+                Users are encouraged to independently verify vendors, event details, and terms
+                before entering into any agreement.
+              </p>
+              <p>
+                Use of this platform is at your own discretion and risk.
+              </p>
             </div>
           </article>
         </div>

@@ -64,7 +64,12 @@ export async function completeBookingRequest(
 
   const id = data.id as string
 
-  const isSpecific = row.request_type === BOOKING_REQUEST_TYPE.SPECIFIC_VENDOR && row.truck_id
+  const isSpecific =
+    row.request_type === BOOKING_REQUEST_TYPE.SPECIFIC_VENDOR && row.truck_id
+
+  const isBroadcast =
+    row.request_type === BOOKING_REQUEST_TYPE.OPEN_REQUEST ||
+    row.request_type === BOOKING_REQUEST_TYPE.CUISINE_MATCH
 
   let vendorEmail: string | null = null
   let vendorName: string | null = null
@@ -86,6 +91,27 @@ export async function completeBookingRequest(
       truck_id: row.truck_id,
       status: "pending",
     })
+  }
+
+  if (isBroadcast) {
+    const { data: listedTrucks } = await supabase
+      .from("trucks")
+      .select("id")
+      .eq("show_in_directory", true)
+
+    const rows =
+      listedTrucks?.map((t) => ({
+        booking_request_id: id,
+        truck_id: t.id as string,
+        status: "pending" as const,
+      })) ?? []
+
+    if (rows.length > 0) {
+      const { error: oppErr } = await supabase.from("truck_opportunities").insert(rows)
+      if (oppErr) {
+        console.error("[booking] truck_opportunities broadcast insert:", oppErr)
+      }
+    }
   }
 
   const resendKey = process.env.RESEND_API_KEY

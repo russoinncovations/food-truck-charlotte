@@ -36,6 +36,10 @@ export default async function BookingSuccessPage({
               <p className="text-white/90">
                 We&apos;ve received your booking request
               </p>
+              <p className="text-sm text-white/80 mt-4 max-w-lg mx-auto">
+                FoodTruckCLT connects you with independent vendors. Please verify details and do not
+                send payment until you&apos;re comfortable with the arrangement.
+              </p>
             </div>
 
             <CardContent className="p-6 sm:p-8">

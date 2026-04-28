@@ -817,6 +817,13 @@ export function BookingForm({ directoryTrucks }: { directoryTrucks: { id: string
             </div>
           )}
 
+          {currentStep === 4 && (
+            <p className="text-xs text-muted-foreground mt-6 max-w-2xl">
+              FoodTruckCLT is a connection platform. Vendors are independent, and all arrangements are
+              handled directly between customers and vendors.
+            </p>
+          )}
+
           {/* Navigation Buttons */}
           <div className="flex justify-between mt-8 pt-6 border-t">
             <Button

@@ -13,7 +13,7 @@ export const metadata: Metadata = {
 }
 
 const benefits = [
-  "Access to 90+ verified Charlotte food trucks",
+  "Access to 90+ Charlotte food trucks listed on the platform",
   "Free to submit a request",
   "We match you with available trucks",
   "Direct communication with vendors",

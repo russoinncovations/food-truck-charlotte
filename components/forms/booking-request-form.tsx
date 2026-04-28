@@ -399,6 +399,10 @@ export function BookingRequestForm({ directoryTrucks = [] }: { directoryTrucks?:
 
       {/* Submit */}
       <div className="pt-4 border-t">
+        <p className="mb-3 text-xs text-muted-foreground max-w-2xl">
+          FoodTruckCLT is a connection platform. Vendors are independent, and all arrangements are
+          handled directly between customers and vendors.
+        </p>
         <SubmitButton className="w-full sm:w-auto" isPending={isPending}>
           {isPending ? "Submitting..." : "Submit Booking Request"}
         </SubmitButton>
