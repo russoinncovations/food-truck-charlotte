@@ -40,17 +40,20 @@ import {
   type EventType,
   type BudgetRange,
 } from "@/lib/booking-types"
-import { foodTrucks } from "@/lib/data"
+import { BOOKING_REQUEST_TYPE, VENDOR_TYPE_OPTIONS } from "@/lib/booking/booking-request-constants"
 import { submitBookingRequest } from "@/app/book-trucks/actions"
 
 const STEPS = [
   { id: 1, title: "Event Details", icon: Calendar },
   { id: 2, title: "Location", icon: MapPin },
-  { id: 3, title: "Preferences", icon: Utensils },
+  { id: 3, title: "Food & budget", icon: Utensils },
   { id: 4, title: "Contact Info", icon: User },
 ]
 
 const initialFormData: BookingFormData = {
+  request_type: "open_request",
+  truck_id: null,
+  vendor_type: "",
   event_type: "private",
   event_date: "",
   event_start_time: "",
@@ -73,7 +76,29 @@ const initialFormData: BookingFormData = {
   how_heard_about_us: "",
 }
 
-export function BookingForm() {
+const BOOKING_PATH_OPTIONS: {
+  value: BookingFormData["request_type"]
+  title: string
+  hint: string
+}[] = [
+  {
+    value: BOOKING_REQUEST_TYPE.SPECIFIC_VENDOR,
+    title: "A specific food truck/vendor",
+    hint: "Pick from our directory; they receive your request directly.",
+  },
+  {
+    value: BOOKING_REQUEST_TYPE.CUISINE_MATCH,
+    title: "A vendor by cuisine/category",
+    hint: "We’ll use your cuisine choices to help with matching.",
+  },
+  {
+    value: BOOKING_REQUEST_TYPE.OPEN_REQUEST,
+    title: "Any available food truck/cart/tent",
+    hint: "Open request — our team follows up with you.",
+  },
+]
+
+export function BookingForm({ directoryTrucks }: { directoryTrucks: { id: string; name: string }[] }) {
   const router = useRouter()
   const [currentStep, setCurrentStep] = useState(1)
   const [formData, setFormData] = useState<BookingFormData>(initialFormData)
@@ -115,10 +140,25 @@ export function BookingForm() {
       if (!formData.expected_guests || formData.expected_guests < 1) {
         newErrors.expected_guests = "Number of guests is required"
       }
+      if (formData.request_type === BOOKING_REQUEST_TYPE.SPECIFIC_VENDOR && !formData.truck_id) {
+        newErrors.truck_id = "Select which truck or vendor you want at the top of the form"
+      }
     }
 
     if (step === 2) {
       if (!formData.venue_address) newErrors.venue_address = "Address is required"
+    }
+
+    if (step === 3) {
+      if (formData.request_type === BOOKING_REQUEST_TYPE.SPECIFIC_VENDOR && !formData.truck_id) {
+        newErrors.truck_id = "Select a food truck"
+      }
+      if (
+        formData.request_type === BOOKING_REQUEST_TYPE.CUISINE_MATCH &&
+        formData.cuisine_preferences.length === 0
+      ) {
+        newErrors.cuisine_preferences = "Choose at least one cuisine"
+      }
     }
 
     if (step === 4) {
@@ -145,6 +185,10 @@ export function BookingForm() {
   }
 
   const handleSubmit = async () => {
+    if (!validateStep(3)) {
+      setCurrentStep(3)
+      return
+    }
     if (!validateStep(4)) return
 
     setIsSubmitting(true)
@@ -164,7 +208,99 @@ export function BookingForm() {
   }
 
   return (
-    <div className="max-w-3xl mx-auto">
+    <div className="max-w-3xl mx-auto space-y-8">
+      {/* Always visible: what are you looking for? */}
+      <Card className="border-2 border-primary/20 bg-muted/40 shadow-sm overflow-hidden">
+        <CardContent className="p-5 md:p-6 space-y-5">
+          <div>
+            <h2 className="text-xl font-semibold text-foreground tracking-tight">What are you looking for?</h2>
+            <p className="text-sm text-muted-foreground mt-1">
+              Choose one before you continue — you can move through the steps below anytime.
+            </p>
+          </div>
+          <div className="grid gap-3" role="group" aria-label="Booking request type">
+            {BOOKING_PATH_OPTIONS.map((opt) => (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    request_type: opt.value,
+                    truck_id: opt.value === BOOKING_REQUEST_TYPE.SPECIFIC_VENDOR ? prev.truck_id : null,
+                  }))
+                }
+                className={cn(
+                  "text-left rounded-lg border-2 p-4 transition-colors",
+                  formData.request_type === opt.value
+                    ? "border-primary bg-background shadow-sm"
+                    : "border-border bg-card hover:border-primary/50"
+                )}
+              >
+                <span className="font-semibold text-foreground block">{opt.title}</span>
+                <span className="text-sm text-muted-foreground mt-1 block">{opt.hint}</span>
+              </button>
+            ))}
+          </div>
+
+          {formData.request_type === BOOKING_REQUEST_TYPE.SPECIFIC_VENDOR && (
+            <div className="space-y-2 pt-2 border-t border-border/80">
+              <Label className="text-sm font-semibold">
+                Which truck/vendor do you want? <span className="text-destructive">*</span>
+              </Label>
+              <Select
+                value={formData.truck_id ?? undefined}
+                onValueChange={(v) => updateFormData("truck_id", v || null)}
+              >
+                <SelectTrigger className={cn("h-11 bg-background", errors.truck_id && "border-destructive")}>
+                  <SelectValue placeholder="Select a truck or vendor…" />
+                </SelectTrigger>
+                <SelectContent>
+                  {directoryTrucks.map((t) => (
+                    <SelectItem key={t.id} value={t.id}>
+                      {t.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {errors.truck_id && <p className="text-xs text-destructive">{errors.truck_id}</p>}
+              {directoryTrucks.length === 0 && (
+                <p className="text-sm text-destructive">No trucks in the directory right now.</p>
+              )}
+            </div>
+          )}
+
+          {(formData.request_type === BOOKING_REQUEST_TYPE.CUISINE_MATCH ||
+            formData.request_type === BOOKING_REQUEST_TYPE.OPEN_REQUEST) && (
+            <div className="space-y-2 pt-2 border-t border-border/80">
+              <Label className="text-sm font-semibold">Vendor format</Label>
+              <p className="text-xs text-muted-foreground">
+                {formData.request_type === BOOKING_REQUEST_TYPE.CUISINE_MATCH
+                  ? "Truck, cart, tent, or any available format."
+                  : "Optional — narrow down the type of vendor if you’d like."}
+              </p>
+              <Select
+                value={formData.vendor_type === "" ? "none" : formData.vendor_type}
+                onValueChange={(v) => updateFormData("vendor_type", v === "none" ? "" : v)}
+              >
+                <SelectTrigger className="h-11 bg-background">
+                  <SelectValue placeholder="Any" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Any</SelectItem>
+                  {VENDOR_TYPE_OPTIONS.filter((o) => o.value !== "any").map((o) => (
+                    <SelectItem key={o.value} value={o.value}>
+                      {o.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <div className="space-y-8">
       {/* Progress Steps */}
       <div className="mb-8">
         <div className="flex items-center justify-between">
@@ -423,66 +559,53 @@ export function BookingForm() {
             </div>
           )}
 
-          {/* Step 3: Preferences */}
           {currentStep === 3 && (
             <div className="space-y-6">
               <div>
                 <h2 className="text-xl font-semibold text-foreground mb-1">
-                  What are you looking for?
+                  Food preferences &amp; budget
                 </h2>
                 <p className="text-sm text-muted-foreground">
-                  Help us find trucks that match your event. All fields are optional.
+                  You already chose how we should route your request at the top. Add details here.
                 </p>
               </div>
 
-              {/* Cuisine Preferences */}
-              <div className="space-y-3">
-                <Label className="text-sm font-medium">Cuisine Preferences</Label>
-                <div className="flex flex-wrap gap-2">
-                  {CUISINE_OPTIONS.map((cuisine) => (
-                    <button
-                      key={cuisine}
-                      type="button"
-                      onClick={() => toggleArrayField("cuisine_preferences", cuisine)}
-                      className={cn(
-                        "px-3 py-1.5 rounded-full text-sm border transition-all",
-                        formData.cuisine_preferences.includes(cuisine)
-                          ? "bg-primary text-primary-foreground border-primary"
-                          : "border-border hover:border-primary/50"
-                      )}
-                    >
-                      {cuisine}
-                    </button>
-                  ))}
+              {formData.request_type !== BOOKING_REQUEST_TYPE.SPECIFIC_VENDOR && (
+                <div className="space-y-3">
+                  <Label className="text-sm font-medium">
+                    {formData.request_type === BOOKING_REQUEST_TYPE.CUISINE_MATCH
+                      ? "Cuisines / categories *"
+                      : "Cuisines (optional)"}
+                  </Label>
+                  {formData.request_type === BOOKING_REQUEST_TYPE.CUISINE_MATCH ? (
+                    <p className="text-xs text-muted-foreground">Select at least one for a cuisine-based request.</p>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">
+                      Optional — helps us understand what you like.
+                    </p>
+                  )}
+                  {errors.cuisine_preferences && (
+                    <p className="text-xs text-destructive">{errors.cuisine_preferences}</p>
+                  )}
+                  <div className="flex flex-wrap gap-2">
+                    {CUISINE_OPTIONS.map((cuisine) => (
+                      <button
+                        key={cuisine}
+                        type="button"
+                        onClick={() => toggleArrayField("cuisine_preferences", cuisine)}
+                        className={cn(
+                          "px-3 py-1.5 rounded-full text-sm border transition-all",
+                          formData.cuisine_preferences.includes(cuisine)
+                            ? "bg-primary text-primary-foreground border-primary"
+                            : "border-border hover:border-primary/50"
+                        )}
+                      >
+                        {cuisine}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
-
-              {/* Specific Trucks */}
-              <div className="space-y-3">
-                <Label className="text-sm font-medium">Request Specific Trucks (optional)</Label>
-                <p className="text-xs text-muted-foreground -mt-1">
-                  Select any trucks you&apos;d specifically like us to reach out to.
-                </p>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-48 overflow-y-auto">
-                  {foodTrucks.map((truck) => (
-                    <label
-                      key={truck.id}
-                      className={cn(
-                        "flex items-center gap-2 p-2 rounded-lg border cursor-pointer transition-all",
-                        formData.specific_trucks.includes(truck.name)
-                          ? "bg-primary/5 border-primary"
-                          : "hover:bg-muted/50"
-                      )}
-                    >
-                      <Checkbox
-                        checked={formData.specific_trucks.includes(truck.name)}
-                        onCheckedChange={() => toggleArrayField("specific_trucks", truck.name)}
-                      />
-                      <span className="text-sm truncate">{truck.name}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
+              )}
 
               {/* Dietary Requirements */}
               <div className="space-y-3">
@@ -646,6 +769,18 @@ export function BookingForm() {
               <div className="bg-muted/50 rounded-lg p-4 space-y-2">
                 <h3 className="font-medium text-foreground">Booking Summary</h3>
                 <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div className="sm:col-span-2">
+                    <span className="text-muted-foreground">Looking for: </span>
+                    <span className="text-foreground font-medium">
+                      {BOOKING_PATH_OPTIONS.find((o) => o.value === formData.request_type)?.title}
+                    </span>
+                    {formData.request_type === BOOKING_REQUEST_TYPE.SPECIFIC_VENDOR && formData.truck_id ? (
+                      <span className="text-foreground block text-xs mt-1">
+                        Vendor:{" "}
+                        {directoryTrucks.find((t) => t.id === formData.truck_id)?.name ?? "—"}
+                      </span>
+                    ) : null}
+                  </div>
                   <div>
                     <span className="text-muted-foreground">Event: </span>
                     <span className="text-foreground">
@@ -723,6 +858,7 @@ export function BookingForm() {
           </div>
         </CardContent>
       </Card>
+      </div>
     </div>
   )
 }

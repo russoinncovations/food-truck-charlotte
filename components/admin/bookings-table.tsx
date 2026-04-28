@@ -57,6 +57,12 @@ interface BookingsTableProps {
   bookings: BookingRequest[]
 }
 
+const REQUEST_TYPE_SHORT: Record<string, string> = {
+  specific_vendor: "Specific vendor",
+  cuisine_match: "Cuisine",
+  open_request: "Open",
+}
+
 const STATUS_CONFIG: Record<BookingStatus, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
   new: { label: "New", variant: "default" },
   contacted: { label: "Contacted", variant: "secondary" },
@@ -82,11 +88,14 @@ export function BookingsTable({ bookings }: BookingsTableProps) {
   }, [bookings])
 
   const filteredBookings = rows.filter((booking) => {
-    const matchesSearch = 
+    const matchesSearch =
       (booking.contact_name?.toLowerCase() ?? "").includes(searchQuery.toLowerCase()) ||
       (booking.contact_email?.toLowerCase() ?? "").includes(searchQuery.toLowerCase()) ||
       booking.organization_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (booking.venue_address?.toLowerCase() ?? "").includes(searchQuery.toLowerCase())
+      (booking.venue_address?.toLowerCase() ?? "").includes(searchQuery.toLowerCase()) ||
+      (booking.request_type ?? "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (booking.preferred_trucks ?? "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (booking.cuisine_preferences ?? []).some((c) => c.toLowerCase().includes(searchQuery.toLowerCase()))
 
     const matchesStatus = statusFilter === "all" || booking.status === statusFilter
 
@@ -183,8 +192,9 @@ export function BookingsTable({ bookings }: BookingsTableProps) {
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/50">
-              <TableHead className="w-[200px]">Contact</TableHead>
+              <TableHead>Contact</TableHead>
               <TableHead>Event</TableHead>
+              <TableHead className="hidden lg:table-cell min-w-[9rem]">Routing</TableHead>
               <TableHead className="hidden md:table-cell">Location</TableHead>
               <TableHead className="hidden sm:table-cell">Guests</TableHead>
               <TableHead>Status</TableHead>
@@ -196,7 +206,7 @@ export function BookingsTable({ bookings }: BookingsTableProps) {
           <TableBody>
             {filteredBookings.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
                   No bookings found matching your criteria
                 </TableCell>
               </TableRow>
@@ -229,6 +239,24 @@ export function BookingsTable({ bookings }: BookingsTableProps) {
                             {eventType?.label || booking.event_type}
                           </p>
                         </div>
+                      </div>
+                    </TableCell>
+                    <TableCell className="hidden lg:table-cell align-top">
+                      <div className="space-y-1 max-w-[14rem]">
+                        <Badge variant="outline" className="font-normal text-[10px]">
+                          {REQUEST_TYPE_SHORT[booking.request_type ?? ""] ?? booking.request_type ?? "—"}
+                        </Badge>
+                        {booking.vendor_type ? (
+                          <p className="text-xs text-muted-foreground">Format: {booking.vendor_type}</p>
+                        ) : null}
+                        {booking.preferred_trucks ? (
+                          <p className="text-xs text-foreground line-clamp-2">{booking.preferred_trucks}</p>
+                        ) : null}
+                        {booking.cuisine_preferences && booking.cuisine_preferences.length > 0 ? (
+                          <p className="text-xs text-muted-foreground line-clamp-2">
+                            {booking.cuisine_preferences.join(", ")}
+                          </p>
+                        ) : null}
                       </div>
                     </TableCell>
                     <TableCell className="hidden md:table-cell">

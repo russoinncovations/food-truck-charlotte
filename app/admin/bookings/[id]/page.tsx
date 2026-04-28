@@ -23,6 +23,7 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { EVENT_TYPES, BUDGET_RANGES, type BookingRequest, type BookingStatus } from "@/lib/booking-types"
+import { normalizeBookingRowForAdmin } from "@/lib/admin/normalize-booking-row"
 
 export const metadata: Metadata = {
   title: "Booking Details | Admin | Food Truck CLT",
@@ -52,7 +53,7 @@ async function getBooking(id: string): Promise<BookingRequest | null> {
     return null
   }
 
-  return data
+  return normalizeBookingRowForAdmin(data as Record<string, unknown>)
 }
 
 export default async function BookingDetailPage({
@@ -69,7 +70,16 @@ export default async function BookingDetailPage({
 
   const eventType = EVENT_TYPES.find((t) => t.value === booking.event_type)
   const budgetRange = BUDGET_RANGES.find((b) => b.value === booking.budget_range)
-  const statusConfig = STATUS_CONFIG[booking.status]
+  const statusConfig = STATUS_CONFIG[booking.status as BookingStatus] ?? STATUS_CONFIG.new
+
+  const requestTypeLabel =
+    booking.request_type === "specific_vendor"
+      ? "Specific vendor"
+      : booking.request_type === "cuisine_match"
+        ? "Cuisine / category"
+        : booking.request_type === "open_request"
+          ? "Open request"
+          : booking.request_type ?? "—"
 
   const formatDate = (dateString: string) => {
     const [year, month, day] = dateString.split("-").map(Number)
@@ -131,6 +141,34 @@ export default async function BookingDetailPage({
           <div className="grid gap-6 md:grid-cols-3">
             {/* Main Content */}
             <div className="md:col-span-2 space-y-6">
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-lg">Request routing</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3 text-sm">
+                  <div className="grid sm:grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-muted-foreground">Request type</p>
+                      <p className="font-medium">{requestTypeLabel}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Vendor format</p>
+                      <p className="font-medium">{booking.vendor_type || "—"}</p>
+                    </div>
+                    <div className="sm:col-span-2">
+                      <p className="text-muted-foreground">Selected vendor</p>
+                      <p className="font-medium">
+                        {booking.preferred_trucks ||
+                          (booking.specific_trucks?.length ? booking.specific_trucks.join(", ") : "—")}
+                      </p>
+                      {booking.truck_id ? (
+                        <p className="text-xs text-muted-foreground mt-1">Truck ID: {booking.truck_id}</p>
+                      ) : null}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
               {/* Event Details */}
               <Card>
                 <CardHeader className="pb-3">

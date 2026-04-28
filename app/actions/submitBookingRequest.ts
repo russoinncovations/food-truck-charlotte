@@ -2,10 +2,16 @@
 
 import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
+import { BOOKING_REQUEST_TYPE } from "@/lib/booking/booking-request-constants"
+import { completeBookingRequest, type BookingRequestTypeValue } from "@/lib/booking/complete-booking-request"
 
 export type BookingRequestResult = {
   success: boolean
   error?: string
+}
+
+function isUuid(v: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v)
 }
 
 export async function submitBookingRequest(
@@ -14,7 +20,6 @@ export async function submitBookingRequest(
 ): Promise<BookingRequestResult> {
   const supabase = await createClient()
 
-  // Extract form data
   const eventType = formData.get("eventType") as string
   const eventDate = formData.get("eventDate") as string
   const startTime = formData.get("startTime") as string
@@ -32,21 +37,26 @@ export async function submitBookingRequest(
   const budgetRange = formData.get("budgetRange") as string
   const additionalNotes = formData.get("additionalNotes") as string
 
-  // Get arrays from checkboxes
   const cuisines = formData.getAll("cuisines") as string[]
   const dietaryRequirements = formData.getAll("dietaryRequirements") as string[]
 
-  // Log what we're about to insert
-  console.log("[v0] Attempting booking request insert:", {
-    event_type: eventType,
-    event_date: eventDate,
-    contact_name: contactName,
-    contact_email: contactEmail,
-  })
+  const requestTypeRaw = (formData.get("requestType") as string | null)?.trim() ?? ""
+  const truckIdRaw = (formData.get("truckId") as string | null)?.trim() ?? ""
+  const vendorTypeRaw = (formData.get("vendorType") as string | null)?.trim() ?? ""
 
-  // Validate required fields
+  if (
+    requestTypeRaw !== BOOKING_REQUEST_TYPE.SPECIFIC_VENDOR &&
+    requestTypeRaw !== BOOKING_REQUEST_TYPE.CUISINE_MATCH &&
+    requestTypeRaw !== BOOKING_REQUEST_TYPE.OPEN_REQUEST
+  ) {
+    return {
+      success: false,
+      error: "Please choose how you’d like to request trucks (specific vendor, cuisine, or open).",
+    }
+  }
+  const requestType = requestTypeRaw as BookingRequestTypeValue
+
   if (!eventType || !eventDate || !startTime || !endTime || !guestCount) {
-    console.log("[v0] Validation failed - missing event details")
     return {
       success: false,
       error: "Please fill in all event details (type, date, time, guest count).",
@@ -54,7 +64,6 @@ export async function submitBookingRequest(
   }
 
   if (!streetAddress || !city || !zipCode) {
-    console.log("[v0] Validation failed - missing location details")
     return {
       success: false,
       error: "Please fill in the event location (address, city, zip code).",
@@ -62,20 +71,58 @@ export async function submitBookingRequest(
   }
 
   if (!contactName || !contactEmail || !contactPhone) {
-    console.log("[v0] Validation failed - missing contact details")
     return {
       success: false,
       error: "Please fill in all contact information (name, email, phone).",
     }
   }
 
-  // Insert into database
-  const insertData = {
+  let truck_id: string | null = null
+  let preferred_trucks: string | null = null
+
+  if (requestType === BOOKING_REQUEST_TYPE.SPECIFIC_VENDOR) {
+    if (!truckIdRaw || !isUuid(truckIdRaw)) {
+      return {
+        success: false,
+        error: "Please select a food truck from the list.",
+      }
+    }
+    const { data: trow, error: terr } = await supabase
+      .from("trucks")
+      .select("id, name")
+      .eq("id", truckIdRaw)
+      .eq("show_in_directory", true)
+      .maybeSingle()
+
+    if (terr || !trow) {
+      return {
+        success: false,
+        error: "That truck is not available for requests. Pick another or choose a different request type.",
+      }
+    }
+    truck_id = truckIdRaw
+    preferred_trucks = (trow.name as string) ?? null
+  }
+
+  if (requestType === BOOKING_REQUEST_TYPE.CUISINE_MATCH) {
+    if (!cuisines || cuisines.length === 0) {
+      return {
+        success: false,
+        error: "Please select at least one cuisine for a cuisine-based request.",
+      }
+    }
+  }
+
+  const allowedVendorTypes = new Set(["truck", "cart", "tent", "any"])
+  const vendor_type =
+    vendorTypeRaw && allowedVendorTypes.has(vendorTypeRaw) ? vendorTypeRaw : null
+
+  const insertData: Parameters<typeof completeBookingRequest>[1] = {
     event_type: eventType,
     event_date: eventDate,
     start_time: startTime,
     end_time: endTime,
-    guest_count: parseInt(guestCount),
+    guest_count: parseInt(guestCount, 10),
     venue_name: venueName || null,
     street_address: streetAddress,
     city,
@@ -90,87 +137,24 @@ export async function submitBookingRequest(
     organization: organization || null,
     additional_notes: additionalNotes || null,
     status: "new",
+    request_type: requestType,
+    truck_id,
+    vendor_type:
+      requestType === BOOKING_REQUEST_TYPE.CUISINE_MATCH ||
+      requestType === BOOKING_REQUEST_TYPE.OPEN_REQUEST
+        ? vendor_type
+        : null,
+    preferred_trucks,
   }
 
-  console.log("[v0] Insert data:", JSON.stringify(insertData, null, 2))
+  const result = await completeBookingRequest(supabase, insertData)
 
-  const { data, error } = await supabase
-    .from("booking_requests")
-    .insert(insertData)
-    .select()
-    .single()
-
-  if (error) {
-    console.error("[v0] Supabase insert error:", {
-      message: error.message,
-      code: error.code,
-      details: error.details,
-      hint: error.hint,
-    })
+  if (!result.ok) {
     return {
       success: false,
-      error: `Database error: ${error.message}. Code: ${error.code}`,
+      error: `Database error: ${result.error}`,
     }
   }
 
-  console.log("[v0] Insert successful, row id:", data?.id)
-
-  // Route to all active trucks, filtered by cuisine if provided
-  const { data: trucks } = await supabase
-    .from("trucks")
-    .select("id, name, email, cuisine, cuisine_types")
-    .eq("show_in_directory", true)
-
-  if (trucks && trucks.length > 0) {
-    let targetTrucks = trucks
-
-    // Filter by cuisine match if cuisines were requested
-    if (cuisines && cuisines.length > 0) {
-      targetTrucks = trucks.filter((truck) => {
-        const truckCuisines = (truck.cuisine_types as string[]) ?? []
-        return cuisines.some((c: string) => truckCuisines.includes(c))
-      })
-      // If no cuisine matches, fall back to all trucks
-      if (targetTrucks.length === 0) targetTrucks = trucks
-    }
-
-    // Create opportunity records for each target truck
-    const opportunities = targetTrucks.map((truck) => ({
-      booking_request_id: data.id,
-      truck_id: truck.id,
-      status: "pending",
-    }))
-
-    await supabase.from("truck_opportunities").insert(opportunities)
-
-    // Send email notification to each target truck
-    const { Resend } = await import("resend")
-    const resend = new Resend(process.env.RESEND_API_KEY)
-
-    for (const truck of targetTrucks) {
-      if (!truck.email) continue
-      await resend.emails.send({
-        from: "FoodTruck CLT <noreply@foodtruckclt.com>",
-        to: truck.email,
-        subject: "New booking opportunity — " + (data.event_type || "Event"),
-        html: `
-          <h2>New Event Opportunity</h2>
-          <p>Hi ${truck.name},</p>
-          <p>A new booking request has been submitted that matches your truck.</p>
-          <ul>
-            <li><strong>Event type:</strong> ${data.event_type || "Not specified"}</li>
-            <li><strong>Date:</strong> ${data.event_date || "Not specified"}</li>
-            <li><strong>Location:</strong> ${data.city || "Charlotte"}</li>
-            <li><strong>Guest count:</strong> ${data.guest_count || "Not specified"}</li>
-          </ul>
-          <p>Log in to your dashboard to respond:</p>
-          <a href="https://www.foodtruckclt.com/vendor-login">View Opportunity</a>
-          <p>— FoodTruck CLT</p>
-        `
-      })
-    }
-  }
-
-  // Only redirect on confirmed success
   redirect("/book-a-truck/success")
 }

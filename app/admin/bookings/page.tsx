@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Inbox, Clock, CheckCircle2, AlertCircle, Calendar, Plus, ExternalLink } from "lucide-react"
 import type { BookingRequest } from "@/lib/booking-types"
+import { normalizeBookingRowForAdmin } from "@/lib/admin/normalize-booking-row"
 import { easternDateStringToday } from "@/lib/events/public-events"
 
 export const metadata: Metadata = {
@@ -28,7 +29,7 @@ async function getBookings(): Promise<BookingRequest[]> {
     return []
   }
 
-  return data || []
+  return (data ?? []).map((row) => normalizeBookingRowForAdmin(row as Record<string, unknown>))
 }
 
 function getStatusCounts(bookings: BookingRequest[]) {

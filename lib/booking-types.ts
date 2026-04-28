@@ -6,14 +6,19 @@ export type EventType =
   | 'neighborhood'
   | 'festival'
   | 'private'
+  | 'private_party'
+  | 'community'
   | 'other'
 
 export type BudgetRange = 
   | 'under_500'
   | '500_1000'
   | '1000_2000'
+  | '1000_2500'
   | '2000_5000'
+  | '2500_5000'
   | '5000_plus'
+  | 'over_5000'
   | 'flexible'
 
 export type BookingStatus = 
@@ -29,7 +34,12 @@ export interface BookingRequest {
   id: string
   created_at: string
   updated_at: string
-  
+
+  truck_id?: string | null
+  request_type?: string | null
+  vendor_type?: string | null
+  preferred_trucks?: string | null
+
   // Contact Information
   contact_name: string
   contact_email: string
@@ -79,26 +89,31 @@ export interface TruckResponse {
 }
 
 export interface BookingFormData {
+  request_type: "specific_vendor" | "cuisine_match" | "open_request"
+  truck_id: string | null
+  /** truck | cart | tent | any — only used for cuisine / open requests */
+  vendor_type: string
+
   // Step 1: Event Details
   event_type: EventType
   event_date: string
   event_start_time: string
   event_end_time: string
   expected_guests: number
-  
+
   // Step 2: Location
   venue_name: string
   venue_address: string
   venue_city: string
   venue_state: string
   venue_zip: string
-  
+
   // Step 3: Preferences
   cuisine_preferences: string[]
   specific_trucks: string[]
   dietary_requirements: string[]
   budget_range: BudgetRange
-  
+
   // Step 4: Contact Info
   contact_name: string
   contact_email: string
@@ -115,7 +130,9 @@ export const EVENT_TYPES: { value: EventType; label: string; description: string
   { value: 'brewery', label: 'Brewery/Taproom', description: 'Regular pop-ups at your venue' },
   { value: 'neighborhood', label: 'Neighborhood/HOA', description: 'Block parties, community events' },
   { value: 'festival', label: 'Festival/Fair', description: 'Large public events with multiple vendors' },
-  { value: 'private', label: 'Private Party', description: 'Backyard gatherings, house parties' },
+  { value: 'private_party', label: 'Private Party', description: 'House or private venue' },
+  { value: 'private', label: 'Private Party (legacy)', description: 'Backyard gatherings, house parties' },
+  { value: 'community', label: 'Community Event', description: 'Community gatherings' },
   { value: 'other', label: 'Other', description: 'Something else not listed' },
 ]
 
@@ -123,8 +140,11 @@ export const BUDGET_RANGES: { value: BudgetRange; label: string }[] = [
   { value: 'under_500', label: 'Under $500' },
   { value: '500_1000', label: '$500 - $1,000' },
   { value: '1000_2000', label: '$1,000 - $2,000' },
+  { value: '1000_2500', label: '$1,000 - $2,500' },
   { value: '2000_5000', label: '$2,000 - $5,000' },
+  { value: '2500_5000', label: '$2,500 - $5,000' },
   { value: '5000_plus', label: '$5,000+' },
+  { value: 'over_5000', label: '$5,000+' },
   { value: 'flexible', label: 'Flexible / Not sure yet' },
 ]
 

@@ -4,6 +4,7 @@ import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { BookingForm } from "@/components/booking-form"
 import { CheckCircle2, Clock, Truck, MessageSquare } from "lucide-react"
+import { createClient } from "@/lib/supabase/server"
 
 export const metadata: Metadata = {
   title: "Book a Food Truck | Food Truck CLT",
@@ -33,7 +34,14 @@ const benefits = [
   },
 ]
 
-export default function BookTrucksPage() {
+export default async function BookTrucksPage() {
+  const supabase = await createClient()
+  const { data: directoryTrucks } = await supabase
+    .from("trucks")
+    .select("id, name")
+    .eq("show_in_directory", true)
+    .order("name", { ascending: true })
+
   return (
     <div className="min-h-screen bg-background">
       <Header />
@@ -69,7 +77,7 @@ export default function BookTrucksPage() {
 
         {/* Form Section */}
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <BookingForm />
+          <BookingForm directoryTrucks={directoryTrucks ?? []} />
         </div>
 
         {/* FAQ / Trust Section */}

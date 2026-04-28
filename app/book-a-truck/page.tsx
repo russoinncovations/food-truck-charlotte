@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { BookingRequestForm } from "@/components/forms/booking-request-form"
 import { Check } from "lucide-react"
+import { createClient } from "@/lib/supabase/server"
 
 export const metadata: Metadata = {
   title: "Book a Food Truck | Food Truck CLT",
@@ -18,7 +19,14 @@ const benefits = [
   "Direct communication with vendors",
 ]
 
-export default function BookATruckPage() {
+export default async function BookATruckPage() {
+  const supabase = await createClient()
+  const { data: directoryTrucks } = await supabase
+    .from("trucks")
+    .select("id, name")
+    .eq("show_in_directory", true)
+    .order("name", { ascending: true })
+
   return (
     <main className="min-h-screen bg-background">
       <Header />
@@ -52,7 +60,7 @@ export default function BookATruckPage() {
       <section className="py-12 md:py-16">
         <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
           <Card className="p-6 md:p-8">
-            <BookingRequestForm />
+            <BookingRequestForm directoryTrucks={directoryTrucks ?? []} />
           </Card>
         </div>
       </section>

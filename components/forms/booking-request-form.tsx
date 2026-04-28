@@ -1,10 +1,14 @@
 "use client"
 
-import { useActionState } from "react"
+import { useActionState, useState } from "react"
 import { submitBookingRequest, type BookingRequestResult } from "@/app/actions/submitBookingRequest"
 import { FormField } from "@/components/forms/form-field"
 import { SubmitButton } from "@/components/forms/submit-button"
 import { AlertCircle } from "lucide-react"
+import { BOOKING_REQUEST_TYPE, VENDOR_TYPE_OPTIONS } from "@/lib/booking/booking-request-constants"
+import { cn } from "@/lib/utils"
+
+type DirectoryTruck = { id: string; name: string }
 
 const eventTypes = [
   { value: "corporate", label: "Corporate Event" },
@@ -49,8 +53,27 @@ const budgetRanges = [
 
 const initialState: BookingRequestResult | null = null
 
-export function BookingRequestForm() {
+const REQUEST_MODE_OPTIONS: { value: string; title: string; hint: string }[] = [
+  {
+    value: BOOKING_REQUEST_TYPE.SPECIFIC_VENDOR,
+    title: "A specific food truck/vendor",
+    hint: "Pick a truck from our directory; they get your request directly.",
+  },
+  {
+    value: BOOKING_REQUEST_TYPE.CUISINE_MATCH,
+    title: "A vendor by cuisine/category",
+    hint: "Tell us what you’re looking for and we’ll help match you.",
+  },
+  {
+    value: BOOKING_REQUEST_TYPE.OPEN_REQUEST,
+    title: "Any available food truck/cart/tent",
+    hint: "Open to whoever’s available; our team will follow up.",
+  },
+]
+
+export function BookingRequestForm({ directoryTrucks = [] }: { directoryTrucks?: DirectoryTruck[] }) {
   const [state, formAction, isPending] = useActionState(submitBookingRequest, initialState)
+  const [requestType, setRequestType] = useState<string>(BOOKING_REQUEST_TYPE.OPEN_REQUEST)
 
   return (
     <form action={formAction} className="space-y-8">
@@ -64,6 +87,110 @@ export function BookingRequestForm() {
           </div>
         </div>
       )}
+
+      <input type="hidden" name="requestType" value={requestType} />
+
+      {/* What are you looking for? — first visible section */}
+      <section
+        aria-labelledby="booking-path-heading"
+        className="rounded-xl border-2 border-primary/20 bg-muted/40 p-5 md:p-6 space-y-5 shadow-sm"
+      >
+        <div>
+          <h2 id="booking-path-heading" className="text-xl font-semibold text-foreground tracking-tight">
+            What are you looking for?
+          </h2>
+          <p className="text-sm text-muted-foreground mt-1">
+            Choose one path. You can fill out the rest of the form below.
+          </p>
+        </div>
+
+        <fieldset className="space-y-4 border-0 p-0 m-0">
+          <legend className="sr-only">Booking request type</legend>
+          <div className="grid gap-3">
+            {REQUEST_MODE_OPTIONS.map((opt) => (
+              <label
+                key={opt.value}
+                className={cn(
+                  "flex gap-3 p-4 rounded-lg border-2 cursor-pointer transition-colors has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring",
+                  requestType === opt.value
+                    ? "border-primary bg-background shadow-sm"
+                    : "border-border bg-card hover:border-primary/50"
+                )}
+              >
+                <input
+                  type="radio"
+                  className="mt-1 h-4 w-4 shrink-0 text-primary"
+                  checked={requestType === opt.value}
+                  onChange={() => setRequestType(opt.value)}
+                  aria-describedby={`hint-${opt.value}`}
+                />
+                <div>
+                  <p className="font-semibold text-foreground">{opt.title}</p>
+                  <p id={`hint-${opt.value}`} className="text-sm text-muted-foreground mt-0.5">
+                    {opt.hint}
+                  </p>
+                </div>
+              </label>
+            ))}
+          </div>
+
+          {requestType === BOOKING_REQUEST_TYPE.SPECIFIC_VENDOR && (
+            <div className="space-y-2 pt-1 border-t border-border/80">
+              <label htmlFor="truckId" className="text-sm font-semibold text-foreground block">
+                Which truck/vendor do you want? <span className="text-destructive">*</span>
+              </label>
+              <select
+                id="truckId"
+                name="truckId"
+                required
+                className="w-full h-11 rounded-md border border-input bg-background px-3 text-sm"
+                defaultValue=""
+              >
+                <option value="" disabled>
+                  Select a truck or vendor…
+                </option>
+                {directoryTrucks.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name}
+                  </option>
+                ))}
+              </select>
+              {directoryTrucks.length === 0 ? (
+                <p className="text-sm text-destructive">
+                  No trucks in the directory right now — try again later or choose another option above.
+                </p>
+              ) : null}
+            </div>
+          )}
+
+          {(requestType === BOOKING_REQUEST_TYPE.CUISINE_MATCH ||
+            requestType === BOOKING_REQUEST_TYPE.OPEN_REQUEST) && (
+            <div className="space-y-2 pt-1 border-t border-border/80">
+              <label htmlFor="vendorType" className="text-sm font-semibold text-foreground block">
+                Vendor format
+              </label>
+              <p className="text-xs text-muted-foreground -mt-1">
+                {requestType === BOOKING_REQUEST_TYPE.CUISINE_MATCH
+                  ? "Truck, cart, tent, or any — helps us route your request."
+                  : "Optional — tell us what kind of vendor you have in mind."}
+              </p>
+              <select
+                id="vendorType"
+                name="vendorType"
+                className="w-full h-11 rounded-md border border-input bg-background px-3 text-sm"
+                defaultValue=""
+              >
+                <option value="">Any</option>
+                {VENDOR_TYPE_OPTIONS.filter((o) => o.value !== "any").map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+        </fieldset>
+      </section>
 
       {/* Event Details */}
       <fieldset className="space-y-4">
@@ -155,12 +282,19 @@ export function BookingRequestForm() {
         </div>
       </fieldset>
 
-      {/* Preferences */}
+      {/* Preferences — cuisines not used for specific-vendor path */}
+      {requestType !== BOOKING_REQUEST_TYPE.SPECIFIC_VENDOR && (
       <fieldset className="space-y-4">
         <legend className="text-lg font-semibold text-foreground">
-          Food Preferences
+          {requestType === BOOKING_REQUEST_TYPE.CUISINE_MATCH ? "Cuisines / categories *" : "Food preferences (optional)"}
         </legend>
-        <p className="text-sm text-muted-foreground">What cuisines are you interested in? (Select all that apply)</p>
+        {requestType === BOOKING_REQUEST_TYPE.CUISINE_MATCH ? (
+          <p className="text-sm text-muted-foreground">Select at least one — required for a cuisine-based request.</p>
+        ) : (
+          <p className="text-sm text-muted-foreground">
+            Optional — share what you like if it helps us match you.
+          </p>
+        )}
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
           {cuisineOptions.map((cuisine) => (
             <label
@@ -178,6 +312,7 @@ export function BookingRequestForm() {
           ))}
         </div>
       </fieldset>
+      )}
 
       {/* Dietary Requirements */}
       <fieldset className="space-y-4">
