@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
-import { uploadVendorTruckPhoto } from "@/lib/supabase/storage"
+import { uploadVendorTruckPhoto } from "@/app/dashboard/profile/actions"
 
 type Props = {
   truckId: string
