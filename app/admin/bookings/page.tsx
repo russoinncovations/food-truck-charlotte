@@ -1,12 +1,13 @@
 import { Metadata } from "next"
 import Link from "next/link"
+import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
 import { Header } from "@/components/header"
 import { BookingsTable } from "@/components/admin/bookings-table"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Inbox, Clock, CheckCircle2, AlertCircle, Calendar, Plus, ExternalLink } from "lucide-react"
+import { Inbox, Clock, CheckCircle2, AlertCircle, Calendar, Plus, ExternalLink, Truck } from "lucide-react"
 import type { BookingRequest } from "@/lib/booking-types"
 import { normalizeBookingRowForAdmin } from "@/lib/admin/normalize-booking-row"
 import { easternDateStringToday } from "@/lib/events/public-events"
@@ -69,6 +70,122 @@ async function getRecentEventsForAdmin(): Promise<AdminEventRow[]> {
   return (data ?? []) as AdminEventRow[]
 }
 
+function slugFromBusinessName(name: string | null | undefined): string {
+  if (!name) return "truck"
+  const s = name
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, "-")
+    .replace(/[^a-z0-9-]/g, "")
+    .replace(/-+/g, "-")
+    .replace(/^-+|-+$/g, "")
+  return s || "truck"
+}
+
+function truckName(app: Record<string, unknown>): string {
+  const b = app.business_name ?? app.truck_name
+  return typeof b === "string" ? b.trim() : ""
+}
+
+function ownerName(app: Record<string, unknown>): string {
+  const n = app.contact_name ?? app.owner_name
+  return typeof n === "string" ? n.trim() : ""
+}
+
+function cuisineDisplay(app: Record<string, unknown>): string {
+  const types = app.cuisine_types as string[] | null | undefined
+  if (types && types.length > 0) return types.join(", ")
+  const ct = app.cuisine_type as string | null | undefined
+  if (typeof ct === "string" && ct.trim()) return ct.trim()
+  return "—"
+}
+
+function vendorDescription(app: Record<string, unknown>): string {
+  const d = app.vendor_description ?? app.description
+  return typeof d === "string" ? d : ""
+}
+
+async function approveVendorApplicationBooking(formData: FormData) {
+  "use server"
+  const applicationId = formData.get("applicationId") as string | null
+  if (!applicationId) return
+
+  const businessName =
+    ((formData.get("appBusinessName") as string | null) ?? "").trim() ||
+    ((formData.get("appTruckName") as string | null) ?? "").trim()
+  const email = ((formData.get("appEmail") as string | null) ?? "").trim()
+  const phone = ((formData.get("appPhone") as string | null) ?? "").trim()
+  const website = ((formData.get("appWebsite") as string | null) ?? "").trim()
+  const instagram = ((formData.get("appInstagram") as string | null) ?? "").trim()
+  const vendorDescriptionVal = ((formData.get("appDescription") as string | null) ?? "").trim()
+  const cuisine = ((formData.get("appCuisine") as string | null) ?? "").trim() || "General"
+
+  const supabase = await createClient()
+  let slug = slugFromBusinessName(businessName || undefined)
+
+  const { data: existing } = await supabase.from("trucks").select("id").eq("slug", slug).maybeSingle()
+  if (existing) {
+    slug = `${slug}-${applicationId.slice(0, 8)}`
+  }
+
+  const { error: insertError } = await supabase.from("trucks").insert({
+    name: businessName || "Unnamed",
+    slug,
+    email: email || null,
+    phone: phone || null,
+    website: website || null,
+    instagram: instagram || null,
+    description: vendorDescriptionVal || null,
+    cuisine,
+    show_in_directory: true,
+    status: "active",
+    is_active: true,
+    source_application_id: applicationId,
+  })
+
+  if (insertError) return
+
+  await supabase.from("vendor_applications").update({ status: "approved" }).eq("id", applicationId)
+
+  revalidatePath("/admin/bookings")
+  revalidatePath("/admin")
+  revalidatePath("/trucks")
+}
+
+async function rejectVendorApplicationBooking(formData: FormData) {
+  "use server"
+  const applicationId = formData.get("applicationId") as string | null
+  if (!applicationId) return
+
+  const supabase = await createClient()
+  await supabase.from("vendor_applications").update({ status: "rejected" }).eq("id", applicationId)
+
+  revalidatePath("/admin/bookings")
+  revalidatePath("/admin")
+}
+
+function formatVendorAppliedAt(createdAt: unknown): string {
+  if (typeof createdAt !== "string") return "—"
+  const d = new Date(createdAt)
+  if (Number.isNaN(d.getTime())) return "—"
+  return d.toLocaleDateString("en-US", { dateStyle: "medium" })
+}
+
+async function getPendingVendorApplications(): Promise<Record<string, unknown>[]> {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from("vendor_applications")
+    .select("*")
+    .eq("status", "pending")
+    .order("created_at", { ascending: false })
+
+  if (error) {
+    console.error("[admin/bookings] vendor applications:", error)
+    return []
+  }
+  return (data ?? []) as Record<string, unknown>[]
+}
+
 export default async function AdminBookingsPage({
   searchParams,
 }: {
@@ -86,6 +203,7 @@ export default async function AdminBookingsPage({
 
   const bookings = await getBookings()
   const counts = getStatusCounts(bookings)
+  const vendorApplications = await getPendingVendorApplications()
   const adminEvents = await getRecentEventsForAdmin()
   const todayStr = easternDateStringToday()
   const keyQ = `?key=${encodeURIComponent(key)}`
@@ -107,6 +225,100 @@ export default async function AdminBookingsPage({
               Manage and respond to food truck booking inquiries
             </p>
           </div>
+
+          <Card className="mb-8 border-primary/20">
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Truck className="h-5 w-5 text-primary" />
+                Vendor Applications
+              </CardTitle>
+              <CardDescription>
+                Applications with status pending. Approve to add a truck to the directory; reject to decline.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {vendorApplications.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No pending vendor applications.</p>
+              ) : (
+                <div className="overflow-x-auto rounded-md border border-border">
+                  <table className="w-full text-sm text-left">
+                    <thead className="bg-muted/50 border-b">
+                      <tr>
+                        <th className="p-3 font-medium whitespace-nowrap">Truck name</th>
+                        <th className="p-3 font-medium whitespace-nowrap">Owner name</th>
+                        <th className="p-3 font-medium whitespace-nowrap">Email</th>
+                        <th className="p-3 font-medium">Cuisine type</th>
+                        <th className="p-3 font-medium whitespace-nowrap">Date applied</th>
+                        <th className="p-3 font-medium whitespace-nowrap text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {vendorApplications.map((app) => {
+                        const id = String(app.id)
+                        const nameStr = truckName(app)
+                        const ownerStr = ownerName(app)
+                        const email = typeof app.email === "string" ? app.email.trim() : ""
+                        const cuisineOne =
+                          (Array.isArray(app.cuisine_types) && app.cuisine_types.length > 0
+                            ? app.cuisine_types[0]
+                            : typeof app.cuisine_type === "string"
+                              ? app.cuisine_type
+                              : null) ?? "General"
+                        const desc = vendorDescription(app)
+                        const phone = typeof app.phone === "string" ? app.phone : ""
+                        const website = typeof app.website === "string" ? app.website : ""
+                        const instagram = typeof app.instagram === "string" ? app.instagram : ""
+
+                        return (
+                          <tr key={id} className="border-b border-border/60 last:border-0 align-top">
+                            <td className="p-3 font-medium text-foreground max-w-[180px]">
+                              {nameStr || "—"}
+                            </td>
+                            <td className="p-3 text-muted-foreground whitespace-nowrap">
+                              {ownerStr || "—"}
+                            </td>
+                            <td className="p-3 text-muted-foreground max-w-[200px] break-all">{email || "—"}</td>
+                            <td className="p-3 text-muted-foreground">{cuisineDisplay(app)}</td>
+                            <td className="p-3 text-muted-foreground whitespace-nowrap">
+                              {formatVendorAppliedAt(app.created_at)}
+                            </td>
+                            <td className="p-3">
+                              <div className="flex flex-wrap justify-end gap-2">
+                                <form action={approveVendorApplicationBooking}>
+                                  <input type="hidden" name="applicationId" value={id} />
+                                  <input type="hidden" name="appBusinessName" value={nameStr} />
+                                  <input type="hidden" name="appTruckName" value={nameStr} />
+                                  <input type="hidden" name="appEmail" value={email} />
+                                  <input type="hidden" name="appPhone" value={phone} />
+                                  <input type="hidden" name="appWebsite" value={website} />
+                                  <input type="hidden" name="appInstagram" value={instagram} />
+                                  <input type="hidden" name="appDescription" value={desc} />
+                                  <input type="hidden" name="appCuisine" value={cuisineOne} />
+                                  <Button
+                                    type="submit"
+                                    size="sm"
+                                    className="bg-green-600 text-white hover:bg-green-700"
+                                  >
+                                    Approve
+                                  </Button>
+                                </form>
+                                <form action={rejectVendorApplicationBooking}>
+                                  <input type="hidden" name="applicationId" value={id} />
+                                  <Button type="submit" size="sm" variant="destructive">
+                                    Reject
+                                  </Button>
+                                </form>
+                              </div>
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
           <Card className="mb-8 border-primary/20">
             <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
