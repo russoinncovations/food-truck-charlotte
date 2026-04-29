@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { TruckPhotoUpload } from "@/components/dashboard/truck-photo-upload"
 import { createClient } from "@/lib/supabase/server"
 
 const CUISINE_OPTIONS = [
@@ -57,7 +58,6 @@ async function updateTruckProfile(formData: FormData) {
   const website = (formData.get("website") as string | null) ?? ""
   const instagram = (formData.get("instagram") as string | null) ?? ""
   const facebook = (formData.get("facebook") as string | null) ?? ""
-  const photo_url = (formData.get("photo_url") as string | null) ?? ""
   const phone = (formData.get("phone") as string | null) ?? ""
   const tagline = (formData.get("tagline") as string | null) ?? ""
   const service_areas = (formData.get("service_areas") as string | null) ?? ""
@@ -72,7 +72,6 @@ async function updateTruckProfile(formData: FormData) {
       website: website.trim() || null,
       instagram: instagram.trim() || null,
       facebook: facebook.trim() || null,
-      photo_url: photo_url.trim() || null,
       phone: phone.trim() || null,
       tagline: tagline.trim() || null,
       service_areas: service_areas.trim() || null,
@@ -244,19 +243,7 @@ export default async function DashboardProfilePage() {
                     />
                   </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="photo_url">Photo URL</Label>
-                    <Input
-                      id="photo_url"
-                      name="photo_url"
-                      type="text"
-                      defaultValue={truck.photo_url ?? ""}
-                      placeholder="https://your-image-link.com/photo.jpg"
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Paste a link to your truck photo (from Instagram, Google, etc.)
-                    </p>
-                  </div>
+                  <TruckPhotoUpload truckId={truck.id} initialPhotoUrl={truck.photo_url ?? null} />
 
                   <div className="space-y-2">
                     <Label htmlFor="phone">Phone</Label>
