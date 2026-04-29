@@ -1,6 +1,6 @@
 "use client"
 
-import { useActionState, useEffect, useRef } from "react"
+import { useEffect, useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { uploadVendorTruckPhoto } from "@/lib/supabase/storage"
@@ -10,10 +10,25 @@ type Props = {
   initialPhotoUrl: string | null
 }
 
+type PhotoState =
+  | { status: "idle" }
+  | { status: "success"; publicUrl: string }
+  | { status: "error"; message: string }
+
+function serializeClientError(err: unknown): string {
+  if (err instanceof Error) {
+    return `${err.name}: ${err.message}${err.stack ? `\n${err.stack}` : ""}`
+  }
+  try {
+    return JSON.stringify(err, null, 2)
+  } catch {
+    return String(err)
+  }
+}
+
 export function TruckPhotoUpload({ truckId, initialPhotoUrl }: Props) {
-  const initialState = { status: "idle" as const }
-  const [state, formAction, isPending] = useActionState(uploadVendorTruckPhoto, initialState)
-  const formRef = useRef<HTMLFormElement>(null)
+  const [state, setState] = useState<PhotoState>({ status: "idle" })
+  const [isPending, setIsPending] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const previewUrl =
@@ -29,8 +44,7 @@ export function TruckPhotoUpload({ truckId, initialPhotoUrl }: Props) {
     <div className="space-y-3">
       <div className="space-y-2">
         <Label htmlFor="truck-photo-file">Truck photo</Label>
-        <form ref={formRef} action={formAction} className="flex flex-wrap items-center gap-3">
-          <input type="hidden" name="truckId" value={truckId} />
+        <div className="flex flex-wrap items-center gap-3">
           <input
             ref={fileInputRef}
             id="truck-photo-file"
@@ -41,9 +55,45 @@ export function TruckPhotoUpload({ truckId, initialPhotoUrl }: Props) {
             disabled={isPending}
             aria-hidden
             tabIndex={-1}
-            onChange={(e) => {
+            onChange={async (e) => {
               const f = e.target.files?.[0]
-              if (f && formRef.current) formRef.current.requestSubmit()
+              if (!f) return
+
+              const fd = new FormData()
+              fd.append("truckId", truckId)
+              fd.append("photo", f)
+
+              console.log("[TruckPhotoUpload] starting upload", {
+                truckId,
+                fileName: f.name,
+                size: f.size,
+                type: f.type,
+              })
+
+              setIsPending(true)
+
+              try {
+                const result = await uploadVendorTruckPhoto({ status: "idle" }, fd)
+                console.log("[TruckPhotoUpload] server action full response object:", result)
+                console.log(
+                  "[TruckPhotoUpload] server action JSON:",
+                  JSON.stringify(result, null, 2)
+                )
+                setState(result)
+                if (result.status === "error") {
+                  console.error(
+                    "[TruckPhotoUpload] server action returned error status:",
+                    result.message
+                  )
+                }
+              } catch (err) {
+                console.error("[TruckPhotoUpload] exception thrown by server action:", err)
+                const message = serializeClientError(err)
+                console.error("[TruckPhotoUpload] serialized caught error:", message)
+                setState({ status: "error", message })
+              } finally {
+                setIsPending(false)
+              }
             }}
           />
           <Button
@@ -58,13 +108,16 @@ export function TruckPhotoUpload({ truckId, initialPhotoUrl }: Props) {
           <span className="text-xs text-muted-foreground">
             JPG, PNG, WebP, or GIF · max 5 MB
           </span>
-        </form>
+        </div>
       </div>
 
       {state.status === "error" ? (
-        <p className="text-sm text-destructive" role="alert">
+        <pre
+          className="whitespace-pre-wrap break-words rounded-md border border-destructive/40 bg-destructive/10 p-3 text-xs text-destructive"
+          role="alert"
+        >
           {state.message}
-        </p>
+        </pre>
       ) : null}
 
       {previewUrl ? (
