@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
-import { uploadVendorTruckPhoto } from "@/app/dashboard/profile/actions"
 
 type Props = {
   truckId: string
@@ -49,7 +48,7 @@ export function TruckPhotoUpload({ truckId, initialPhotoUrl }: Props) {
             ref={fileInputRef}
             id="truck-photo-file"
             type="file"
-            name="photo"
+            name="file"
             accept="image/jpeg,image/png,image/webp,image/gif"
             className="sr-only"
             disabled={isPending}
@@ -61,7 +60,7 @@ export function TruckPhotoUpload({ truckId, initialPhotoUrl }: Props) {
 
               const fd = new FormData()
               fd.append("truckId", truckId)
-              fd.append("photo", f)
+              fd.append("file", f)
 
               console.log("[TruckPhotoUpload] starting upload", {
                 truckId,
@@ -73,21 +72,38 @@ export function TruckPhotoUpload({ truckId, initialPhotoUrl }: Props) {
               setIsPending(true)
 
               try {
-                const result = await uploadVendorTruckPhoto({ status: "idle" }, fd)
-                console.log("[TruckPhotoUpload] server action full response object:", result)
-                console.log(
-                  "[TruckPhotoUpload] server action JSON:",
-                  JSON.stringify(result, null, 2)
-                )
-                setState(result)
-                if (result.status === "error") {
-                  console.error(
-                    "[TruckPhotoUpload] server action returned error status:",
-                    result.message
-                  )
+                const res = await fetch("/api/upload-truck-photo", {
+                  method: "POST",
+                  body: fd,
+                  credentials: "include",
+                })
+
+                let data: { success?: boolean; publicUrl?: string; error?: string }
+                try {
+                  data = await res.json()
+                } catch {
+                  const message = `Invalid response (HTTP ${res.status})`
+                  console.error("[TruckPhotoUpload] failed to parse JSON:", message)
+                  setState({ status: "error", message })
+                  return
                 }
+
+                console.log("[TruckPhotoUpload] API response:", data)
+                console.log("[TruckPhotoUpload] API JSON:", JSON.stringify(data, null, 2))
+
+                if (res.ok && data.success === true && typeof data.publicUrl === "string") {
+                  setState({ status: "success", publicUrl: data.publicUrl })
+                  return
+                }
+
+                const msg =
+                  typeof data.error === "string" && data.error.trim()
+                    ? data.error
+                    : `HTTP ${res.status}`
+                console.error("[TruckPhotoUpload] API returned error:", msg)
+                setState({ status: "error", message: msg })
               } catch (err) {
-                console.error("[TruckPhotoUpload] exception thrown by server action:", err)
+                console.error("[TruckPhotoUpload] fetch exception:", err)
                 const message = serializeClientError(err)
                 console.error("[TruckPhotoUpload] serialized caught error:", message)
                 setState({ status: "error", message })
