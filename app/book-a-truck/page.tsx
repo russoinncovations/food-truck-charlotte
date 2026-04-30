@@ -1,4 +1,4 @@
-import { Metadata } from "next"
+import type { Metadata } from "next"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { Card } from "@/components/ui/card"
@@ -6,21 +6,31 @@ import { Badge } from "@/components/ui/badge"
 import { BookingRequestForm } from "@/components/forms/booking-request-form"
 import { Check } from "lucide-react"
 import { createClient } from "@/lib/supabase/server"
+import { countPublicDirectoryTrucks } from "@/lib/trucks/public-directory"
 
-export const metadata: Metadata = {
-  title: "Book a Food Truck | Food Truck CLT",
-  description: "Book food trucks for your next event in Charlotte. Corporate events, weddings, private parties, and more.",
+export async function generateMetadata(): Promise<Metadata> {
+  const supabase = await createClient()
+  const n = await countPublicDirectoryTrucks(supabase)
+  const listingDescriptor =
+    n > 0 ? `${n} active Charlotte food trucks on the platform.` : `Growing list of Charlotte food trucks.`
+  return {
+    title: "Book a Food Truck | Food Truck CLT",
+    description: `Book food trucks for your next event in Charlotte. Corporate events, weddings, private parties, and more. ${listingDescriptor}`,
+  }
 }
-
-const benefits = [
-  "Access to 90+ Charlotte food trucks listed on the platform",
-  "Free to submit a request",
-  "We match you with available trucks",
-  "Direct communication with vendors",
-]
 
 export default async function BookATruckPage() {
   const supabase = await createClient()
+  const directoryCount = await countPublicDirectoryTrucks(supabase)
+
+  const benefits = [
+    directoryCount > 0
+      ? `Access ${directoryCount} Charlotte food trucks listed on the platform`
+      : `Growing list of Charlotte food vendors`,
+    "Free to submit a request",
+    "We match you with available trucks",
+    "Direct communication with vendors",
+  ]
   const { data: directoryTrucks } = await supabase
     .from("trucks")
     .select("id, name")
@@ -45,8 +55,8 @@ export default async function BookATruckPage() {
               we&apos;ll connect you with the perfect food trucks.
             </p>
             <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm text-muted-foreground">
-              {benefits.map((benefit) => (
-                <div key={benefit} className="flex items-center gap-2">
+              {benefits.map((benefit, i) => (
+                <div key={`benefit-${i}`} className="flex items-center gap-2">
                   <Check className="h-4 w-4 text-primary" />
                   <span>{benefit}</span>
                 </div>

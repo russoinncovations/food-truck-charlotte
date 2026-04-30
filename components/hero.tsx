@@ -7,23 +7,24 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Search, MapPin, ArrowRight, Users, Calendar, Truck } from "lucide-react"
 
-const staticStats = [
-  { label: "Trucks listed", value: "16+", icon: Truck },
-  { label: "Facebook group members", value: "35K", icon: Users },
-] as const
-
 type HeroProps = {
   /** Upcoming, approved public events (Eastern “today” onward). */
   upcomingEventCount: number
+  /** Active directory trucks (show_in_directory + active + is_active). */
+  directoryTruckCount: number
 }
 
-export function Hero({ upcomingEventCount }: HeroProps) {
+export function Hero({ upcomingEventCount, directoryTruckCount }: HeroProps) {
   const [searchQuery, setSearchQuery] = useState("")
 
   const stats = [
-    staticStats[0],
+    {
+      label: "Trucks listed",
+      value: String(directoryTruckCount),
+      icon: Truck,
+    },
     { label: "Upcoming events", value: String(upcomingEventCount), icon: Calendar },
-    staticStats[1],
+    { label: "Facebook group members", value: "35K", icon: Users },
   ] as const
 
   return (
@@ -50,7 +51,7 @@ export function Hero({ upcomingEventCount }: HeroProps) {
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75" />
                 <span className="relative inline-flex h-2 w-2 rounded-full bg-green-400" />
               </span>
-              Charlotte's food truck community
+              Charlotte&apos;s food truck community
             </div>
 
             {/* Headline */}

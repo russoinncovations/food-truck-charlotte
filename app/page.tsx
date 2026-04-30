@@ -9,10 +9,12 @@ import { createClient } from "@/lib/supabase/server"
 import { countUpcomingPublicEvents } from "@/lib/events/public-events"
 import { fetchMapEventMarkers } from "@/lib/events/map-event-markers"
 import { getPublicMapLiveTruckRows } from "@/lib/map/load-map-display-trucks"
+import { countPublicDirectoryTrucks } from "@/lib/trucks/public-directory"
 
 export default async function Home() {
   const supabase = await createClient()
   const upcomingEventCount = await countUpcomingPublicEvents(supabase)
+  const directoryTruckCount = await countPublicDirectoryTrucks(supabase)
 
   const displayTrucks = await getPublicMapLiveTruckRows(supabase)
 
@@ -26,11 +28,11 @@ export default async function Home() {
   return (
     <main className="min-h-screen bg-background">
       <Header />
-      <Hero upcomingEventCount={upcomingEventCount} />
+      <Hero upcomingEventCount={upcomingEventCount} directoryTruckCount={directoryTruckCount} />
       <FeaturedTrucks />
       <MapPreviewClient trucks={displayTrucks} mapEvents={mapEvents} />
       <EventsSection />
-      <VendorCTA />
+      <VendorCTA directoryTruckCount={directoryTruckCount} />
       <Footer />
     </main>
   )

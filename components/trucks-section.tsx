@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import Link from "next/link"
 import { CuisineFilter } from "@/components/cuisine-filter"
 import { TruckCard } from "@/components/truck-card"
 import { Button } from "@/components/ui/button"
@@ -94,9 +95,11 @@ export function TrucksSection() {
               Start with what sounds good, then narrow by truck and area.
             </p>
           </div>
-          <Button variant="ghost" className="gap-2 self-start lg:self-auto text-primary hover:text-primary">
-            Browse All 16 Trucks
-            <ArrowRight className="h-4 w-4" />
+          <Button variant="ghost" className="gap-2 self-start lg:self-auto text-primary hover:text-primary" asChild>
+            <Link href="/trucks">
+              Browse all trucks
+              <ArrowRight className="h-4 w-4" />
+            </Link>
           </Button>
         </div>
 

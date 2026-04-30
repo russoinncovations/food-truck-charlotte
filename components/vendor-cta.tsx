@@ -4,7 +4,6 @@ import { Card, CardContent } from "@/components/ui/card"
 import { 
   Truck, 
   Calendar, 
-  TrendingUp, 
   Users, 
   CheckCircle2, 
   ArrowRight,
@@ -26,7 +25,7 @@ const hostBenefits = [
   "Great for breweries, offices, and private parties",
 ]
 
-export function VendorCTA() {
+export function VendorCTA({ directoryTruckCount }: { directoryTruckCount: number }) {
   return (
     <section className="py-16 md:py-24">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -60,7 +59,7 @@ export function VendorCTA() {
               {/* Stats */}
               <div className="flex gap-6 mb-8 pb-8 border-b">
                 <div>
-                  <p className="text-2xl font-bold text-foreground">16+</p>
+                  <p className="text-2xl font-bold text-foreground">{directoryTruckCount}</p>
                   <p className="text-sm text-muted-foreground">Trucks listed</p>
                 </div>
                 <div>

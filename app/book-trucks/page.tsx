@@ -1,41 +1,59 @@
-import { Metadata } from "next"
+import type { Metadata } from "next"
 import Link from "next/link"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { BookingForm } from "@/components/booking-form"
 import { CheckCircle2, Clock, Truck, MessageSquare } from "lucide-react"
 import { createClient } from "@/lib/supabase/server"
+import { countPublicDirectoryTrucks } from "@/lib/trucks/public-directory"
 
-export const metadata: Metadata = {
-  title: "Book a Food Truck | Food Truck CLT",
-  description: "Book food trucks for your Charlotte event. Corporate events, weddings, private parties, and more. Free to request, no commitment.",
+export async function generateMetadata(): Promise<Metadata> {
+  const supabase = await createClient()
+  const n = await countPublicDirectoryTrucks(supabase)
+  const listingDescriptor =
+    n > 0 ? `${n} active Charlotte food trucks in our directory.` : `Growing list of Charlotte food trucks.`
+  return {
+    title: "Book a Food Truck | Food Truck CLT",
+    description: `Book food trucks for your Charlotte event. Corporate events, weddings, private parties, and more. ${listingDescriptor} Free to request, no commitment.`,
+  }
 }
-
-const benefits = [
-  {
-    icon: Truck,
-    title: "90+ trucks to choose from",
-    description: "Browse Charlotte food trucks listed on our directory",
-  },
-  {
-    icon: MessageSquare,
-    title: "One request, multiple options",
-    description: "We reach out to trucks on your behalf and bring you options",
-  },
-  {
-    icon: Clock,
-    title: "Quick response time",
-    description: "Most requests get responses within 24-48 hours",
-  },
-  {
-    icon: CheckCircle2,
-    title: "No commitment required",
-    description: "Free to submit, no obligation until you confirm",
-  },
-]
 
 export default async function BookTrucksPage() {
   const supabase = await createClient()
+  const directoryCount = await countPublicDirectoryTrucks(supabase)
+
+  const truckBenefitTitle =
+    directoryCount > 0
+      ? `${directoryCount} trucks to choose from`
+      : `Growing list of Charlotte food trucks`
+
+  const truckBenefitDescription =
+    directoryCount > 0
+      ? `Browse Charlotte food trucks listed on our directory`
+      : `Browse Charlotte food vendors on our directory`
+
+  const benefits = [
+    {
+      icon: Truck,
+      title: truckBenefitTitle,
+      description: truckBenefitDescription,
+    },
+    {
+      icon: MessageSquare,
+      title: "One request, multiple options",
+      description: "We reach out to trucks on your behalf and bring you options",
+    },
+    {
+      icon: Clock,
+      title: "Quick response time",
+      description: "Most requests get responses within 24-48 hours",
+    },
+    {
+      icon: CheckCircle2,
+      title: "No commitment required",
+      description: "Free to submit, no obligation until you confirm",
+    },
+  ]
   const { data: directoryTrucks } = await supabase
     .from("trucks")
     .select("id, name")

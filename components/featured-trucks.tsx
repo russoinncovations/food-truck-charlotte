@@ -53,6 +53,8 @@ export function FeaturedTrucks() {
         .from("trucks")
         .select("id, name, slug, cuisine, serving_today, today_location, show_in_directory")
         .eq("show_in_directory", true)
+        .eq("status", "active")
+        .eq("is_active", true)
         .limit(4)
 
       if (!cancelled) {

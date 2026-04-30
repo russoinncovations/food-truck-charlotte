@@ -47,7 +47,7 @@ export default function HeroSection() {
               className="text-[11px] font-medium uppercase tracking-[0.08em]"
               style={{ color: "var(--ftc-orange)" }}
             >
-              16 trucks active
+              Growing list of Charlotte food trucks
             </span>
             <span style={{ color: "var(--ftc-hint)" }}>·</span>
             <span

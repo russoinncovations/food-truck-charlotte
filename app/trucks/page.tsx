@@ -1,4 +1,4 @@
-import { Metadata } from "next"
+import type { Metadata } from "next"
 import Link from "next/link"
 import Image from "next/image"
 import { Header } from "@/components/header"
@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
 import { createClient } from "@/lib/supabase/server"
+import { countPublicDirectoryTrucks } from "@/lib/trucks/public-directory"
 
 const cuisineFilterButtons = [
   { id: "all", name: "All" },
@@ -34,9 +35,15 @@ function getTruckImage(truckId: string): string {
   return TRUCK_IMAGES[index]
 }
 
-export const metadata: Metadata = {
-  title: "All Food Trucks | FoodTruck CLT",
-  description: "Browse all food trucks in Charlotte, NC. Filter by cuisine, view schedules, and find your next meal.",
+export async function generateMetadata(): Promise<Metadata> {
+  const supabase = await createClient()
+  const n = await countPublicDirectoryTrucks(supabase)
+  const suffix =
+    n > 0 ? `Browse ${n} amazing food trucks serving Charlotte.` : `Growing list of Charlotte food trucks.`
+  return {
+    title: "All Food Trucks | FoodTruck CLT",
+    description: `Browse all food trucks in Charlotte, NC. Filter by cuisine, view schedules, and find your next meal. ${suffix}`,
+  }
 }
 
 export default async function TrucksPage() {
@@ -45,6 +52,8 @@ export default async function TrucksPage() {
     .from("trucks")
     .select("id, name, cuisine, slug, serving_today, today_location, show_in_directory, photo_url")
     .eq("show_in_directory", true)
+    .eq("status", "active")
+    .eq("is_active", true)
     .order("name")
 
   return (
