@@ -71,21 +71,7 @@ export async function completeBookingRequest(
     row.request_type === BOOKING_REQUEST_TYPE.OPEN_REQUEST ||
     row.request_type === BOOKING_REQUEST_TYPE.CUISINE_MATCH
 
-  let vendorEmail: string | null = null
-  let vendorName: string | null = null
-
   if (isSpecific) {
-    const { data: truckRow } = await supabase
-      .from("trucks")
-      .select("id, name, email")
-      .eq("id", row.truck_id as string)
-      .maybeSingle()
-
-    if (truckRow) {
-      vendorName = (truckRow.name as string) ?? row.preferred_trucks ?? "Vendor"
-      vendorEmail = (truckRow.email as string | null)?.trim() || null
-    }
-
     await supabase.from("truck_opportunities").insert({
       booking_request_id: id,
       truck_id: row.truck_id,
@@ -151,27 +137,6 @@ export async function completeBookingRequest(
           <p><strong>Request ID:</strong> ${id}</p>
           <ul>${summaryLines}</ul>
           <p><a href="https://www.foodtruckclt.com/admin/bookings">Open admin bookings</a></p>
-          <p>— FoodTruck CLT</p>
-        `,
-        })
-      }
-
-      if (isSpecific && vendorEmail) {
-        await resend.emails.send({
-          from,
-          to: vendorEmail,
-          subject: "New booking request — " + (row.event_type || "Event"),
-          html: `
-          <h2>New booking request for ${vendorName}</h2>
-          <p>A host submitted a request and selected your truck.</p>
-          <ul>
-            <li><strong>Event type:</strong> ${row.event_type || "Not specified"}</li>
-            <li><strong>Date:</strong> ${row.event_date || "Not specified"}</li>
-            <li><strong>Location:</strong> ${row.city || "Charlotte"}</li>
-            <li><strong>Guest count:</strong> ${row.guest_count || "Not specified"}</li>
-          </ul>
-          <p>Log in to your vendor dashboard to respond:</p>
-          <a href="https://www.foodtruckclt.com/vendor-login">View request</a>
           <p>— FoodTruck CLT</p>
         `,
         })

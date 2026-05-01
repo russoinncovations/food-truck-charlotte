@@ -11,6 +11,7 @@ import { Inbox, Clock, CheckCircle2, AlertCircle, Calendar, Plus, ExternalLink, 
 import type { BookingRequest } from "@/lib/booking-types"
 import { normalizeBookingRowForAdmin } from "@/lib/admin/normalize-booking-row"
 import { easternDateStringToday } from "@/lib/events/public-events"
+import { sendVendorApprovalWelcomeEmail } from "@/lib/email/resend-vendor-welcome"
 
 export const metadata: Metadata = {
   title: "Booking Requests | Admin | Food Truck CLT",
@@ -146,6 +147,12 @@ async function approveVendorApplicationBooking(formData: FormData) {
   if (insertError) return
 
   await supabase.from("vendor_applications").update({ status: "approved" }).eq("id", applicationId)
+
+  const truckDisplayName = businessName || "Unnamed"
+  await sendVendorApprovalWelcomeEmail({
+    to: email,
+    truckName: truckDisplayName,
+  })
 
   revalidatePath("/admin/bookings")
   revalidatePath("/admin")
