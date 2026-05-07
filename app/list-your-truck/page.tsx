@@ -11,6 +11,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { MapPin, Calendar, Users, Star, ArrowRight, ClipboardList } from "lucide-react"
 import { VendorSignupForm } from "@/components/forms/vendor-signup-form"
+import { isPlausibleVendorWebsiteInput } from "@/lib/validation/vendor-website"
 
 const features = [
   {
@@ -92,12 +93,21 @@ export default function ListYourTruckPage() {
       ? serviceAreasRaw.split(/[,;]/).map((s) => s.trim()).filter(Boolean)
       : []
 
+    const websiteRaw = (fd.get("website") as string | null)?.trim() ?? ""
+    if (!isPlausibleVendorWebsiteInput(websiteRaw)) {
+      setIsSubmitting(false)
+      setSubmitError(
+        "Please enter a valid website or domain (for example sweetandcozybakery.net, www.sweetandcozybakery.net, or https://sweetandcozybakery.net).",
+      )
+      return
+    }
+
     const insert = {
       business_name: (fd.get("business_name") as string | null)?.trim() || null,
       contact_name: (fd.get("contact_name") as string | null)?.trim() || null,
       email: (fd.get("email") as string | null)?.trim() || null,
       phone: (fd.get("phone") as string | null)?.trim() || null,
-      website: (fd.get("website") as string | null)?.trim() || null,
+      website: websiteRaw || null,
       instagram: (fd.get("instagram") as string | null)?.trim() || null,
       vendor_description: (fd.get("vendor_description") as string | null)?.trim() || null,
       cuisine_types,

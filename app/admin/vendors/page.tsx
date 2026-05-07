@@ -131,7 +131,8 @@ async function approveVendor(formData: FormData) {
 <p>You're now live on FoodTruckCLT.</p>
 <p><strong>Quick setup:</strong></p>
 <ol>
-  <li>Log in: <a href="https://www.foodtruckclt.com/vendor-login">https://www.foodtruckclt.com/vendor-login</a></li>
+  <li>Log in: <a href="https://www.foodtruckclt.com/vendor-login">https://www.foodtruckclt.com/vendor-login</a><br />
+  Please use this same email address when logging in, as your dashboard is connected to the email this message was sent to.</li>
   <li>Complete your profile (menu, photos, contact info)</li>
   <li>When you're out serving, drop your location on the map so people can find you in real time</li>
 </ol>

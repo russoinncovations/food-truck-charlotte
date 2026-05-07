@@ -118,8 +118,9 @@ export function VendorSignupForm({ onSubmit, submitError, isSubmitting }: Vendor
           <FormField
             label="Website"
             name="website"
-            type="url"
-            placeholder="https://yoursite.com"
+            type="text"
+            autoComplete="url"
+            placeholder="e.g. yoursite.net or https://yoursite.com"
           />
           <FormField
             label="Instagram"

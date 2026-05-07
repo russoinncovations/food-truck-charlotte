@@ -37,6 +37,7 @@ export async function sendVendorApprovalWelcomeEmail(opts: {
 <p>A few quick steps so people can actually find and book you:</p>
 <p><strong>1)</strong> Log in<br />
 <a href="https://www.foodtruckclt.com/vendor-login">https://www.foodtruckclt.com/vendor-login</a></p>
+<p>Please use this same email address when logging in, as your dashboard is connected to the email this message was sent to.</p>
 <p><strong>2)</strong> Complete your profile — add your menu, photos, and contact info so customers know what you offer.</p>
 <p><strong>3)</strong> When you're out serving, drop your location on the map. This is what makes you show up in real time when people are looking for a truck.</p>
 <p><strong>4)</strong> Watch for booking requests — you'll start seeing opportunities come through your dashboard.</p>
