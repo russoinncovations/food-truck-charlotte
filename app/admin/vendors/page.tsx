@@ -8,6 +8,12 @@ import { Header } from "@/components/header"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  fetchVendorReminderRecipients,
+  isPlausibleVendorEmail,
+} from "@/lib/trucks/vendor-reminder-recipients"
+import { VendorScheduleReminderSend } from "@/components/admin/vendor-schedule-reminder-send"
+import { VendorScheduleReminderTestSend } from "@/components/admin/vendor-schedule-reminder-test-send"
 
 export const metadata: Metadata = {
   title: "Vendor Applications | Admin | Food Truck CLT",
@@ -193,11 +199,40 @@ function locationLabel(app: Record<string, unknown>): string {
 export default async function AdminVendorsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ key?: string; duplicate?: string }>
+  searchParams: Promise<{
+    key?: string
+    duplicate?: string
+    reminder?: string
+    attempted?: string
+    sent?: string
+    skipped?: string
+    failed?: string
+    errs?: string
+    testReminder?: string
+    testOk?: string
+    testErr?: string
+  }>
 }) {
   const params = await searchParams
   const key = params?.key
   const duplicateNotice = params?.duplicate === "1"
+  const reminderDone = params?.reminder === "1"
+  const attempted = parseInt(params?.attempted ?? "", 10)
+  const sent = parseInt(params?.sent ?? "", 10)
+  const skipped = parseInt(params?.skipped ?? "", 10)
+  const failed = parseInt(params?.failed ?? "", 10)
+  let reminderErrors: { email: string; message: string }[] = []
+  if (params?.errs) {
+    try {
+      reminderErrors = JSON.parse(decodeURIComponent(params.errs)) as { email: string; message: string }[]
+    } catch {
+      reminderErrors = []
+    }
+  }
+  const testReminderDone = params?.testReminder === "1"
+  const testReminderOk = params?.testOk === "1"
+  const testReminderErr = params?.testErr?.trim() ?? ""
+
   const adminKey = process.env.ADMIN_KEY ?? "7985"
   if (key !== adminKey) {
     return (
@@ -208,6 +243,11 @@ export default async function AdminVendorsPage({
   }
 
   const supabase = await createClient()
+  const { recipients: reminderRecipients, eligibleTruckCount: reminderEligibleCount } =
+    await fetchVendorReminderRecipients(supabase)
+
+  const testEmailConfigured = isPlausibleVendorEmail(process.env.VENDOR_REMINDER_TEST_EMAIL)
+
   const { data: applications } = await supabase
     .from("vendor_applications")
     .select("*")
@@ -242,6 +282,113 @@ export default async function AdminVendorsPage({
               Truck may already exist
             </div>
           ) : null}
+
+          {testReminderDone ? (
+            <div
+              className={`mb-6 rounded-lg border px-4 py-3 text-sm ${
+                testReminderOk
+                  ? "border-green-600/35 bg-green-500/10 text-foreground"
+                  : "border-destructive/40 bg-destructive/10 text-destructive"
+              }`}
+            >
+              {testReminderOk ? (
+                <p>
+                  <span className="font-medium text-foreground">Test reminder sent.</span> Check the inbox configured in{" "}
+                  <code className="text-xs">VENDOR_REMINDER_TEST_EMAIL</code>. No vendor inboxes were used.
+                </p>
+              ) : (
+                <p>
+                  <span className="font-medium">Test send failed.</span>{" "}
+                  {testReminderErr || "Unknown error — check server logs and Resend configuration."}
+                </p>
+              )}
+            </div>
+          ) : null}
+
+          {reminderDone && Number.isFinite(attempted) ? (
+            <div className="mb-6 rounded-lg border border-border bg-card px-4 py-3 text-sm space-y-2">
+              <p className="font-medium text-foreground">Vendor reminder run complete</p>
+              <ul className="list-disc list-inside text-muted-foreground space-y-0.5">
+                <li>
+                  Attempted: <span className="text-foreground tabular-nums">{attempted}</span>
+                </li>
+                <li>
+                  Sent: <span className="text-foreground tabular-nums">{sent}</span>
+                </li>
+                <li>
+                  Skipped (no valid / duplicate inbox vs. listing rows):{" "}
+                  <span className="text-foreground tabular-nums">
+                    {Number.isFinite(skipped) ? skipped : "—"}
+                  </span>
+                </li>
+                {Number.isFinite(failed) && failed > 0 ? (
+                  <li className="text-destructive">
+                    Failed: <span className="tabular-nums">{failed}</span>
+                  </li>
+                ) : null}
+              </ul>
+              {reminderErrors.length > 0 ? (
+                <div className="pt-2 border-t border-border">
+                  <p className="text-xs font-medium text-destructive mb-1">Errors</p>
+                  <ul className="text-xs text-muted-foreground space-y-1 break-all">
+                    {reminderErrors.map((e, i) => (
+                      <li key={`${e.email}-${i}`}>
+                        <span className="text-foreground">{e.email}</span>: {e.message}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+
+          <Card className="border-border mb-8">
+            <CardHeader>
+              <CardTitle className="text-lg">Schedule &amp; map reminders</CardTitle>
+              <CardDescription>
+                Manually email active directory vendors to update their weekly schedule or mark themselves live. Uses{" "}
+                <span className="text-foreground font-medium">Resend</span> (same as other site email). One message per
+                unique email; trucks without a valid address are skipped.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="text-sm text-muted-foreground">
+                <p>
+                  <span className="font-medium text-foreground tabular-nums">{reminderRecipients.length}</span>{" "}
+                  {reminderRecipients.length === 1 ? "inbox" : "inboxes"} will receive the next bulk send ·{" "}
+                  <span className="tabular-nums">{reminderEligibleCount}</span> eligible directory{" "}
+                  {reminderEligibleCount === 1 ? "listing" : "listings"}
+                </p>
+                {!process.env.RESEND_API_KEY ? (
+                  <p className="text-amber-700 dark:text-amber-500/90 mt-2">
+                    RESEND_API_KEY is not set — sends will fail until it is configured.
+                  </p>
+                ) : null}
+              </div>
+
+              <div className="grid gap-6 pt-2 border-t border-border sm:grid-cols-2 sm:gap-8">
+                <div className="space-y-1">
+                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Test send</p>
+                  <p className="text-xs text-muted-foreground mb-2">
+                    Safe preview: one email only, same template as production.
+                  </p>
+                  {key ? (
+                    <VendorScheduleReminderTestSend adminKey={key} testEmailConfigured={testEmailConfigured} />
+                  ) : null}
+                </div>
+                <div className="space-y-1 sm:text-right">
+                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground sm:text-right">
+                    Bulk send
+                  </p>
+                  {key ? (
+                    <div className="flex flex-col items-stretch sm:items-end gap-2">
+                      <VendorScheduleReminderSend adminKey={key} recipientCount={reminderRecipients.length} />
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
 
           <Card className="border-primary/20">
             <CardHeader>
