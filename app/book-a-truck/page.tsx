@@ -19,7 +19,14 @@ export async function generateMetadata(): Promise<Metadata> {
   }
 }
 
-export default async function BookATruckPage() {
+export default async function BookATruckPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ truck?: string }>
+}) {
+  const { truck: truckParam } = await searchParams
+  const preselectedTruckId = truckParam?.trim() || null
+
   const supabase = await createClient()
   const directoryCount = await countPublicDirectoryTrucks(supabase)
 
@@ -28,7 +35,7 @@ export default async function BookATruckPage() {
       ? `Access ${directoryCount} Charlotte food trucks listed on the platform`
       : `Growing list of Charlotte food vendors`,
     "Free to submit a request",
-    "We match you with available trucks",
+    "We match you with available truck vendors",
     "Direct communication with vendors",
   ]
   const { data: directoryTrucks } = await supabase
@@ -51,7 +58,7 @@ export default async function BookATruckPage() {
               Book Food Trucks for Your Event
             </h1>
             <p className="text-lg text-muted-foreground mb-6 max-w-2xl mx-auto">
-              Planning a corporate event, wedding, or private party? Tell us about your event and 
+              Planning a corporate event, wedding, or private party? Tell us about your event and
               we&apos;ll connect you with the perfect food trucks.
             </p>
             <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm text-muted-foreground">
@@ -70,7 +77,10 @@ export default async function BookATruckPage() {
       <section className="py-12 md:py-16">
         <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
           <Card className="p-6 md:p-8">
-            <BookingRequestForm directoryTrucks={directoryTrucks ?? []} />
+            <BookingRequestForm
+              directoryTrucks={directoryTrucks ?? []}
+              preselectedTruckId={preselectedTruckId}
+            />
           </Card>
         </div>
       </section>

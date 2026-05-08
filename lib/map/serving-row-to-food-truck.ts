@@ -1,6 +1,7 @@
 import { type FoodTruck } from "@/lib/data"
 import { easternDateStringToday } from "@/lib/events/public-events"
 import { isValidTruckMapCoordinates } from "@/lib/location/truck-map-coords"
+import { getTruckDisplayImage } from "@/lib/trucks/truck-display-image"
 
 export type ServingTruckRow = {
   id: string
@@ -13,6 +14,7 @@ export type ServingTruckRow = {
   today_location: string | null
   street_address: string | null
   today_specials: string | null
+  photo_url?: string | null
   mapDisplaySource?: "live" | "upcoming" | "listed"
   scheduledStartTime?: string | null
   scheduledEndTime?: string | null
@@ -70,7 +72,7 @@ export function mapRowsToMapTrucks(rows: ServingTruckRow[]): FoodTruck[] {
       slug,
       cuisine,
       description: "",
-      image: "/images/truck-tacos.jpg",
+      image: getTruckDisplayImage(truck.id, truck.photo_url),
       rating: 0,
       reviewCount: 0,
       priceRange: "$",

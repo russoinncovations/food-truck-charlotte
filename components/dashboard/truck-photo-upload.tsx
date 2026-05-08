@@ -14,6 +14,18 @@ type PhotoState =
   | { status: "success"; publicUrl: string }
   | { status: "error"; message: string }
 
+const MAX_BYTES = 5 * 1024 * 1024
+const ALLOWED_CLIENT_TYPES = new Set(["image/jpeg", "image/png", "image/webp"])
+
+function clientFileError(f: File): string | null {
+  if (!ALLOWED_CLIENT_TYPES.has(f.type)) {
+    return "Please choose a JPG, PNG, or WebP image (max 5 MB)."
+  }
+  if (f.size > MAX_BYTES) return "Image must be 5 MB or smaller."
+  if (f.size === 0) return "Choose an image file."
+  return null
+}
+
 function serializeClientError(err: unknown): string {
   if (err instanceof Error) {
     return `${err.name}: ${err.message}${err.stack ? `\n${err.stack}` : ""}`
@@ -49,7 +61,7 @@ export function TruckPhotoUpload({ truckId, initialPhotoUrl }: Props) {
             id="truck-photo-file"
             type="file"
             name="file"
-            accept="image/jpeg,image/png,image/webp,image/gif"
+            accept="image/jpeg,image/png,image/webp"
             className="sr-only"
             disabled={isPending}
             aria-hidden
@@ -57,6 +69,15 @@ export function TruckPhotoUpload({ truckId, initialPhotoUrl }: Props) {
             onChange={async (e) => {
               const f = e.target.files?.[0]
               if (!f) return
+
+              const clientErr = clientFileError(f)
+              if (clientErr) {
+                setState({ status: "error", message: clientErr })
+                e.target.value = ""
+                return
+              }
+
+              setState({ status: "idle" })
 
               const fd = new FormData()
               fd.append("truckId", truckId)
@@ -121,9 +142,7 @@ export function TruckPhotoUpload({ truckId, initialPhotoUrl }: Props) {
           >
             {isPending ? "Uploading…" : "Choose image"}
           </Button>
-          <span className="text-xs text-muted-foreground">
-            JPG, PNG, WebP, or GIF · max 5 MB
-          </span>
+          <span className="text-xs text-muted-foreground">JPG, PNG, or WebP · max 5 MB</span>
         </div>
       </div>
 

@@ -1,7 +1,8 @@
 "use client"
 
-import { useActionState } from "react"
+import { useActionState, useState } from "react"
 import { submitEventPromotion, type EventPromotionResult } from "@/app/promote-event/actions"
+import { EventImageField } from "@/components/forms/event-image-field"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -10,6 +11,7 @@ const initial: EventPromotionResult | null = null
 
 export function PromoteEventForm() {
   const [state, formAction, pending] = useActionState(submitEventPromotion, initial)
+  const [imageBusy, setImageBusy] = useState(false)
 
   return (
     <form action={formAction} className="space-y-6 max-w-2xl">
@@ -89,14 +91,7 @@ export function PromoteEventForm() {
         />
       </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="graphicUrl">Event graphic / flyer URL</Label>
-        <Input id="graphicUrl" name="graphicUrl" type="url" inputMode="url" placeholder="https://" />
-        <p className="text-xs text-muted-foreground">
-          Paste a link to your event flyer, graphic, Facebook event image, Canva design, Instagram post, or
-          promotional image.
-        </p>
-      </div>
+      <EventImageField hiddenFieldName="graphicUrl" onBusyChange={setImageBusy} />
 
       <div className="space-y-2">
         <Label htmlFor="organizerName">Organizer name</Label>
@@ -119,8 +114,8 @@ export function PromoteEventForm() {
         </p>
       )}
 
-      <Button type="submit" className="w-full sm:w-auto" disabled={pending}>
-        {pending ? "Submitting…" : "Submit for review"}
+      <Button type="submit" className="w-full sm:w-auto" disabled={pending || imageBusy}>
+        {imageBusy ? "Uploading image…" : pending ? "Submitting…" : "Submit for review"}
       </Button>
     </form>
   )

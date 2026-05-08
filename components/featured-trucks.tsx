@@ -8,22 +8,7 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
 import { MapPin, ArrowRight } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
-
-const TRUCK_IMAGES = [
-  "https://images.unsplash.com/photo-1687351977296-e909232009b4?w=400&h=300&fit=crop",
-  "https://images.unsplash.com/photo-1509315811345-672d83ef2fbc?w=400&h=300&fit=crop",
-  "https://images.unsplash.com/photo-1626186241349-5d5f44407f55?w=400&h=300&fit=crop",
-  "https://images.unsplash.com/photo-1563861019306-9cccb83bdf0c?w=400&h=300&fit=crop",
-  "https://images.unsplash.com/photo-1519861155730-0b5fbf0dd889?w=400&h=300&fit=crop",
-  "https://images.unsplash.com/photo-1726868734684-ce396eef668e?w=400&h=300&fit=crop",
-  "https://images.unsplash.com/photo-1669039415113-48f87a568fdd?w=400&h=300&fit=crop",
-]
-
-function getTruckImage(truckId: string): string {
-  const index =
-    truckId.split("").reduce((acc, c) => acc + c.charCodeAt(0), 0) % TRUCK_IMAGES.length
-  return TRUCK_IMAGES[index]
-}
+import { getTruckDisplayImage } from "@/lib/trucks/truck-display-image"
 
 type FeaturedTruckRow = {
   id: string
@@ -33,6 +18,8 @@ type FeaturedTruckRow = {
   serving_today: boolean | null
   today_location: string | null
   show_in_directory: boolean | null
+  photo_url: string | null
+  catering: boolean | null
 }
 
 function cuisineTagsForTruck(truck: FeaturedTruckRow): string[] {
@@ -51,7 +38,7 @@ export function FeaturedTrucks() {
       const supabase = createClient()
       const { data } = await supabase
         .from("trucks")
-        .select("id, name, slug, cuisine, serving_today, today_location, show_in_directory")
+        .select("id, name, slug, cuisine, serving_today, today_location, show_in_directory, photo_url, catering")
         .eq("show_in_directory", true)
         .eq("status", "active")
         .eq("is_active", true)
@@ -114,6 +101,8 @@ function TruckCard({ truck }: { truck: FeaturedTruckRow }) {
   const cuisineTags = cuisineTagsForTruck(truck)
   const servingToday = Boolean(truck.serving_today)
   const showTodayLocation = servingToday && Boolean(truck.today_location?.trim())
+  const imageSrc = getTruckDisplayImage(truck.id, truck.photo_url)
+  const booking = Boolean(truck.catering)
 
   return (
     <Card className="group overflow-hidden transition-all hover:shadow-lg hover:border-primary/50">
@@ -121,13 +110,13 @@ function TruckCard({ truck }: { truck: FeaturedTruckRow }) {
         {/* Image */}
         <div className="relative aspect-[4/3] overflow-hidden">
           <Image
-            src={getTruckImage(truck.id)}
+            src={imageSrc}
             alt={truck.name}
             fill
             className="object-cover transition-transform duration-300 group-hover:scale-105"
           />
-          {/* Status Badge */}
-          <div className="absolute top-3 left-3">
+          {/* Status badge — browse context: no "Closed" */}
+          <div className="absolute top-3 left-3 flex flex-wrap gap-1.5">
             {servingToday ? (
               <Badge className="bg-green-500/90 text-white border-0 backdrop-blur-sm">
                 <span className="relative mr-1.5 flex h-2 w-2">
@@ -136,9 +125,13 @@ function TruckCard({ truck }: { truck: FeaturedTruckRow }) {
                 </span>
                 Open Now
               </Badge>
+            ) : booking ? (
+              <Badge className="border-0 bg-primary/90 text-primary-foreground backdrop-blur-sm">
+                Available for Booking
+              </Badge>
             ) : (
-              <Badge variant="secondary" className="backdrop-blur-sm">
-                Closed
+              <Badge variant="secondary" className="backdrop-blur-sm border border-background/20 bg-background/90">
+                Listed Vendor
               </Badge>
             )}
           </div>

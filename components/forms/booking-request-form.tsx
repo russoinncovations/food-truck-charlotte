@@ -71,9 +71,23 @@ const REQUEST_MODE_OPTIONS: { value: string; title: string; hint: string }[] = [
   },
 ]
 
-export function BookingRequestForm({ directoryTrucks = [] }: { directoryTrucks?: DirectoryTruck[] }) {
+export function BookingRequestForm({
+  directoryTrucks = [],
+  preselectedTruckId = null,
+}: {
+  directoryTrucks?: DirectoryTruck[]
+  /** When set, opens the form on “specific vendor” with this truck pre-selected. */
+  preselectedTruckId?: string | null
+}) {
   const [state, formAction, isPending] = useActionState(submitBookingRequest, initialState)
-  const [requestType, setRequestType] = useState<string>(BOOKING_REQUEST_TYPE.OPEN_REQUEST)
+  const [requestType, setRequestType] = useState<string>(
+    preselectedTruckId ? BOOKING_REQUEST_TYPE.SPECIFIC_VENDOR : BOOKING_REQUEST_TYPE.OPEN_REQUEST
+  )
+
+  const truckSelectDefault =
+    preselectedTruckId && directoryTrucks.some((t) => t.id === preselectedTruckId)
+      ? preselectedTruckId
+      : ""
 
   return (
     <form action={formAction} className="space-y-8">
@@ -143,8 +157,9 @@ export function BookingRequestForm({ directoryTrucks = [] }: { directoryTrucks?:
                 id="truckId"
                 name="truckId"
                 required
+                key={truckSelectDefault || "no-truck"}
                 className="w-full h-11 rounded-md border border-input bg-background px-3 text-sm"
-                defaultValue=""
+                defaultValue={truckSelectDefault}
               >
                 <option value="" disabled>
                   Select a truck or vendor…

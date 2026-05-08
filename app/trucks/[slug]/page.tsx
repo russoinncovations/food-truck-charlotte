@@ -15,23 +15,7 @@ import {
   ChevronLeft,
 } from "lucide-react"
 import { createClient } from "@/lib/supabase/server"
-
-const TRUCK_IMAGES = [
-  "https://images.unsplash.com/photo-1565958011703-44f9829ba187?w=400&h=300&fit=crop",
-  "https://images.unsplash.com/photo-1619566636858-adf3ef46400b?w=400&h=300&fit=crop",
-  "https://images.unsplash.com/photo-1524492412937-b28074a5d7da?w=400&h=300&fit=crop",
-  "https://images.unsplash.com/photo-1617196034183-421b4040ed20?w=400&h=300&fit=crop",
-  "https://images.unsplash.com/photo-1534790566855-4cb788d389ec?w=400&h=300&fit=crop",
-  "https://images.unsplash.com/photo-1512689189935-c6c80733a4d4?w=400&h=300&fit=crop",
-  "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&h=300&fit=crop",
-  "https://images.unsplash.com/photo-1600891964599-f61ba0e24092?w=400&h=300&fit=crop",
-]
-
-function getTruckImage(truckId: string): string {
-  const index =
-    truckId.split("").reduce((acc, c) => acc + c.charCodeAt(0), 0) % TRUCK_IMAGES.length
-  return TRUCK_IMAGES[index]
-}
+import { getTruckDisplayImage } from "@/lib/trucks/truck-display-image"
 
 interface Props {
   params: Promise<{ slug: string }>
@@ -117,8 +101,7 @@ export default async function TruckProfilePage({ params }: Props) {
   const priceRange = (row.price_range as string | null | undefined) ?? null
   const tagline = (row.tagline as string | null | undefined) ?? null
 
-  const photoUrl = (row.photo_url as string | null | undefined)?.trim()
-  const heroSrc = photoUrl ? photoUrl : getTruckImage(String(row.id))
+  const heroSrc = getTruckDisplayImage(String(row.id), row.photo_url as string | null | undefined)
 
   return (
     <main className="min-h-screen bg-background">
@@ -265,7 +248,10 @@ export default async function TruckProfilePage({ params }: Props) {
                   Request {name} for your next event.
                 </p>
                 <Button className="w-full" asChild>
-                  <Link href="/book-a-truck" className="flex items-center justify-center gap-2">
+                  <Link
+                    href={`/book-a-truck?truck=${encodeURIComponent(String(row.id))}`}
+                    className="flex items-center justify-center gap-2"
+                  >
                     <ExternalLink className="h-4 w-4" />
                     Request a quote
                   </Link>

@@ -21,21 +21,6 @@ const MapView = dynamic(() => import("@/components/map-view"), {
   ),
 })
 
-const TRUCK_IMAGES = [
-  "https://images.unsplash.com/photo-1687351977296-e909232009b4?w=400&h=300&fit=crop",
-  "https://images.unsplash.com/photo-1509315811345-672d83ef2fbc?w=400&h=300&fit=crop",
-  "https://images.unsplash.com/photo-1626186241349-5d5f44407f55?w=400&h=300&fit=crop",
-  "https://images.unsplash.com/photo-1563861019306-9cccb83bdf0c?w=400&h=300&fit=crop",
-  "https://images.unsplash.com/photo-1519861155730-0b5fbf0dd889?w=400&h=300&fit=crop",
-  "https://images.unsplash.com/photo-1726868734684-ce396eef668e?w=400&h=300&fit=crop",
-  "https://images.unsplash.com/photo-1669039415113-48f87a568fdd?w=400&h=300&fit=crop",
-]
-
-function getTruckImage(truckId: string): string {
-  const index = truckId.split("").reduce((acc, c) => acc + c.charCodeAt(0), 0) % TRUCK_IMAGES.length
-  return TRUCK_IMAGES[index]
-}
-
 function mappableTruckCount(mapped: FoodTruck[]) {
   return mapped.filter(
     (t) => t.location && isValidTruckMapCoordinates(t.location.lat, t.location.lng)
@@ -228,7 +213,7 @@ function MapPreviewContent({
                       className="flex items-center gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors"
                     >
                       <div className="relative h-11 w-11 rounded-lg overflow-hidden shrink-0">
-                        <Image src={getTruckImage(truck.id)} alt={truck.name} fill className="object-cover" />
+                        <Image src={truck.image} alt={truck.name} fill className="object-cover" />
                       </div>
                       <div className="flex-1 min-w-0 flex items-start gap-2">
                         <span className="mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full bg-green-600" aria-hidden />

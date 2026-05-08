@@ -1,8 +1,9 @@
 "use client"
 
-import { useActionState } from "react"
+import { useActionState, useState } from "react"
 import Link from "next/link"
 import { submitQuickAddEvent, type QuickAddEventResult } from "@/app/admin/events/actions"
+import { EventImageField } from "@/components/forms/event-image-field"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -14,6 +15,7 @@ type Props = { adminKey: string }
 
 export function QuickAddEventForm({ adminKey }: Props) {
   const [state, formAction, pending] = useActionState(submitQuickAddEvent, initial)
+  const [imageBusy, setImageBusy] = useState(false)
   const listHref = `/admin/events?key=${encodeURIComponent(adminKey)}`
 
   return (
@@ -108,14 +110,7 @@ export function QuickAddEventForm({ adminKey }: Props) {
         <Input id="facebook_post_url" name="facebook_post_url" type="url" placeholder="https://" />
       </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="graphic_url">Event graphic / flyer URL</Label>
-        <Input id="graphic_url" name="graphic_url" type="url" placeholder="https://" />
-        <p className="text-xs text-muted-foreground">
-          Paste a link to your event flyer, graphic, Facebook event image, Canva design, Instagram post, or
-          promotional image.
-        </p>
-      </div>
+      <EventImageField hiddenFieldName="graphic_url" adminKey={adminKey} onBusyChange={setImageBusy} />
 
       <div className="space-y-2">
         <Label htmlFor="organizer_name">Organizer name (optional)</Label>
@@ -157,8 +152,8 @@ export function QuickAddEventForm({ adminKey }: Props) {
       ) : null}
 
       <div className="flex flex-wrap gap-3">
-        <Button type="submit" disabled={pending || state?.success === true}>
-          {pending ? "Saving…" : "Save event"}
+        <Button type="submit" disabled={pending || state?.success === true || imageBusy}>
+          {imageBusy ? "Uploading image…" : pending ? "Saving…" : "Save event"}
         </Button>
         <Button type="button" variant="outline" asChild>
           <Link href={listHref}>Cancel</Link>

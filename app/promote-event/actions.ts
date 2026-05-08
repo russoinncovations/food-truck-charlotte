@@ -85,8 +85,14 @@ export async function submitEventPromotion(
   if (!EMAIL_RE.test(organizer_email)) {
     return { success: false, error: "Please enter a valid organizer email address." }
   }
-  if (!isPlausibleUrl(event_url) || !isPlausibleUrl(graphic_url)) {
-    return { success: false, error: "Please enter valid http(s) URLs for website, ticket, or graphic links, or leave them blank." }
+  if (!isPlausibleUrl(event_url)) {
+    return {
+      success: false,
+      error: "Please enter a valid http(s) URL for the event website or ticket link, or leave it blank.",
+    }
+  }
+  if (graphic_url && !isPlausibleUrl(graphic_url)) {
+    return { success: false, error: "The event image link is not valid. Remove it or try uploading again." }
   }
 
   console.log("[promote-event] submitted venue name:", venue_name)
