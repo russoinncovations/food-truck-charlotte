@@ -1,6 +1,5 @@
 import { Metadata } from "next"
 import Link from "next/link"
-import Image from "next/image"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { Button } from "@/components/ui/button"
@@ -9,15 +8,14 @@ import { Card } from "@/components/ui/card"
 import { Calendar, MapPin, ArrowRight, Plus } from "lucide-react"
 import { createClient } from "@/lib/supabase/server"
 import { publicUpcomingEventsBase } from "@/lib/events/public-events"
+import { EventListingImage } from "@/components/event-listing-image"
+import { EVENT_LISTING_DESCRIPTION_FALLBACK } from "@/lib/events/event-display-image"
 
 export const metadata: Metadata = {
   title: "Food Truck Events in Charlotte | FoodTruck CLT",
   description:
     "Discover food truck rallies, brewery pop-ups, and festivals happening across Charlotte, NC. Find events with multiple food trucks near you.",
 }
-
-const EVENT_IMAGE_PLACEHOLDER =
-  "https://images.unsplash.com/photo-1687351977296-e909232009b4?w=400&h=300&fit=crop"
 
 type EventRow = {
   id: string
@@ -28,6 +26,7 @@ type EventRow = {
   date: string
   description: string | null
   image_url: string | null
+  featured_image_url: string | null
   featured: boolean | null
   active: boolean | null
 }
@@ -37,17 +36,20 @@ function EventCard({ event }: { event: EventRow }) {
   const day = eventDate.getDate()
   const month = eventDate.toLocaleDateString("en-US", { month: "short" })
   const weekday = eventDate.toLocaleDateString("en-US", { weekday: "short" })
-  const imageSrc = event.image_url?.trim() || EVENT_IMAGE_PLACEHOLDER
   const locationLine = [event.location_name, event.address].filter(Boolean).join(" · ")
+  const descriptionText = event.description?.trim() || EVENT_LISTING_DESCRIPTION_FALLBACK
 
   return (
     <Card className="group overflow-hidden hover:shadow-lg hover:border-primary/50 transition-all">
       <Link href={`/events/${event.slug}`} className="flex flex-col h-full">
-        <div className="relative aspect-[16/10] overflow-hidden">
-          <Image
-            src={imageSrc}
+        <div className="relative aspect-[16/10] overflow-hidden bg-muted">
+          <EventListingImage
+            eventId={event.id}
+            slug={event.slug}
+            imageUrl={event.image_url}
+            featuredImageUrl={event.featured_image_url}
             alt={event.title}
-            fill
+            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
             className="object-cover transition-transform duration-300 group-hover:scale-105"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-foreground/60 to-transparent" />
@@ -90,9 +92,7 @@ function EventCard({ event }: { event: EventRow }) {
             ) : null}
           </div>
 
-          {event.description ? (
-            <p className="text-sm text-muted-foreground line-clamp-3 mb-4">{event.description}</p>
-          ) : null}
+          <p className="text-sm text-muted-foreground line-clamp-3 mb-4">{descriptionText}</p>
 
           <div className="mt-auto flex justify-end">
             <Button variant="ghost" size="sm" className="gap-1">
@@ -110,7 +110,7 @@ export default async function EventsPage() {
   const supabase = await createClient()
   const { data: events } = await publicUpcomingEventsBase(
     supabase,
-    "id, title, slug, location_name, address, date, description, image_url, featured, active, listing_status"
+    "id, title, slug, location_name, address, date, description, image_url, featured_image_url, featured, active, listing_status"
   ).order("date", { ascending: true })
 
   const list = (events ?? []) as unknown as EventRow[]

@@ -1,7 +1,6 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import Image from "next/image"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -9,9 +8,8 @@ import { Card } from "@/components/ui/card"
 import { MapPin, ArrowRight } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { publicUpcomingEventsBase } from "@/lib/events/public-events"
-
-const FALLBACK_IMAGE =
-  "https://images.unsplash.com/photo-1687351977296-e909232009b4?w=400&h=300&fit=crop"
+import { EventListingImage } from "@/components/event-listing-image"
+import { EVENT_LISTING_DESCRIPTION_FALLBACK } from "@/lib/events/event-display-image"
 
 type EventRow = {
   id: string
@@ -21,6 +19,7 @@ type EventRow = {
   date: string
   description: string | null
   image_url: string | null
+  featured_image_url: string | null
   active: boolean | null
 }
 
@@ -51,7 +50,7 @@ export function EventsSection() {
       const supabase = createClient()
       const { data } = await publicUpcomingEventsBase(
         supabase,
-        "id, title, slug, location_name, date, description, image_url, active"
+        "id, title, slug, location_name, date, description, image_url, featured_image_url, active"
       )
         .order("date", { ascending: true })
         .limit(3)
@@ -111,7 +110,7 @@ export function EventsSection() {
 
 function EventCard({ event, featured = false }: { event: EventRow; featured?: boolean }) {
   const { day, month, weekday, longDate } = formatEventDateParts(event.date)
-  const imageSrc = event.image_url?.trim() || FALLBACK_IMAGE
+  const descriptionText = event.description?.trim() || EVENT_LISTING_DESCRIPTION_FALLBACK
 
   return (
     <Card
@@ -121,11 +120,20 @@ function EventCard({ event, featured = false }: { event: EventRow; featured?: bo
     >
       <Link href={`/events/${event.slug}`} className="flex flex-col h-full">
         {/* Image */}
-        <div className={`relative overflow-hidden ${featured ? "aspect-[16/9]" : "aspect-[16/10]"}`}>
-          <Image
-            src={imageSrc}
+        <div
+          className={`relative overflow-hidden bg-muted ${featured ? "aspect-[16/9]" : "aspect-[16/10]"}`}
+        >
+          <EventListingImage
+            eventId={event.id}
+            slug={event.slug}
+            imageUrl={event.image_url}
+            featuredImageUrl={event.featured_image_url}
             alt={event.title}
-            fill
+            sizes={
+              featured
+                ? "(max-width: 1024px) 100vw, 66vw"
+                : "(max-width: 1024px) 100vw, 33vw"
+            }
             className="object-cover transition-transform duration-300 group-hover:scale-105"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-foreground/60 to-transparent" />
@@ -157,15 +165,11 @@ function EventCard({ event, featured = false }: { event: EventRow; featured?: bo
 
           <p className="text-sm text-muted-foreground mb-2">{longDate}</p>
 
-          {event.description?.trim() ? (
-            <p
-              className={`text-muted-foreground text-sm mb-4 ${
-                featured ? "line-clamp-3" : "line-clamp-2"
-              }`}
-            >
-              {event.description.trim()}
-            </p>
-          ) : null}
+          <p
+            className={`text-muted-foreground text-sm mb-4 ${featured ? "line-clamp-3" : "line-clamp-2"}`}
+          >
+            {descriptionText}
+          </p>
 
           <div className="mt-auto space-y-2">
             {/* Location */}
