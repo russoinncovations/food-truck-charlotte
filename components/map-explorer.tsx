@@ -35,6 +35,7 @@ import {
 import { cuisineCategories, type FoodTruck } from "@/lib/data"
 import { mapRowsToMapTrucks, type ServingTruckRow } from "@/lib/map/serving-row-to-food-truck"
 import { type MapEventMarker, formatMapEventDateTime } from "@/lib/events/map-event-markers"
+import { isValidTruckMapCoordinates } from "@/lib/location/truck-map-coords"
 
 export type { ServingTruckRow }
 
@@ -51,18 +52,16 @@ const MapView = dynamic(() => import("@/components/map-view"), {
   ),
 })
 
-function truckWord(count: number): "truck" | "trucks" {
-  return count === 1 ? "truck" : "trucks"
-}
-
 export function MapExplorer({
   trucks,
   mapEvents,
   hasAnyTrucksInDb = true,
+  usingListedFallback = false,
 }: {
   trucks: ServingTruckRow[]
   mapEvents: MapEventMarker[]
   hasAnyTrucksInDb?: boolean
+  usingListedFallback?: boolean
 }) {
   const isLg = useMinWidthLg()
   const [searchQuery, setSearchQuery] = useState("")
@@ -75,8 +74,16 @@ export function MapExplorer({
 
   const mapTrucks = useMemo(() => mapRowsToMapTrucks(trucks), [trucks])
 
+  const truckPinsOnMapCount = useMemo(
+    () =>
+      mapTrucks.filter(
+        (t) => t.location && isValidTruckMapCoordinates(t.location.lat, t.location.lng)
+      ).length,
+    [mapTrucks]
+  )
+
   const liveCount = useMemo(
-    () => mapTrucks.filter((t) => t.mapDisplaySource === "live").length,
+    () => mapTrucks.filter((t) => t.mapPinStatus === "live" || t.mapDisplaySource === "live").length,
     [mapTrucks]
   )
   const anyLiveReporting = liveCount > 0
@@ -154,11 +161,11 @@ export function MapExplorer({
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-500 opacity-75" />
                 <span className="relative inline-flex h-2 w-2 rounded-full bg-green-500" />
               </span>
-              {liveCount} {liveCount === 1 ? "truck" : "trucks"} live
+              {liveCount} {liveCount === 1 ? "truck" : "trucks"} open now
             </Badge>
           ) : (
-            <Badge variant="secondary" className="max-w-[16rem] text-left font-normal leading-snug text-muted-foreground">
-              {mapEvents.length > 0 ? "No trucks live — events on the map" : "No trucks are live right now"}
+            <Badge variant="secondary" className="max-w-[18rem] text-left font-normal leading-snug text-muted-foreground">
+              No trucks marked open
             </Badge>
           )}
           <Button
@@ -171,11 +178,19 @@ export function MapExplorer({
         </div>
       </header>
 
-      <p className="shrink-0 border-b border-border/80 bg-muted/30 px-4 py-2 text-center text-xs text-muted-foreground">
-        {anyLiveReporting
-          ? "Live locations are updated by food truck vendors."
-          : "No trucks are live right now."}
-        {mapEvents.length > 0 ? " Public events appear as orange pins on the map." : ""}
+      <p className="shrink-0 border-b border-border/80 bg-muted/30 px-4 py-2 text-center text-xs text-muted-foreground leading-snug">
+        {anyLiveReporting ? (
+          <>
+            Live locations are updated by food truck vendors.
+            {mapEvents.length > 0 ? " Orange pins are public events (upcoming or in progress)." : ""}
+          </>
+        ) : mapEvents.length > 0 || truckPinsOnMapCount > 0 ? (
+          <>
+            No trucks are marked open right now. Showing upcoming events and listed Charlotte-area vendors.
+          </>
+        ) : (
+          <>No trucks are marked open right now.</>
+        )}
       </p>
 
       <div className="flex-1 flex overflow-hidden">
@@ -197,6 +212,7 @@ export function MapExplorer({
             mapEventsCount={mapEvents.length}
             liveCount={liveCount}
             anyLiveReporting={anyLiveReporting}
+            usingListedFallback={usingListedFallback}
             selectedTruck={selectedTruck}
             selectedEvent={selectedEvent}
             setSelectedTruck={setSelectedTruckAndClearEvent}
@@ -229,6 +245,7 @@ export function MapExplorer({
               mapEventsCount={mapEvents.length}
               liveCount={liveCount}
               anyLiveReporting={anyLiveReporting}
+              usingListedFallback={usingListedFallback}
               selectedTruck={selectedTruck}
               selectedEvent={selectedEvent}
               setSelectedTruck={setSelectedTruckAndClearEvent}
@@ -285,6 +302,33 @@ export function MapExplorer({
   )
 }
 
+function MapPinLegend({ className }: { className?: string }) {
+  return (
+    <div className={className}>
+      <div
+        className="flex flex-wrap gap-x-4 gap-y-2 text-[11px] text-muted-foreground"
+        aria-label="Map legend"
+      >
+        <div className="flex items-center gap-1.5">
+          <span className="h-2.5 w-2.5 rounded-full bg-green-600 shrink-0" />
+          <span>Open Now</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="h-2.5 w-2.5 rounded-full bg-orange-500 shrink-0" />
+          <span>Upcoming Event</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="h-2.5 w-2.5 rounded-full bg-slate-500 shrink-0" />
+          <span>Listed Vendor</span>
+        </div>
+      </div>
+      <p className="text-[10px] text-muted-foreground/90 mt-1.5 leading-snug">
+        Deeper orange pins are public events happening within their scheduled hours (still not a vendor “open now” check-in).
+      </p>
+    </div>
+  )
+}
+
 function SidebarContent({
   searchQuery,
   setSearchQuery,
@@ -297,6 +341,7 @@ function SidebarContent({
   mapEventsCount,
   liveCount,
   anyLiveReporting,
+  usingListedFallback,
   selectedTruck,
   selectedEvent,
   setSelectedTruck,
@@ -314,14 +359,13 @@ function SidebarContent({
   mapEventsCount: number
   liveCount: number
   anyLiveReporting: boolean
+  usingListedFallback: boolean
   selectedTruck: FoodTruck | null
   selectedEvent: MapEventMarker | null
   setSelectedTruck: (v: FoodTruck | null) => void
   setSelectedEvent: (v: MapEventMarker | null) => void
   hasAnyTrucksInDb: boolean
 }) {
-  const noTrucksOnMapNow = liveCount === 0 && mapEventsCount > 0
-
   return (
     <>
       {/* Search & Filters */}
@@ -336,6 +380,8 @@ function SidebarContent({
             className="pl-9"
           />
         </div>
+
+        <MapPinLegend className="pb-3 border-b" />
 
         <div className="flex gap-2">
           <Select value={selectedCuisine} onValueChange={setSelectedCuisine}>
@@ -364,48 +410,36 @@ function SidebarContent({
         </div>
       </div>
 
-      {noTrucksOnMapNow && (
-        <div className="px-4 py-3 border-b bg-orange-500/10 text-sm text-foreground space-y-2">
-          <p className="text-muted-foreground">
-            No trucks are live right now. On the map:{" "}
-            <span className="font-medium text-foreground">{mapEventsCount}</span> public event
-            {mapEventsCount === 1 ? "" : "s"} (orange pins).{" "}
-            <Link href="/events" className="text-primary underline font-medium">
-              Browse all events
-            </Link>
-          </p>
-          {hasAnyTrucksInDb ? (
-            <Button asChild variant="outline" size="sm" className="w-full sm:w-auto">
-              <Link href="/trucks">View all trucks</Link>
-            </Button>
-          ) : null}
-        </div>
-      )}
-
       {/* Results Count */}
       <div className="px-4 py-3 border-b bg-muted/50 space-y-1">
         {!anyLiveReporting ? (
           <p className="text-sm text-muted-foreground">
-            No trucks are live right now
+            {usingListedFallback && filteredTrucks.length > 0 ? (
+              <>
+                <span className="font-medium text-foreground">{filteredTrucks.length}</span> listed vendor
+                {filteredTrucks.length === 1 ? "" : "s"} on the map
+              </>
+            ) : (
+              <>No vendor trucks marked open right now</>
+            )}
             {mapEventsCount > 0 ? (
               <>
                 {" "}
                 ·{" "}
-                <span className="font-medium text-foreground">{filteredMapEvents.length}</span> event
-                {filteredMapEvents.length === 1 ? "" : "s"} on the map
+                <span className="font-medium text-foreground">{filteredMapEvents.length}</span> public event
+                {filteredMapEvents.length === 1 ? "" : "s"}
               </>
             ) : null}
           </p>
         ) : (
           <p className="text-sm text-muted-foreground">
-            <span className="font-medium text-foreground">{filteredTrucks.length}</span> live{" "}
-            {truckWord(filteredTrucks.length)} on the list
+            <span className="font-medium text-foreground">{filteredTrucks.length}</span> open now on the list
             {mapEventsCount > 0 ? (
               <>
                 {" "}
                 ·{" "}
-                <span className="font-medium text-foreground">{filteredMapEvents.length}</span> event
-                {filteredMapEvents.length === 1 ? "" : "s"} on the map
+                <span className="font-medium text-foreground">{filteredMapEvents.length}</span> public event
+                {filteredMapEvents.length === 1 ? "" : "s"}
               </>
             ) : null}
           </p>
@@ -417,7 +451,7 @@ function SidebarContent({
           {filteredMapEvents.length > 0 ? (
             <div className="space-y-2">
               <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Upcoming on the map
+                Public events on the map
               </h3>
               <div className="space-y-2">
                 {filteredMapEvents.map((ev) => (
@@ -426,19 +460,31 @@ function SidebarContent({
                     type="button"
                     className={`w-full text-left rounded-xl border transition-all ${
                       selectedEvent?.id === ev.id
-                        ? "border-orange-500 shadow-md ring-1 ring-orange-500/30"
-                        : "border-border hover:border-orange-500/50"
+                        ? ev.pinPhase === "upcoming"
+                          ? "border-orange-500 shadow-md ring-1 ring-orange-500/30"
+                          : "border-amber-600 shadow-md ring-1 ring-amber-600/30"
+                        : ev.pinPhase === "upcoming"
+                          ? "border-border hover:border-orange-500/50"
+                          : "border-border hover:border-amber-600/50"
                     }`}
                     onClick={() => setSelectedEvent(ev)}
                   >
                     <div className="p-3">
                       <div className="flex items-start gap-2">
                         <span
-                          className="mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full bg-orange-500"
+                          className={`mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full ${
+                            ev.pinPhase === "upcoming" ? "bg-orange-500" : "bg-amber-600"
+                          }`}
                           aria-hidden
                         />
                         <div className="min-w-0 flex-1">
+                          <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                            {ev.mapPinStatus === "upcoming_event" ? "Upcoming Event" : "Happening now"}
+                          </p>
                           <p className="font-semibold text-sm text-foreground leading-snug">{ev.title}</p>
+                          {ev.mapPinStatus === "upcoming_event" ? (
+                            <p className="text-[11px] text-orange-800 dark:text-orange-300/90 mt-0.5">Not open yet.</p>
+                          ) : null}
                           <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
                             <Calendar className="h-3 w-3 shrink-0" />
                             {formatMapEventDateTime(ev.date, ev.startTime, ev.endTime)}
@@ -462,7 +508,9 @@ function SidebarContent({
 
           {filteredTrucks.length > 0 ? (
             <div className="space-y-2">
-              <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Live trucks</h3>
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                {anyLiveReporting ? "Open now" : usingListedFallback ? "Listed vendors" : "Trucks"}
+              </h3>
               <div className="space-y-3">
                 {filteredTrucks.map((truck) => (
                   <div key={truck.id} className="space-y-1">
@@ -493,9 +541,8 @@ function SidebarContent({
                 <p className="text-muted-foreground text-sm">Trucks are being added now — check back soon.</p>
               ) : (
                 <>
-                  <p className="text-muted-foreground text-sm">No trucks are live right now.</p>
-                  <p className="text-sm text-muted-foreground">
-                    Nothing matched your search. Try different keywords or clear filters.
+                  <p className="text-muted-foreground text-sm">
+                    No trucks or events matched your search. Try different keywords or clear filters.
                   </p>
                   <Button asChild variant="default" size="sm">
                     <Link href="/trucks">View all trucks</Link>
@@ -513,17 +560,30 @@ function SidebarContent({
 function EventMapCard({ event, onClose }: { event: MapEventMarker; onClose: () => void }) {
   const href =
     event.slug && String(event.slug).trim() !== "" ? `/events/${encodeURIComponent(String(event.slug).trim())}` : "/events"
+  const isUpcoming = event.mapPinStatus === "upcoming_event"
   return (
-    <div className="relative bg-card rounded-xl border border-orange-500/40 shadow-xl p-4">
+    <div
+      className={`relative bg-card rounded-xl shadow-xl p-4 border ${
+        isUpcoming ? "border-orange-500/40" : "border-amber-600/45"
+      }`}
+    >
       <Button variant="ghost" size="icon" className="absolute top-2 right-2 h-8 w-8" onClick={onClose}>
         <X className="h-4 w-4" />
       </Button>
       <div className="pr-8">
         <div className="flex items-center gap-2 mb-1">
-          <span className="h-2.5 w-2.5 rounded-full bg-orange-500 shrink-0" />
+          <span
+            className={`h-2.5 w-2.5 rounded-full shrink-0 ${isUpcoming ? "bg-orange-500" : "bg-amber-600"}`}
+          />
           <h3 className="font-semibold text-foreground">{event.title}</h3>
         </div>
-        <p className="text-xs text-muted-foreground flex items-center gap-1 mb-2">
+        <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
+          {isUpcoming ? "Upcoming Event" : "Happening now — public event"}
+        </p>
+        {isUpcoming ? (
+          <p className="text-xs text-orange-800 dark:text-orange-300/90 mt-1">Not open yet.</p>
+        ) : null}
+        <p className="text-xs text-muted-foreground flex items-center gap-1 mb-2 mt-1.5">
           <Calendar className="h-3.5 w-3.5 shrink-0" />
           {formatMapEventDateTime(event.date, event.startTime, event.endTime)}
         </p>
@@ -532,7 +592,7 @@ function EventMapCard({ event, onClose }: { event: MapEventMarker; onClose: () =
           <span>{event.locationLabel}</span>
         </p>
         <Button size="sm" className="w-full" asChild>
-          <Link href={href}>{event.slug ? "View event details" : "Browse events"}</Link>
+          <Link href={href}>View Event</Link>
         </Button>
       </div>
     </div>
@@ -551,6 +611,7 @@ function TruckCard({
   compact?: boolean
 }) {
   const nextStop = truck.schedule[0]
+  const isLivePin = truck.mapPinStatus === "live" || truck.mapDisplaySource === "live"
   const locationLine =
     truck.location?.address && truck.location.address.trim() !== ""
       ? truck.location.address
@@ -561,7 +622,13 @@ function TruckCard({
   return (
     <div
       className={`relative bg-card rounded-xl border transition-all ${
-        isSelected ? "border-primary shadow-lg" : "hover:border-primary/50"
+        isSelected
+          ? isLivePin
+            ? "border-primary shadow-lg"
+            : "border-slate-500 shadow-md ring-1 ring-slate-500/20"
+          : isLivePin
+            ? "hover:border-primary/50"
+            : "hover:border-slate-400/60"
       } ${compact ? "shadow-xl" : ""}`}
     >
       {onClose && (
@@ -587,7 +654,7 @@ function TruckCard({
             fill
             className="object-cover"
           />
-          {truck.isOpen && (
+          {isLivePin && (
             <div className="absolute top-1 left-1">
               <span className="flex h-3 w-3">
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-500 opacity-75" />
@@ -627,14 +694,16 @@ function TruckCard({
               <div className="flex items-start gap-1.5 text-sm">
                 <MapPin className="h-3.5 w-3.5 text-primary shrink-0 mt-0.5" />
                 <div className="min-w-0">
-                  <p className="text-xs font-medium text-muted-foreground">Current location</p>
+                  <p className="text-xs font-medium text-muted-foreground">
+                    {isLivePin ? "Current location" : "Listed location"}
+                  </p>
                   <p className="text-sm text-foreground break-words leading-snug">{locationLine}</p>
                 </div>
               </div>
             </div>
           )}
 
-          {nextStop && (
+          {nextStop && isLivePin && (
             <div className="mt-2 pt-2 border-t">
               <div className="flex items-center gap-1 text-sm">
                 <MapPin className="h-3.5 w-3.5 text-primary shrink-0" />

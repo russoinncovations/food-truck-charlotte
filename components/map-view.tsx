@@ -13,6 +13,13 @@ const DEFAULT_ZOOM = 12
 
 const ORANGE_EVENT = "#f97316"
 const ORANGE_EVENT_BORDER = "#c2410c"
+const AMBER_EVENT_IN_PROGRESS = "#d97706"
+const AMBER_EVENT_BORDER = "#b45309"
+
+const TRUCK_LIVE_BG = "#16a34a"
+const TRUCK_LIVE_BORDER = "#15803d"
+const TRUCK_LISTED_BG = "#64748b"
+const TRUCK_LISTED_BORDER = "#475569"
 
 interface MapViewProps {
   trucks: FoodTruck[]
@@ -25,6 +32,10 @@ interface MapViewProps {
   homeMapPreview?: boolean
   /** When filters/search are inactive, show live-map empty copy instead of “adjust search”. */
   filtersInactive?: boolean
+}
+
+function truckPinIsLive(truck: FoodTruck): boolean {
+  return truck.mapPinStatus === "live" || truck.mapDisplaySource === "live"
 }
 
 function hasMapLocation(truck: FoodTruck): truck is FoodTruck & {
@@ -178,7 +189,11 @@ export default function MapView({
                 setInfoEventId(null)
               }}
             >
-              <Pin background="#16a34a" borderColor="#15803d" glyphColor="#ffffff" />
+              <Pin
+                background={truckPinIsLive(truck) ? TRUCK_LIVE_BG : TRUCK_LISTED_BG}
+                borderColor={truckPinIsLive(truck) ? TRUCK_LIVE_BORDER : TRUCK_LISTED_BORDER}
+                glyphColor="#ffffff"
+              />
             </AdvancedMarker>
           ))}
 
@@ -198,7 +213,11 @@ export default function MapView({
                 setInfoTruckId(null)
               }}
             >
-              <Pin background={ORANGE_EVENT} borderColor={ORANGE_EVENT_BORDER} glyphColor="#ffffff" />
+              <Pin
+                background={ev.pinPhase === "upcoming" ? ORANGE_EVENT : AMBER_EVENT_IN_PROGRESS}
+                borderColor={ev.pinPhase === "upcoming" ? ORANGE_EVENT_BORDER : AMBER_EVENT_BORDER}
+                glyphColor="#ffffff"
+              />
             </AdvancedMarker>
           ))}
 
@@ -216,8 +235,17 @@ export default function MapView({
                 <p className="text-xs text-muted-foreground mb-2">
                   {infoTruck.cuisine.length > 0 ? infoTruck.cuisine.join(", ") : "Cuisine TBD"}
                 </p>
+                {truckPinIsLive(infoTruck) ? (
+                  <p className="text-[11px] font-medium text-green-700 mb-2">Open now — vendor check-in</p>
+                ) : (
+                  <p className="text-[11px] text-muted-foreground mb-2">
+                    Listed vendor — not necessarily serving at this pin right now.
+                  </p>
+                )}
                 <div className="mb-3">
-                  <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Location</p>
+                  <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                    {truckPinIsLive(infoTruck) ? "Location" : "Listed location"}
+                  </p>
                   <p className="text-xs leading-snug">
                     {infoTruck.location?.address?.trim() ? infoTruck.location.address : "Address not set"}
                   </p>
@@ -248,7 +276,15 @@ export default function MapView({
             >
               <div className="max-w-[280px] p-1 pr-2 text-foreground text-sm">
                 <p className="font-semibold leading-tight mb-0.5">{infoEvent.title}</p>
-                <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5 mb-2">
+                {infoEvent.mapPinStatus === "upcoming_event" ? (
+                  <>
+                    <p className="text-[11px] font-semibold text-orange-700 mt-1">Upcoming Event</p>
+                    <p className="text-[11px] text-muted-foreground">Not open yet.</p>
+                  </>
+                ) : (
+                  <p className="text-[11px] font-semibold text-amber-800 mt-1">Happening now — public event</p>
+                )}
+                <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1.5 mb-2">
                   <Calendar className="h-3 w-3 shrink-0" />
                   {formatMapEventDateTime(infoEvent.date, infoEvent.startTime, infoEvent.endTime)}
                 </p>
@@ -261,11 +297,11 @@ export default function MapView({
                     href={`/events/${encodeURIComponent(String(infoEvent.slug).trim())}`}
                     className="text-xs font-semibold text-primary hover:underline"
                   >
-                    View event
+                    View Event
                   </Link>
                 ) : (
                   <Link href="/events" className="text-xs font-semibold text-primary hover:underline">
-                    All events
+                    View Event
                   </Link>
                 )}
               </div>
@@ -278,12 +314,15 @@ export default function MapView({
             <div className="pointer-events-auto rounded-lg border border-border/80 bg-background/90 px-4 py-3 text-sm text-muted-foreground shadow-sm backdrop-blur text-center space-y-2 max-w-sm">
               {homeMapPreview || filtersInactive ? (
                 <>
-                  <p>No trucks are live right now.</p>
+                  <p>No trucks are marked open right now.</p>
+                  <p className="text-xs leading-snug">
+                    Open the full map for upcoming events and listed Charlotte-area vendors.
+                  </p>
                   <Link
-                    href="/trucks"
+                    href="/map"
                     className="inline-flex text-xs font-semibold text-primary hover:underline"
                   >
-                    View all trucks
+                    Open full map
                   </Link>
                 </>
               ) : (

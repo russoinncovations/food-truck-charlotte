@@ -61,6 +61,7 @@ export function mapRowsToMapTrucks(rows: ServingTruckRow[]): FoodTruck[] {
     const displaySource: "live" | "upcoming" | "listed" =
       truck.mapDisplaySource ?? (truck.serving_today ? "live" : "upcoming")
     const isOpen = displaySource === "live"
+    const mapPinStatus: FoodTruck["mapPinStatus"] = displaySource === "live" ? "live" : "listed"
 
     const addressParts = [truck.today_location, truck.street_address].filter(Boolean).join(" · ") || ""
     const directoryLocationHint =
@@ -79,6 +80,7 @@ export function mapRowsToMapTrucks(rows: ServingTruckRow[]): FoodTruck[] {
       isOpen,
       isFeatured: false,
       mapDisplaySource: displaySource,
+      mapPinStatus,
       location: hasMapPin
         ? {
             lat,

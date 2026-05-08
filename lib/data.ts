@@ -15,6 +15,8 @@ export interface FoodTruck {
   isFeatured: boolean
   /** Map page: live reporting vs scheduled upcoming pin styling */
   mapDisplaySource?: "live" | "upcoming" | "listed"
+  /** Map pins: vendor live check-in vs directory fallback (`upcoming` rows treated like listed for pin UI). */
+  mapPinStatus?: "live" | "listed"
   location?: {
     lat: number
     lng: number

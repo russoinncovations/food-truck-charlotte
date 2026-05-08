@@ -22,9 +22,11 @@ const MapPreview = dynamic(() => import("@/components/map-preview"), {
 export function MapPreviewClient({
   trucks,
   mapEvents,
+  usingListedFallback,
 }: {
   trucks: ServingTruckRow[]
   mapEvents: MapEventMarker[]
+  usingListedFallback: boolean
 }) {
-  return <MapPreview trucks={trucks} mapEvents={mapEvents} />
+  return <MapPreview trucks={trucks} mapEvents={mapEvents} usingListedFallback={usingListedFallback} />
 }
