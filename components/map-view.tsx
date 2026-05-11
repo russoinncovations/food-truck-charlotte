@@ -13,7 +13,8 @@ const DEFAULT_ZOOM = 12
 
 const ORANGE_EVENT = "#f97316"
 const ORANGE_EVENT_BORDER = "#c2410c"
- = "#16a34a"
+
+const TRUCK_LIVE_BG = "#16a34a"
 const TRUCK_LIVE_BORDER = "#15803d"
 
 interface MapViewProps {
@@ -51,7 +52,7 @@ function MapPanToSelected({
   const map = useMap()
   useEffect(() => {
     if (!map) return
-    if (selectedTruck && hasMapLocation(selectedTruck)) {
+    if (selectedTruck && truckPinIsLive(selectedTruck) && hasMapLocation(selectedTruck)) {
       const { lat, lng } = selectedTruck.location
       map.panTo({ lat, lng })
       const z = map.getZoom()
@@ -95,13 +96,19 @@ export default function MapView({
   useEffect(() => {
     if (selectedTruck == null) {
       setInfoTruckId(null)
-    } else if (hasMapLocation(selectedTruck)) {
+      return
+    }
+    const onMapLive =
+      truckPinIsLive(selectedTruck) &&
+      hasMapLocation(selectedTruck) &&
+      trucks.some((t) => t.id === selectedTruck.id)
+    if (onMapLive) {
       setInfoTruckId(selectedTruck.id)
       setInfoEventId(null)
     } else {
       setInfoTruckId(null)
     }
-  }, [selectedTruck])
+  }, [selectedTruck, trucks])
 
   useEffect(() => {
     if (selectedEvent == null) {
@@ -143,7 +150,11 @@ export default function MapView({
   }, [infoEventId, mapEvents.length])
 
   const infoTruck = infoTruckId != null ? mappable.find((t) => t.id === infoTruckId) : undefined
-  const infoEvent = infoEventId != null ? mapEvents.find((e) => e.id === infoEventId) : undefined
+  const infoEvent =
+    infoEventId == null
+      ? undefined
+      : mapEvents.find((e) => e.id === infoEventId) ??
+        (selectedEvent?.id === infoEventId ? selectedEvent : undefined)
 
   if (!apiKey) {
     return (
@@ -309,11 +320,11 @@ export default function MapView({
                     .
                   </p>
                   <p className="text-xs leading-snug">
-                    Browse vendors on{" "}
+                    Explore trucks in the sidebar or on{" "}
                     <Link href="/trucks" className="font-semibold text-primary hover:underline">
                       the trucks page
-                    </Link>{" "}
-                    anytime.
+                    </Link>
+                    — directory trucks never appear as pins until they check in as open.
                   </p>
                   <Link
                     href="/map"
