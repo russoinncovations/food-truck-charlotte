@@ -13,13 +13,8 @@ const DEFAULT_ZOOM = 12
 
 const ORANGE_EVENT = "#f97316"
 const ORANGE_EVENT_BORDER = "#c2410c"
-const AMBER_EVENT_IN_PROGRESS = "#d97706"
-const AMBER_EVENT_BORDER = "#b45309"
-
-const TRUCK_LIVE_BG = "#16a34a"
+ = "#16a34a"
 const TRUCK_LIVE_BORDER = "#15803d"
-const TRUCK_LISTED_BG = "#64748b"
-const TRUCK_LISTED_BORDER = "#475569"
 
 interface MapViewProps {
   trucks: FoodTruck[]
@@ -85,7 +80,7 @@ export default function MapView({
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? ""
   const mapId = process.env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID
 
-  const mappable = trucks.filter(hasMapLocation)
+  const mappable = trucks.filter((t) => truckPinIsLive(t) && hasMapLocation(t))
   const [infoTruckId, setInfoTruckId] = useState<string | null>(null)
   const [infoEventId, setInfoEventId] = useState<string | null>(null)
   const markerById = useRef(new globalThis.Map<string, google.maps.marker.AdvancedMarkerElement | null>())
@@ -189,11 +184,7 @@ export default function MapView({
                 setInfoEventId(null)
               }}
             >
-              <Pin
-                background={truckPinIsLive(truck) ? TRUCK_LIVE_BG : TRUCK_LISTED_BG}
-                borderColor={truckPinIsLive(truck) ? TRUCK_LIVE_BORDER : TRUCK_LISTED_BORDER}
-                glyphColor="#ffffff"
-              />
+              <Pin background={TRUCK_LIVE_BG} borderColor={TRUCK_LIVE_BORDER} glyphColor="#ffffff" />
             </AdvancedMarker>
           ))}
 
@@ -214,8 +205,8 @@ export default function MapView({
               }}
             >
               <Pin
-                background={ev.pinPhase === "upcoming" ? ORANGE_EVENT : AMBER_EVENT_IN_PROGRESS}
-                borderColor={ev.pinPhase === "upcoming" ? ORANGE_EVENT_BORDER : AMBER_EVENT_BORDER}
+                background={ORANGE_EVENT}
+                borderColor={ORANGE_EVENT_BORDER}
                 glyphColor="#ffffff"
               />
             </AdvancedMarker>
@@ -235,17 +226,9 @@ export default function MapView({
                 <p className="text-xs text-muted-foreground mb-2">
                   {infoTruck.cuisine.length > 0 ? infoTruck.cuisine.join(", ") : "Cuisine TBD"}
                 </p>
-                {truckPinIsLive(infoTruck) ? (
-                  <p className="text-[11px] font-medium text-green-700 mb-2">Open now — vendor check-in</p>
-                ) : (
-                  <p className="text-[11px] text-muted-foreground mb-2">
-                    Listed vendor — not necessarily serving at this pin right now.
-                  </p>
-                )}
+                <p className="text-[11px] font-medium text-green-700 mb-2">Open now — vendor check-in</p>
                 <div className="mb-3">
-                  <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                    {truckPinIsLive(infoTruck) ? "Location" : "Listed location"}
-                  </p>
+                  <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Location</p>
                   <p className="text-xs leading-snug">
                     {infoTruck.location?.address?.trim() ? infoTruck.location.address : "Address not set"}
                   </p>
@@ -278,8 +261,10 @@ export default function MapView({
                 <p className="font-semibold leading-tight mb-0.5">{infoEvent.title}</p>
                 {infoEvent.mapPinStatus === "upcoming_event" ? (
                   <>
-                    <p className="text-[11px] font-semibold text-orange-700 mt-1">Upcoming Event</p>
-                    <p className="text-[11px] text-muted-foreground">Not open yet.</p>
+                    <p className="text-[11px] font-semibold text-orange-700 mt-1">Upcoming event</p>
+                    <p className="text-[11px] text-muted-foreground">
+                      Pin appears on the map only during scheduled hours.
+                    </p>
                   </>
                 ) : (
                   <p className="text-[11px] font-semibold text-amber-800 mt-1">Happening now — public event</p>
@@ -314,9 +299,21 @@ export default function MapView({
             <div className="pointer-events-auto rounded-lg border border-border/80 bg-background/90 px-4 py-3 text-sm text-muted-foreground shadow-sm backdrop-blur text-center space-y-2 max-w-sm">
               {homeMapPreview || filtersInactive ? (
                 <>
-                  <p>No trucks are marked open right now.</p>
+                  <p className="font-medium text-foreground">Nothing live on the map right now</p>
                   <p className="text-xs leading-snug">
-                    Open the full map for upcoming events and listed Charlotte-area vendors.
+                    Green pins appear when vendors check in as open. Orange pins appear only during a public event&apos;s
+                    scheduled hours. Upcoming events stay in the sidebar and on{" "}
+                    <Link href="/events" className="font-semibold text-primary hover:underline">
+                      the events page
+                    </Link>
+                    .
+                  </p>
+                  <p className="text-xs leading-snug">
+                    Browse vendors on{" "}
+                    <Link href="/trucks" className="font-semibold text-primary hover:underline">
+                      the trucks page
+                    </Link>{" "}
+                    anytime.
                   </p>
                   <Link
                     href="/map"

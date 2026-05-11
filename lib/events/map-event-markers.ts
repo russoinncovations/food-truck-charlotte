@@ -162,3 +162,8 @@ export async function fetchMapEventMarkers(supabase: SupabaseClient): Promise<Ma
 
   return out
 }
+
+/** Real-time map pins only: public events currently within start/end (America/New_York). */
+export function filterMapEventsForRealtimePins(markers: MapEventMarker[]): MapEventMarker[] {
+  return markers.filter((m) => m.pinPhase === "in_progress")
+}

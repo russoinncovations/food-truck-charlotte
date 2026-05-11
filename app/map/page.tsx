@@ -3,7 +3,7 @@ import { Metadata } from "next"
 import { MapExplorer } from "@/components/map-explorer"
 import { Skeleton } from "@/components/ui/skeleton"
 import { createClient } from "@/lib/supabase/server"
-import { fetchMapEventMarkers } from "@/lib/events/map-event-markers"
+import { fetchMapEventMarkers, filterMapEventsForRealtimePins } from "@/lib/events/map-event-markers"
 import { getMapPageTruckPinRows } from "@/lib/map/map-page-truck-rows"
 
 export const metadata: Metadata = {
@@ -14,25 +14,26 @@ export const metadata: Metadata = {
 export default async function MapPage() {
   const supabase = await createClient()
 
-  const { rows: displayTrucks, usingListedFallback } = await getMapPageTruckPinRows(supabase)
+  const displayTrucks = await getMapPageTruckPinRows(supabase)
 
   const { count: truckTableCount } = await supabase.from("trucks").select("id", { count: "exact", head: true })
   const hasAnyTrucksInDb = (truckTableCount ?? 0) > 0
 
-  let mapEvents: Awaited<ReturnType<typeof fetchMapEventMarkers>> = []
+  let sidebarMapEvents: Awaited<ReturnType<typeof fetchMapEventMarkers>> = []
   try {
-    mapEvents = await fetchMapEventMarkers(supabase)
+    sidebarMapEvents = await fetchMapEventMarkers(supabase)
   } catch (error) {
     console.error("[map] fetchMapEventMarkers failed", error)
   }
+  const mapPinEvents = filterMapEventsForRealtimePins(sidebarMapEvents)
 
   return (
     <Suspense fallback={<MapSkeleton />}>
       <MapExplorer
         trucks={displayTrucks}
-        mapEvents={mapEvents}
+        sidebarMapEvents={sidebarMapEvents}
+        mapPinEvents={mapPinEvents}
         hasAnyTrucksInDb={hasAnyTrucksInDb}
-        usingListedFallback={usingListedFallback}
       />
     </Suspense>
   )

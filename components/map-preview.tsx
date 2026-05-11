@@ -21,10 +21,12 @@ const MapView = dynamic(() => import("@/components/map-view"), {
   ),
 })
 
-function mappableTruckCount(mapped: FoodTruck[]) {
-  return mapped.filter(
-    (t) => t.location && isValidTruckMapCoordinates(t.location.lat, t.location.lng)
-  ).length
+function isLiveOnMapTruck(t: FoodTruck): boolean {
+  return (
+    (t.mapPinStatus === "live" || t.mapDisplaySource === "live") &&
+    !!t.location &&
+    isValidTruckMapCoordinates(t.location.lat, t.location.lng)
+  )
 }
 
 function truckLocationLine(truck: FoodTruck): string {
@@ -37,56 +39,56 @@ function truckLocationLine(truck: FoodTruck): string {
 
 function MapPreviewContent({
   trucks: displayRows,
-  mapEvents,
-  usingListedFallback,
+  sidebarMapEvents,
+  mapPinEvents,
 }: {
   trucks: ServingTruckRow[]
-  mapEvents: MapEventMarker[]
-  usingListedFallback: boolean
+  sidebarMapEvents: MapEventMarker[]
+  mapPinEvents: MapEventMarker[]
 }) {
   const [selectedTruck, setSelectedTruck] = useState<FoodTruck | null>(null)
   const [selectedEvent, setSelectedEvent] = useState<MapEventMarker | null>(null)
 
   const mapTrucks = useMemo(() => mapRowsToMapTrucks(displayRows), [displayRows])
-  const trucksOnMap = useMemo(
-    () => mapTrucks.filter((t) => t.location && isValidTruckMapCoordinates(t.location.lat, t.location.lng)),
-    [mapTrucks]
-  )
+  const trucksOnMap = useMemo(() => mapTrucks.filter(isLiveOnMapTruck), [mapTrucks])
 
   const liveN = useMemo(
     () => mapTrucks.filter((t) => t.mapPinStatus === "live" || t.mapDisplaySource === "live").length,
     [mapTrucks]
   )
-  const mappableN = mappableTruckCount(mapTrucks)
-  const eventN = mapEvents.length
-  const totalPins = mappableN + eventN
+  const mappableLiveN = trucksOnMap.length
+  const eventLiveN = mapPinEvents.length
+  const totalPins = mappableLiveN + eventLiveN
   const hasLive = liveN > 0
 
   const statusBlurb = hasLive ? (
     <>
       <span className="font-medium text-foreground">{liveN}</span> truck{liveN === 1 ? "" : "s"} marked open now
-      {eventN > 0 ? (
+      {eventLiveN > 0 ? (
         <>
           {" "}
-          · <span className="font-medium text-foreground">{eventN}</span> public event{eventN === 1 ? "" : "s"} on the
-          map.
+          · <span className="font-medium text-foreground">{eventLiveN}</span> public event
+          {eventLiveN === 1 ? "" : "s"} happening now on the map.
         </>
       ) : (
         "."
       )}
+      {eventLiveN === 0 && sidebarMapEvents.some((e) => e.pinPhase === "upcoming") ? (
+        <span className="block mt-1 text-xs">
+          Event pins appear only during scheduled hours — see upcoming dates in the list or on the events page.
+        </span>
+      ) : null}
     </>
-  ) : mappableN > 0 || eventN > 0 ? (
+  ) : eventLiveN > 0 ? (
     <>
-      No trucks are marked open right now. Showing upcoming events and listed Charlotte-area vendors.
-      {eventN > 0 ? (
-        <>
-          {" "}
-          <span className="font-medium text-foreground">{eventN}</span> public event{eventN === 1 ? "" : "s"} on the
-          map.
-        </>
-      ) : (
-        ""
-      )}
+      No trucks are marked open right now.{" "}
+      <span className="font-medium text-foreground">{eventLiveN}</span> public event
+      {eventLiveN === 1 ? "" : "s"} happening now on the map.
+    </>
+  ) : sidebarMapEvents.length > 0 ? (
+    <>
+      No live pins on the map right now. Upcoming public events are listed below — orange pins appear when an event is in
+      progress.
     </>
   ) : (
     <>No trucks are marked open right now.</>
@@ -95,28 +97,21 @@ function MapPreviewContent({
   const mapKeyLine =
     totalPins > 0 ? (
       <>
-        <span className="font-medium text-foreground tabular-nums">{totalPins}</span> pin{totalPins === 1 ? "" : "s"} on
-        the map
-        {hasLive && mappableN > 0 && eventN > 0 ? (
+        <span className="font-medium text-foreground tabular-nums">{totalPins}</span> live pin
+        {totalPins === 1 ? "" : "s"} right now
+        {mappableLiveN > 0 && eventLiveN > 0 ? (
           <span>
             {" "}
-            ({liveN} open now, {eventN} event{eventN === 1 ? "" : "s"})
+            ({mappableLiveN} open now, {eventLiveN} event{eventLiveN === 1 ? "" : "s"})
           </span>
-        ) : !hasLive && usingListedFallback && mappableN > 0 && eventN > 0 ? (
-          <span>
-            {" "}
-            ({mappableN} listed, {eventN} event{eventN === 1 ? "" : "s"})
-          </span>
-        ) : hasLive && mappableN > 0 ? (
+        ) : mappableLiveN > 0 ? (
           <span> · vendor check-ins</span>
-        ) : !hasLive && usingListedFallback && mappableN > 0 ? (
-          <span> · listed vendors</span>
-        ) : eventN > 0 ? (
-          <span> · public events</span>
+        ) : eventLiveN > 0 ? (
+          <span> · public events in progress</span>
         ) : null}
       </>
     ) : (
-      <>No trucks are marked open right now</>
+      <>No live pins right now</>
     )
 
   return (
@@ -126,8 +121,12 @@ function MapPreviewContent({
           <div>
             <h2 className="font-display text-2xl md:text-3xl font-bold text-foreground">Live truck map</h2>
             <p className="mt-2 text-muted-foreground">
-              Green pins are vendor “open now” check-ins; slate pins are listed Charlotte-area trucks; orange pins are
-              public events (deeper orange when the event is within its scheduled hours).
+              The map shows real-time activity only: green pins when vendors check in as open, and orange pins when a
+              public event is within its scheduled start and end time. For the full vendor directory, visit{" "}
+              <Link href="/trucks" className="text-primary hover:underline">
+                the trucks page
+              </Link>
+              .
             </p>
           </div>
           <Button variant="outline" asChild className="hidden md:flex">
@@ -144,7 +143,7 @@ function MapPreviewContent({
               <div className="absolute inset-0 z-0 h-full w-full min-h-[inherit]">
                 <MapView
                   trucks={trucksOnMap}
-                  mapEvents={mapEvents}
+                  mapEvents={mapPinEvents}
                   selectedTruck={selectedTruck}
                   selectedEvent={selectedEvent}
                   onSelectTruck={(t) => {
@@ -173,26 +172,22 @@ function MapPreviewContent({
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-[11px] mt-2 text-muted-foreground">
                   <div className="flex items-center gap-1.5">
                     <div className="h-3 w-3 rounded-full bg-green-600 shrink-0" />
-                    <span>Open Now</span>
+                    <span>Open now (vendor check-in)</span>
                   </div>
                   <div className="flex items-center gap-1.5">
                     <div className="h-3 w-3 rounded-full bg-orange-500 shrink-0" />
-                    <span>Upcoming Event</span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <div className="h-3 w-3 rounded-full bg-slate-500 shrink-0" />
-                    <span>Listed Vendor</span>
+                    <span>Happening now (public event)</span>
                   </div>
                 </div>
                 <p className="text-[10px] text-muted-foreground/90 mt-1.5 leading-snug">
-                  Deeper orange pins: event is within scheduled hours (not a vendor check-in).
+                  Event pins only during scheduled hours — not a vendor check-in.
                 </p>
               </div>
             </div>
 
             <div className="p-6 bg-background border-t lg:border-t-0 lg:border-l">
               <div className="flex items-center justify-between mb-2">
-                <h3 className="font-semibold text-foreground">On the map</h3>
+                <h3 className="font-semibold text-foreground">Live activity</h3>
               </div>
               <p className="text-sm text-muted-foreground mb-4">{statusBlurb}</p>
 
@@ -204,14 +199,17 @@ function MapPreviewContent({
                 </div>
               )}
 
-              {mapEvents.length > 0 && (
+              {sidebarMapEvents.length > 0 && (
                 <div className="mb-4 rounded-lg border border-orange-500/20 bg-orange-500/5 p-3 text-sm">
                   <p className="font-medium text-foreground flex items-center gap-2">
                     <span className="h-2 w-2 rounded-full bg-orange-500" />
-                    Public events on the map
+                    Public events
+                  </p>
+                  <p className="text-[11px] text-muted-foreground mt-1 leading-snug">
+                    Cards include upcoming dates; map pins are orange only while an event is in progress.
                   </p>
                   <ul className="mt-2 space-y-2 text-muted-foreground text-xs">
-                    {mapEvents.slice(0, 4).map((ev) => (
+                    {sidebarMapEvents.slice(0, 4).map((ev) => (
                       <li key={ev.id} className="line-clamp-3">
                         <span
                           className={`mr-1 inline-block h-1.5 w-1.5 rounded-full align-middle ${
@@ -222,7 +220,7 @@ function MapPreviewContent({
                         <span className="font-medium text-foreground">{ev.title}</span>
                         {ev.mapPinStatus === "upcoming_event" ? (
                           <span className="block text-[10px] text-orange-800 dark:text-orange-300/90 mt-0.5">
-                            Upcoming Event · Not open yet.
+                            Upcoming · pin during scheduled hours
                           </span>
                         ) : (
                           <span className="block text-[10px] text-amber-800 dark:text-amber-200/80 mt-0.5">
@@ -234,10 +232,10 @@ function MapPreviewContent({
                         </span>
                       </li>
                     ))}
-                    {mapEvents.length > 4 ? (
+                    {sidebarMapEvents.length > 4 ? (
                       <li>
                         <Link href="/events" className="text-primary font-medium">
-                          +{mapEvents.length - 4} more on the events page
+                          +{sidebarMapEvents.length - 4} more on the events page
                         </Link>
                       </li>
                     ) : null}
@@ -246,15 +244,19 @@ function MapPreviewContent({
               )}
 
               <div className="flex items-center justify-between mb-3">
-                <h3 className="font-semibold text-foreground">
-                  {hasLive ? "Open now" : usingListedFallback ? "Listed vendors" : "Trucks"}
-                </h3>
+                <h3 className="font-semibold text-foreground">Open now (map)</h3>
                 <span className="text-sm text-muted-foreground tabular-nums">{mapTrucks.length}</span>
               </div>
 
               <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
                 {mapTrucks.length === 0 ? (
-                  <p className="text-sm text-muted-foreground py-2">None on the map at the moment.</p>
+                  <p className="text-sm text-muted-foreground py-2">
+                    No trucks checked in right now. See Charlotte-area vendors on the{" "}
+                    <Link href="/trucks" className="text-primary hover:underline">
+                      trucks page
+                    </Link>
+                    .
+                  </p>
                 ) : (
                   mapTrucks.map((truck) => {
                     const isLivePin = truck.mapPinStatus === "live" || truck.mapDisplaySource === "live"
@@ -292,7 +294,7 @@ function MapPreviewContent({
                     Open full map
                   </Link>
                 </Button>
-                {mapEvents.length > 0 ? (
+                {sidebarMapEvents.length > 0 ? (
                   <Button asChild variant="outline" className="w-full">
                     <Link href="/events" className="flex items-center justify-center gap-2">
                       <Calendar className="h-4 w-4" />
@@ -311,15 +313,19 @@ function MapPreviewContent({
 
 export function MapPreview({
   trucks,
-  mapEvents,
-  usingListedFallback,
+  sidebarMapEvents,
+  mapPinEvents,
 }: {
   trucks: ServingTruckRow[]
-  mapEvents: MapEventMarker[]
-  usingListedFallback: boolean
+  sidebarMapEvents: MapEventMarker[]
+  mapPinEvents: MapEventMarker[]
 }) {
   return (
-    <MapPreviewContent trucks={trucks} mapEvents={mapEvents} usingListedFallback={usingListedFallback} />
+    <MapPreviewContent
+      trucks={trucks}
+      sidebarMapEvents={sidebarMapEvents}
+      mapPinEvents={mapPinEvents}
+    />
   )
 }
 

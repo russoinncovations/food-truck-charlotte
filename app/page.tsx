@@ -7,7 +7,7 @@ import { VendorCTA } from "@/components/vendor-cta"
 import { Footer } from "@/components/footer"
 import { createClient } from "@/lib/supabase/server"
 import { countUpcomingPublicEvents } from "@/lib/events/public-events"
-import { fetchMapEventMarkers } from "@/lib/events/map-event-markers"
+import { fetchMapEventMarkers, filterMapEventsForRealtimePins } from "@/lib/events/map-event-markers"
 import { getMapPageTruckPinRows } from "@/lib/map/map-page-truck-rows"
 import { countPublicDirectoryTrucks } from "@/lib/trucks/public-directory"
 
@@ -16,21 +16,26 @@ export default async function Home() {
   const upcomingEventCount = await countUpcomingPublicEvents(supabase)
   const directoryTruckCount = await countPublicDirectoryTrucks(supabase)
 
-  const { rows: displayTrucks, usingListedFallback } = await getMapPageTruckPinRows(supabase)
+  const displayTrucks = await getMapPageTruckPinRows(supabase)
 
-  let mapEvents: Awaited<ReturnType<typeof fetchMapEventMarkers>> = []
+  let sidebarMapEvents: Awaited<ReturnType<typeof fetchMapEventMarkers>> = []
   try {
-    mapEvents = await fetchMapEventMarkers(supabase)
+    sidebarMapEvents = await fetchMapEventMarkers(supabase)
   } catch (error) {
     console.error("[map] fetchMapEventMarkers failed", error)
   }
+  const mapPinEvents = filterMapEventsForRealtimePins(sidebarMapEvents)
 
   return (
     <main className="min-h-screen bg-background">
       <Header />
       <Hero upcomingEventCount={upcomingEventCount} directoryTruckCount={directoryTruckCount} />
       <FeaturedTrucks />
-      <MapPreviewClient trucks={displayTrucks} mapEvents={mapEvents} usingListedFallback={usingListedFallback} />
+      <MapPreviewClient
+        trucks={displayTrucks}
+        sidebarMapEvents={sidebarMapEvents}
+        mapPinEvents={mapPinEvents}
+      />
       <EventsSection />
       <VendorCTA directoryTruckCount={directoryTruckCount} />
       <Footer />
