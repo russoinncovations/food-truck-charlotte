@@ -4,7 +4,7 @@ import { MapExplorer } from "@/components/map-explorer"
 import { Skeleton } from "@/components/ui/skeleton"
 import { createClient } from "@/lib/supabase/server"
 import { fetchMapEventMarkers, filterMapEventsForRealtimePins } from "@/lib/events/map-event-markers"
-import { getMapPageTruckPinRows, getMapSidebarExploreTruckRows } from "@/lib/map/map-page-truck-rows"
+import { getMapPageTruckPinRows, getMapSidebarAllListedTruckRows } from "@/lib/map/map-page-truck-rows"
 
 export const metadata: Metadata = {
   title: "Find Food Trucks Near You | FoodTruck CLT",
@@ -15,25 +15,24 @@ export default async function MapPage() {
   const supabase = await createClient()
 
   const displayTrucks = await getMapPageTruckPinRows(supabase)
-  const exploreTruckRows = await getMapSidebarExploreTruckRows(supabase)
+  const allListedTruckRows = await getMapSidebarAllListedTruckRows(supabase)
 
   const { count: truckTableCount } = await supabase.from("trucks").select("id", { count: "exact", head: true })
   const hasAnyTrucksInDb = (truckTableCount ?? 0) > 0
 
-  let sidebarMapEvents: Awaited<ReturnType<typeof fetchMapEventMarkers>> = []
+  let mapPinEvents: Awaited<ReturnType<typeof fetchMapEventMarkers>> = []
   try {
-    sidebarMapEvents = await fetchMapEventMarkers(supabase)
+    const markerRows = await fetchMapEventMarkers(supabase)
+    mapPinEvents = filterMapEventsForRealtimePins(markerRows)
   } catch (error) {
     console.error("[map] fetchMapEventMarkers failed", error)
   }
-  const mapPinEvents = filterMapEventsForRealtimePins(sidebarMapEvents)
 
   return (
     <Suspense fallback={<MapSkeleton />}>
       <MapExplorer
         liveTruckRows={displayTrucks}
-        exploreTruckRows={exploreTruckRows}
-        sidebarMapEvents={sidebarMapEvents}
+        allListedTruckRows={allListedTruckRows}
         mapPinEvents={mapPinEvents}
         hasAnyTrucksInDb={hasAnyTrucksInDb}
       />

@@ -8,7 +8,7 @@ import { Footer } from "@/components/footer"
 import { createClient } from "@/lib/supabase/server"
 import { countUpcomingPublicEvents } from "@/lib/events/public-events"
 import { fetchMapEventMarkers, filterMapEventsForRealtimePins } from "@/lib/events/map-event-markers"
-import { getMapPageTruckPinRows, getMapSidebarExploreTruckRows } from "@/lib/map/map-page-truck-rows"
+import { getMapPageTruckPinRows, getMapSidebarAllListedTruckRows } from "@/lib/map/map-page-truck-rows"
 import { countPublicDirectoryTrucks } from "@/lib/trucks/public-directory"
 
 export default async function Home() {
@@ -17,15 +17,15 @@ export default async function Home() {
   const directoryTruckCount = await countPublicDirectoryTrucks(supabase)
 
   const liveTruckRows = await getMapPageTruckPinRows(supabase)
-  const exploreTruckRows = await getMapSidebarExploreTruckRows(supabase)
+  const allListedTruckRows = await getMapSidebarAllListedTruckRows(supabase)
 
-  let sidebarMapEvents: Awaited<ReturnType<typeof fetchMapEventMarkers>> = []
+  let mapPinEvents: Awaited<ReturnType<typeof fetchMapEventMarkers>> = []
   try {
-    sidebarMapEvents = await fetchMapEventMarkers(supabase)
+    const markerRows = await fetchMapEventMarkers(supabase)
+    mapPinEvents = filterMapEventsForRealtimePins(markerRows)
   } catch (error) {
     console.error("[map] fetchMapEventMarkers failed", error)
   }
-  const mapPinEvents = filterMapEventsForRealtimePins(sidebarMapEvents)
 
   return (
     <main className="min-h-screen bg-background">
@@ -34,8 +34,7 @@ export default async function Home() {
       <FeaturedTrucks />
       <MapPreviewClient
         liveTruckRows={liveTruckRows}
-        exploreTruckRows={exploreTruckRows}
-        sidebarMapEvents={sidebarMapEvents}
+        allListedTruckRows={allListedTruckRows}
         mapPinEvents={mapPinEvents}
       />
       <EventsSection />

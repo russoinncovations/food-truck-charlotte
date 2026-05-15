@@ -51,16 +51,18 @@ const MapView = dynamic(() => import("@/components/map-view"), {
   ),
 })
 
+     function truckIsLiveOnMap(t: FoodTruck): boolean {
+  return t.mapPinStatus === "live" || t.mapDisplaySource === "live"
+}
+
 export function MapExplorer({
   liveTruckRows,
-  exploreTruckRows,
-  sidebarMapEvents,
+  allListedTruckRows,
   mapPinEvents,
   hasAnyTrucksInDb = true,
 }: {
   liveTruckRows: ServingTruckRow[]
-  exploreTruckRows: ServingTruckRow[]
-  sidebarMapEvents: MapEventMarker[]
+  allListedTruckRows: ServingTruckRow[]
   mapPinEvents: MapEventMarker[]
   hasAnyTrucksInDb?: boolean
 }) {
@@ -74,13 +76,9 @@ export function MapExplorer({
   const [isSidebarOpen, setIsSidebarOpen] = useState(true)
 
   const liveMapTrucks = useMemo(() => mapRowsToMapTrucks(liveTruckRows), [liveTruckRows])
-  const exploreMapTrucks = useMemo(() => mapRowsToMapTrucks(exploreTruckRows), [exploreTruckRows])
+  const allListedMapTrucks = useMemo(() => mapRowsToMapTrucks(allListedTruckRows), [allListedTruckRows])
 
-  const liveCount = useMemo(
-    () =>
-      liveMapTrucks.filter((t) => t.mapPinStatus === "live" || t.mapDisplaySource === "live").length,
-    [liveMapTrucks]
-  )
+  const liveCount = useMemo(() => liveMapTrucks.filter(truckIsLiveOnMap).length, [liveMapTrucks])
   const anyLiveReporting = liveCount > 0
 
   const filteredLiveTrucks = useMemo(() => {
@@ -100,10 +98,9 @@ export function MapExplorer({
     })
   }, [liveMapTrucks, searchQuery, selectedCuisine, showOpenOnly])
 
-  const filteredExploreTrucks = useMemo(() => {
-    if (showOpenOnly) return []
+  const filteredAllListedTrucks = useMemo(() => {
     const q = searchQuery.toLowerCase()
-    return exploreMapTrucks.filter((truck) => {
+    return allListedMapTrucks.filter((truck) => {
       const hint = (truck.directoryLocationHint ?? "").toLowerCase()
       const matchesSearch =
         searchQuery === "" ||
@@ -113,20 +110,15 @@ export function MapExplorer({
       const matchesCuisine =
         selectedCuisine === "all" ||
         truck.cuisine.some((c) => c.toLowerCase() === selectedCuisine.toLowerCase())
-      return matchesSearch && matchesCuisine
+      const matchesOpen = !showOpenOnly || truckIsLiveOnMap(truck)
+      return matchesSearch && matchesCuisine && matchesOpen
     })
-  }, [exploreMapTrucks, searchQuery, selectedCuisine, showOpenOnly])
+  }, [allListedMapTrucks, searchQuery, selectedCuisine, showOpenOnly])
 
-  const upcomingEvents = useMemo(
-    () => sidebarMapEvents.filter((e) => e.pinPhase === "upcoming"),
-    [sidebarMapEvents]
+  const listedOnlySidebarTrucks = useMemo(
+    () => filteredAllListedTrucks.filter((t) => !truckIsLiveOnMap(t)),
+    [filteredAllListedTrucks]
   )
-
-  const filteredUpcomingMapEvents = useMemo(() => {
-    const q = searchQuery.toLowerCase()
-
-    return upcomingEvents.filter((e) => e.title.toLowerCase().includes(q))
-  }, [upcomingEvents, searchQuery])
 
   const filteredMapPinEvents = useMemo(() => {
     if (!searchQuery.trim()) return mapPinEvents
@@ -184,11 +176,11 @@ export function MapExplorer({
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-500 opacity-75" />
                 <span className="relative inline-flex h-2 w-2 rounded-full bg-green-500" />
               </span>
-              {liveCount} {liveCount === 1 ? "truck" : "trucks"} checked in
+              {liveCount} {liveCount === 1 ? "truck" : "trucks"} open now
             </Badge>
           ) : (
             <Badge variant="secondary" className="max-w-[18rem] text-left font-normal leading-snug text-muted-foreground">
-              No trucks checked in
+              No trucks open now
             </Badge>
           )}
           <Button
@@ -202,8 +194,7 @@ export function MapExplorer({
       </header>
 
       <p className="shrink-0 border-b border-border/80 bg-muted/30 px-4 py-2 text-center text-xs text-muted-foreground leading-snug">
-        Map pins are real-time only: green for trucks checked in now, orange for public events in progress. Sidebar lists
-        directory trucks and upcoming events — those never get pins until live.
+        Green pins are trucks serving now. Orange pins are events happening now.
       </p>
 
       <div className="flex-1 flex overflow-hidden">
@@ -221,10 +212,9 @@ export function MapExplorer({
             showOpenOnly={showOpenOnly}
             setShowOpenOnly={setShowOpenOnly}
             filteredLiveTrucks={filteredLiveTrucks}
-            filteredExploreTrucks={filteredExploreTrucks}
+            listedOnlySidebarTrucks={listedOnlySidebarTrucks}
             filteredMapPinEvents={filteredMapPinEvents}
-            filteredUpcomingMapEvents={filteredUpcomingMapEvents}
-            mapPinEventsCount={mapPinEvents.length}
+            listedInSidebarCount={filteredAllListedTrucks.length}
             anyLiveReporting={anyLiveReporting}
             selectedTruck={selectedTruck}
             selectedEvent={selectedEvent}
@@ -254,10 +244,9 @@ export function MapExplorer({
               showOpenOnly={showOpenOnly}
               setShowOpenOnly={setShowOpenOnly}
               filteredLiveTrucks={filteredLiveTrucks}
-              filteredExploreTrucks={filteredExploreTrucks}
+              listedOnlySidebarTrucks={listedOnlySidebarTrucks}
               filteredMapPinEvents={filteredMapPinEvents}
-              filteredUpcomingMapEvents={filteredUpcomingMapEvents}
-              mapPinEventsCount={mapPinEvents.length}
+              listedInSidebarCount={filteredAllListedTrucks.length}
               anyLiveReporting={anyLiveReporting}
               selectedTruck={selectedTruck}
               selectedEvent={selectedEvent}
@@ -286,9 +275,9 @@ export function MapExplorer({
             <div className="lg:hidden h-full overflow-auto p-4">
               <MobileListView
                 filteredLiveTrucks={filteredLiveTrucks}
-                filteredExploreTrucks={filteredExploreTrucks}
+                listedOnlySidebarTrucks={listedOnlySidebarTrucks}
                 filteredMapPinEvents={filteredMapPinEvents}
-                filteredUpcomingMapEvents={filteredUpcomingMapEvents}
+                showOpenOnly={showOpenOnly}
                 searchQuery={searchQuery}
                 setSearchQuery={setSearchQuery}
                 selectedCuisine={selectedCuisine}
@@ -302,7 +291,7 @@ export function MapExplorer({
           )}
 
           {/* Selected Truck Card - Mobile */}
-          {selectedTruck && viewMode === "map" && (
+          {selectedTruck && truckIsLiveOnMap(selectedTruck) && viewMode === "map" && (
             <div className="lg:hidden absolute bottom-4 left-4 right-4 z-40">
               <TruckCard
                 truck={selectedTruck}
@@ -331,16 +320,13 @@ function MapPinLegend({ className }: { className?: string }) {
       >
         <div className="flex items-center gap-1.5">
           <span className="h-2.5 w-2.5 rounded-full bg-green-600 shrink-0" />
-          <span>Live now (checked in)</span>
+          <span>Open Now</span>
         </div>
         <div className="flex items-center gap-1.5">
           <span className="h-2.5 w-2.5 rounded-full bg-orange-500 shrink-0" />
-          <span>Event in progress</span>
+          <span>Happening Now</span>
         </div>
       </div>
-      <p className="text-[10px] text-muted-foreground/90 mt-1.5 leading-snug">
-        Pins never include directory-only trucks or upcoming events — those stay in the sidebar lists.
-      </p>
     </div>
   )
 }
@@ -353,10 +339,9 @@ function SidebarContent({
   showOpenOnly,
   setShowOpenOnly,
   filteredLiveTrucks,
-  filteredExploreTrucks,
+  listedOnlySidebarTrucks,
   filteredMapPinEvents,
-  filteredUpcomingMapEvents,
-  mapPinEventsCount,
+  listedInSidebarCount,
   anyLiveReporting,
   selectedTruck,
   selectedEvent,
@@ -371,10 +356,9 @@ function SidebarContent({
   showOpenOnly: boolean
   setShowOpenOnly: (v: boolean) => void
   filteredLiveTrucks: FoodTruck[]
-  filteredExploreTrucks: FoodTruck[]
+  listedOnlySidebarTrucks: FoodTruck[]
   filteredMapPinEvents: MapEventMarker[]
-  filteredUpcomingMapEvents: MapEventMarker[]
-  mapPinEventsCount: number
+  listedInSidebarCount: number
   anyLiveReporting: boolean
   selectedTruck: FoodTruck | null
   selectedEvent: MapEventMarker | null
@@ -387,8 +371,7 @@ function SidebarContent({
   const listTotallyEmpty =
     filteredLiveTrucks.length === 0 &&
     filteredMapPinEvents.length === 0 &&
-    filteredUpcomingMapEvents.length === 0 &&
-    filteredExploreTrucks.length === 0
+    listedOnlySidebarTrucks.length === 0
 
   return (
     <>
@@ -425,7 +408,7 @@ function SidebarContent({
             variant={showOpenOnly ? "default" : "outline"}
             size="sm"
             disabled={!anyLiveReporting}
-            title={anyLiveReporting ? undefined : "No trucks checked in right now"}
+            title={anyLiveReporting ? undefined : "No trucks open right now"}
             onClick={() => anyLiveReporting && setShowOpenOnly(!showOpenOnly)}
             className="whitespace-nowrap"
           >
@@ -434,33 +417,41 @@ function SidebarContent({
         </div>
       </div>
 
-      {/* Results Count — map-relevant live counts */}
+      {/* Results Count */}
       <div className="px-4 py-3 border-b bg-muted/50 space-y-1">
         <p className="text-sm text-muted-foreground">
           <span className="font-medium text-foreground">{filteredLiveTrucks.length}</span> truck
-          {filteredLiveTrucks.length === 1 ? "" : "s"} live now in this list
-          {mapPinEventsCount > 0 ? (
+          {filteredLiveTrucks.length === 1 ? "" : "s"} open now on the map
+          {filteredMapPinEvents.length > 0 ? (
             <>
               {" "}
               ·{" "}
               <span className="font-medium text-foreground">{filteredMapPinEvents.length}</span> event
-              {filteredMapPinEvents.length === 1 ? "" : "s"} in progress on the map
+              {filteredMapPinEvents.length === 1 ? "" : "s"} happening now
             </>
           ) : null}
           .
         </p>
+        <p className="text-xs text-muted-foreground leading-snug">
+          <span className="font-medium text-foreground">{listedInSidebarCount}</span> listed truck
+          {listedInSidebarCount === 1 ? "" : "s"} in this sidebar (includes directory vendors).
+        </p>
         {!anyLiveReporting ? (
           <p className="text-xs text-muted-foreground leading-snug">
-            No trucks currently checked in — green pins will appear when vendors mark themselves serving.
+            Green pins appear when vendors mark themselves serving. Upcoming events stay on the{" "}
+            <Link href="/events" className="text-primary underline">
+              events page
+            </Link>
+            .
           </p>
         ) : null}
       </div>
 
       <ScrollArea className="flex-1">
         <div className="p-4 space-y-6">
-          {/* 1 — Live Now */}
+          {/* 1 — Open now (live pins) */}
           <div className="space-y-2">
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Live Now</h3>
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Open now</h3>
             {filteredLiveTrucks.length > 0 ? (
               <div className="space-y-3">
                 {filteredLiveTrucks.map((truck) => (
@@ -477,14 +468,14 @@ function SidebarContent({
                       className="text-xs text-primary pl-1 hover:underline"
                       onClick={(e) => e.stopPropagation()}
                     >
-                      View truck profile
+                      View profile
                     </Link>
                   </div>
                 ))}
               </div>
             ) : (
               <p className="text-sm text-muted-foreground rounded-lg border border-dashed border-border/80 bg-muted/30 px-3 py-3">
-                No trucks currently checked in.
+                No trucks serving right now.
               </p>
             )}
           </div>
@@ -494,7 +485,7 @@ function SidebarContent({
             <div className="space-y-2">
               <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Happening Now</h3>
               <p className="text-[11px] text-muted-foreground leading-snug">
-                Matches orange map pins (public event within scheduled hours).
+                Matches orange map pins (public events in progress).
               </p>
               <div className="space-y-2">
                 {filteredMapPinEvents.map((ev) => (
@@ -530,81 +521,22 @@ function SidebarContent({
             </div>
           ) : null}
 
-          {/* 3 — Explore Trucks */}
-          {!showOpenOnly && filteredExploreTrucks.length > 0 ? (
+          {/* 3 — All listed trucks (directory; no map pin until live) */}
+          {!showOpenOnly && listedOnlySidebarTrucks.length > 0 ? (
             <div className="space-y-2">
-              <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Explore Trucks</h3>
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">All listed trucks</h3>
               <p className="text-[11px] text-muted-foreground leading-snug">
-                Directory listings — not shown as map pins unless checked in as open.
+                Explore trucks — no green pin until they check in as serving.
               </p>
               <div className="space-y-3">
-                {filteredExploreTrucks.map((truck) => (
-                  <div key={truck.id} className="space-y-1">
-                    <button
-                      type="button"
-                      className="w-full text-left rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                      onClick={() => setSelectedTruck(truck)}
-                    >
-                      <TruckCard truck={truck} isSelected={selectedTruck?.id === truck.id} />
-                    </button>
-                    <Link
-                      href={`/trucks/${truck.slug}`}
-                      className="text-xs text-primary pl-1 hover:underline"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      View truck profile
-                    </Link>
+                {listedOnlySidebarTrucks.map((truck) => (
+                  <div key={truck.id} className="space-y-2">
+                    <TruckCard truck={truck} isSelected={false} />
+                    <Button asChild className="w-full" size="sm" variant="default">
+                      <Link href={`/trucks/${truck.slug}`}>View profile</Link>
+                    </Button>
                   </div>
                 ))}
-              </div>
-            </div>
-          ) : null}
-
-          {/* 4 — Upcoming events */}
-          {filteredUpcomingMapEvents.length > 0 ? (
-            <div className="space-y-2">
-              <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Upcoming Events</h3>
-              <p className="text-[11px] text-muted-foreground leading-snug">
-                Not on the map yet — pins appear when the event reaches its start time.
-              </p>
-              <div className="space-y-2">
-                {filteredUpcomingMapEvents.map((ev) => (
-                  <button
-                    key={ev.id}
-                    type="button"
-                    className={`w-full text-left rounded-xl border transition-all ${
-                      selectedEvent?.id === ev.id
-                        ? "border-orange-500 shadow-md ring-1 ring-orange-500/30"
-                        : "border-border hover:border-orange-500/50"
-                    }`}
-                    onClick={() => setSelectedEvent(ev)}
-                  >
-                    <div className="p-3">
-                      <div className="flex items-start gap-2">
-                        <span className="mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full bg-orange-500" aria-hidden />
-                        <div className="min-w-0 flex-1">
-                          <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                            Upcoming
-                          </p>
-                          <p className="font-semibold text-sm text-foreground leading-snug">{ev.title}</p>
-                          <p className="text-[11px] text-orange-800 dark:text-orange-300/90 mt-0.5">Not on the map yet.</p>
-                          <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
-                            <Calendar className="h-3 w-3 shrink-0" />
-                            {formatMapEventDateTime(ev.date, ev.startTime, ev.endTime)}
-                          </p>
-                          <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{ev.locationLabel}</p>
-                        </div>
-                      </div>
-                    </div>
-                  </button>
-                ))}
-                <p className="text-xs text-muted-foreground pl-1">
-                  Full calendar on the{" "}
-                  <Link href="/events" className="text-primary underline">
-                    events page
-                  </Link>
-                  .
-                </p>
               </div>
             </div>
           ) : null}
@@ -644,29 +576,17 @@ function SidebarContent({
 function EventMapCard({ event, onClose }: { event: MapEventMarker; onClose: () => void }) {
   const href =
     event.slug && String(event.slug).trim() !== "" ? `/events/${encodeURIComponent(String(event.slug).trim())}` : "/events"
-  const isUpcoming = event.mapPinStatus === "upcoming_event"
   return (
-    <div
-      className={`relative bg-card rounded-xl shadow-xl p-4 border ${
-        isUpcoming ? "border-orange-500/40" : "border-amber-600/45"
-      }`}
-    >
+    <div className="relative bg-card rounded-xl shadow-xl p-4 border border-amber-600/45">
       <Button variant="ghost" size="icon" className="absolute top-2 right-2 h-8 w-8" onClick={onClose}>
         <X className="h-4 w-4" />
       </Button>
       <div className="pr-8">
         <div className="flex items-center gap-2 mb-1">
-          <span
-            className={`h-2.5 w-2.5 rounded-full shrink-0 ${isUpcoming ? "bg-orange-500" : "bg-amber-600"}`}
-          />
+          <span className="h-2.5 w-2.5 rounded-full shrink-0 bg-amber-600" />
           <h3 className="font-semibold text-foreground">{event.title}</h3>
         </div>
-        <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
-          {isUpcoming ? "Upcoming Event" : "Happening now — public event"}
-        </p>
-        {isUpcoming ? (
-          <p className="text-xs text-orange-800 dark:text-orange-300/90 mt-1">Not open yet.</p>
-        ) : null}
+        <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Happening now</p>
         <p className="text-xs text-muted-foreground flex items-center gap-1 mb-2 mt-1.5">
           <Calendar className="h-3.5 w-3.5 shrink-0" />
           {formatMapEventDateTime(event.date, event.startTime, event.endTime)}
@@ -753,6 +673,13 @@ function TruckCard({
           <div className="flex items-start justify-between gap-2">
             <div>
               <h3 className="font-semibold text-foreground truncate">{truck.name}</h3>
+              <p className="text-[11px] font-medium mt-0.5">
+                {isLivePin ? (
+                  <span className="text-green-700 dark:text-green-400">Open now</span>
+                ) : (
+                  <span className="text-muted-foreground">Listed vendor · Not currently checked in</span>
+                )}
+              </p>
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <div className="flex items-center gap-1">
                   <Star className="h-3.5 w-3.5 fill-accent text-accent" />
@@ -804,7 +731,7 @@ function TruckCard({
           {compact && (
             <div className="flex gap-2 mt-3 flex-wrap items-center">
               <Button size="sm" className="flex-1" asChild>
-                <Link href={`/trucks/${truck.slug}`}>View Details</Link>
+                <Link href={`/trucks/${truck.slug}`}>View profile</Link>
               </Button>
               <Button size="sm" variant="outline" className="gap-1">
                 <Navigation className="h-3.5 w-3.5" />
@@ -820,9 +747,9 @@ function TruckCard({
 
 function MobileListView({
   filteredLiveTrucks,
-  filteredExploreTrucks,
+  listedOnlySidebarTrucks,
   filteredMapPinEvents,
-  filteredUpcomingMapEvents,
+  showOpenOnly,
   searchQuery,
   setSearchQuery,
   selectedCuisine,
@@ -833,9 +760,9 @@ function MobileListView({
   setSelectedEvent,
 }: {
   filteredLiveTrucks: FoodTruck[]
-  filteredExploreTrucks: FoodTruck[]
+  listedOnlySidebarTrucks: FoodTruck[]
   filteredMapPinEvents: MapEventMarker[]
-  filteredUpcomingMapEvents: MapEventMarker[]
+  showOpenOnly: boolean
   searchQuery: string
   setSearchQuery: (v: string) => void
   selectedCuisine: string
@@ -873,23 +800,27 @@ function MobileListView({
       </div>
 
       <div className="space-y-2">
-        <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Live Now</h3>
+        <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Open now</h3>
         {filteredLiveTrucks.length > 0 ? (
           <div className="space-y-3">
             {filteredLiveTrucks.map((truck) => (
-              <button
-                key={truck.id}
-                type="button"
-                className="w-full text-left"
-                onClick={() => setSelectedTruck(truck)}
-              >
-                <TruckCard truck={truck} isSelected={selectedTruck?.id === truck.id} />
-              </button>
+              <div key={truck.id} className="space-y-2">
+                <button
+                  type="button"
+                  className="w-full text-left"
+                  onClick={() => setSelectedTruck(truck)}
+                >
+                  <TruckCard truck={truck} isSelected={selectedTruck?.id === truck.id} />
+                </button>
+                <Button asChild className="w-full" size="sm" variant="outline">
+                  <Link href={`/trucks/${truck.slug}`}>View profile</Link>
+                </Button>
+              </div>
             ))}
           </div>
         ) : (
           <p className="text-sm text-muted-foreground border border-dashed rounded-lg p-3 bg-muted/30">
-            No trucks currently checked in.
+            No trucks serving right now.
           </p>
         )}
       </div>
@@ -917,50 +848,26 @@ function MobileListView({
         </div>
       ) : null}
 
-      {filteredExploreTrucks.length > 0 ? (
+      {!showOpenOnly && listedOnlySidebarTrucks.length > 0 ? (
         <div className="space-y-2">
-          <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Explore Trucks</h3>
-          <p className="text-[11px] text-muted-foreground">Not on the map until checked in.</p>
+          <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">All listed trucks</h3>
+          <p className="text-[11px] text-muted-foreground">No green pin until they check in as serving.</p>
           <div className="space-y-3">
-            {filteredExploreTrucks.map((truck) => (
-              <button
-                key={truck.id}
-                type="button"
-                className="w-full text-left"
-                onClick={() => setSelectedTruck(truck)}
-              >
-                <TruckCard truck={truck} isSelected={selectedTruck?.id === truck.id} />
-              </button>
+            {listedOnlySidebarTrucks.map((truck) => (
+              <div key={truck.id} className="space-y-2">
+                <TruckCard truck={truck} isSelected={false} />
+                <Button asChild className="w-full" size="sm" variant="default">
+                  <Link href={`/trucks/${truck.slug}`}>View profile</Link>
+                </Button>
+              </div>
             ))}
           </div>
         </div>
       ) : null}
 
-      {filteredUpcomingMapEvents.length > 0 ? (
-        <div className="space-y-2">
-          <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Upcoming Events</h3>
-          <div className="space-y-2">
-            {filteredUpcomingMapEvents.map((ev) => (
-              <button
-                key={ev.id}
-                type="button"
-                className={`w-full text-left rounded-xl border p-3 text-sm ${
-                  selectedEvent?.id === ev.id ? "border-orange-500 ring-1 ring-orange-500/30" : "border-border"
-                }`}
-                onClick={() => setSelectedEvent(ev)}
-              >
-                <p className="font-semibold text-foreground">{ev.title}</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {formatMapEventDateTime(ev.date, ev.startTime, ev.endTime)}
-                </p>
-              </button>
-            ))}
-          </div>
-          <Link href="/events" className="text-xs text-primary font-medium">
-            Full events calendar →
-          </Link>
-        </div>
-      ) : null}
+      <Link href="/events" className="block text-xs text-primary font-medium">
+        Events calendar →
+      </Link>
     </div>
   )
 }

@@ -21,20 +21,17 @@ const MapPreview = dynamic(() => import("@/components/map-preview"), {
 
 export function MapPreviewClient({
   liveTruckRows,
-  exploreTruckRows,
-  sidebarMapEvents,
+  allListedTruckRows,
   mapPinEvents,
 }: {
   liveTruckRows: ServingTruckRow[]
-  exploreTruckRows: ServingTruckRow[]
-  sidebarMapEvents: MapEventMarker[]
+  allListedTruckRows: ServingTruckRow[]
   mapPinEvents: MapEventMarker[]
 }) {
   return (
     <MapPreview
       liveTruckRows={liveTruckRows}
-      exploreTruckRows={exploreTruckRows}
-      sidebarMapEvents={sidebarMapEvents}
+      allListedTruckRows={allListedTruckRows}
       mapPinEvents={mapPinEvents}
     />
   )

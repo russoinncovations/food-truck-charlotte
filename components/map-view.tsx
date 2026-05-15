@@ -311,8 +311,8 @@ export default function MapView({
                 <>
                   <p className="font-medium text-foreground">Nothing live on the map right now</p>
                   <p className="text-xs leading-snug">
-                    Green pins appear when vendors check in as open. Orange pins appear only during a public event&apos;s
-                    scheduled hours. Upcoming events stay in the sidebar and on{" "}
+                    Green pins appear when vendors check in as open. Orange pins show events happening now. For
+                    what&apos;s coming up, see{" "}
                     <Link href="/events" className="font-semibold text-primary hover:underline">
                       the events page
                     </Link>

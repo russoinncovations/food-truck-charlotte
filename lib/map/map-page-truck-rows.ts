@@ -10,29 +10,31 @@ export async function getMapPageTruckPinRows(supabase: SupabaseClient): Promise<
 }
 
 /**
- * Sidebar “Explore trucks”: public directory listings not currently checked in as serving.
- * Does not appear as map pins.
+ * Sidebar: all public active directory trucks, sorted open/check-in first, then by name.
+ * Used for the map sidebar only (pins remain live-only from {@link getMapPageTruckPinRows}).
  */
-export async function getMapSidebarExploreTruckRows(supabase: SupabaseClient): Promise<ServingTruckRow[]> {
+export async function getMapSidebarAllListedTruckRows(supabase: SupabaseClient): Promise<ServingTruckRow[]> {
   const { data, error } = await supabase
     .from("trucks")
     .select(MAP_DISPLAY_TRUCK_SELECT)
     .eq("show_in_directory", true)
     .eq("status", "active")
     .eq("is_active", true)
-    .order("name")
-    .limit(120)
 
   if (error) {
-    console.error("[map] getMapSidebarExploreTruckRows:", error)
+    console.error("[map] getMapSidebarAllListedTruckRows:", error)
     return []
   }
 
   return ((data ?? []) as ServingTruckRow[])
-    .filter((t) => !t.serving_today)
     .map((t) => ({
       ...t,
-      mapDisplaySource: "listed" as const,
-      serving_today: false,
+      mapDisplaySource: (t.serving_today ? "live" : "listed") as "live" | "listed",
     }))
+    .sort((a, b) => {
+      const sa = a.serving_today ? 0 : 1
+      const sb = b.serving_today ? 0 : 1
+      if (sa !== sb) return sa - sb
+      return (a.name ?? "").localeCompare(b.name ?? "", undefined, { sensitivity: "base" })
+    })
 }
