@@ -4,13 +4,14 @@ import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
 import {
   fetchVendorReminderRecipients,
+  fetchVendorProfileReminderRecipients,
   isPlausibleVendorEmail,
 } from "@/lib/trucks/vendor-reminder-recipients"
 import {
   logVendorReminderAttempt,
   sendVendorScheduleReminderEmail,
 } from "@/lib/email/resend-vendor-schedule-reminder"
-import { sendVendorProfileReminderTestEmail } from "@/lib/email/resend-vendor-profile-reminder-test"
+import { sendVendorProfileReminderEmail } from "@/lib/email/resend-vendor-profile-reminder-test"
 
 function adminKeyOk(key: string | null | undefined): boolean {
   const expected = process.env.ADMIN_KEY ?? "7985"
@@ -139,7 +140,7 @@ export async function sendVendorProfileReminderTestToAdmin(formData: FormData) {
     )
   }
 
-  const result = await sendVendorProfileReminderTestEmail(to)
+  const result = await sendVendorProfileReminderEmail(to)
 
   if (result.ok) {
     redirect(`/admin/vendors?key=${keyQ}&profileReminderTest=1&profileTestOk=1`)
@@ -148,4 +149,68 @@ export async function sendVendorProfileReminderTestToAdmin(formData: FormData) {
   redirect(
     `/admin/vendors?key=${keyQ}&profileReminderTest=1&profileTestOk=0&profileTestErr=${encodeURIComponent(result.error)}`
   )
+}
+
+const PROFILE_REMINDER_BATCH_SIZE = 10
+const PROFILE_REMINDER_BATCH_DELAY_MS = 550
+
+function profileReminderBatchDelay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+/**
+ * Sends profile + live pin reminder to all eligible directory vendors (deduped). Manual button only.
+ */
+export async function sendVendorProfileRemindersBulk(formData: FormData) {
+  const rawKey = (formData.get("adminKey") as string | null) ?? ""
+  const adminKey = rawKey.trim()
+
+  if (!adminKeyOk(adminKey)) {
+    redirect("/admin/vendors")
+  }
+
+  const keyQ = encodeURIComponent(adminKey)
+  const supabase = await createClient()
+  const { recipients, eligibleTruckCount } = await fetchVendorProfileReminderRecipients(supabase)
+
+  const skipped = eligibleTruckCount - recipients.length
+  const errors: { email: string; message: string }[] = []
+  let sent = 0
+
+  for (let i = 0; i < recipients.length; i++) {
+    if (i > 0 && i % PROFILE_REMINDER_BATCH_SIZE === 0) {
+      await profileReminderBatchDelay(PROFILE_REMINDER_BATCH_DELAY_MS)
+    }
+
+    const r = recipients[i]
+    const result = await sendVendorProfileReminderEmail(r.email)
+    if (result.ok) {
+      sent++
+      logVendorReminderAttempt({
+        vendorId: r.id,
+        email: r.email,
+        status: "sent",
+        errorMessage: null,
+      })
+    } else {
+      errors.push({ email: r.email, message: result.error })
+      console.error("[profile-reminder-bulk] failed:", r.email, result.error)
+      logVendorReminderAttempt({
+        vendorId: r.id,
+        email: r.email,
+        status: "failed",
+        errorMessage: result.error,
+      })
+    }
+  }
+
+  const attempted = recipients.length
+  const failed = errors.length
+  const errParam =
+    errors.length > 0
+      ? encodeURIComponent(JSON.stringify(errors.slice(0, 12)).slice(0, 2000))
+      : ""
+
+  const base = `/admin/vendors?key=${keyQ}&profileBulk=1&pbAttempted=${attempted}&pbSent=${sent}&pbSkipped=${skipped}&pbFailed=${failed}`
+  redirect(errParam ? `${base}&pbErrs=${errParam}` : base)
 }

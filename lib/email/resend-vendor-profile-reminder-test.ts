@@ -45,6 +45,7 @@ export function buildVendorProfileReminderHtml(): string {
 `.trim()
 }
 
+/** Single send — same HTML/subject for admin test and vendor bulk. */
 export async function sendVendorProfileReminderTestEmail(to: string): Promise<{ ok: true } | { ok: false; error: string }> {
   const key = process.env.RESEND_API_KEY
   const from =
@@ -78,3 +79,5 @@ export async function sendVendorProfileReminderTestEmail(to: string): Promise<{ 
     return { ok: false, error: message }
   }
 }
+
+export const sendVendorProfileReminderEmail = sendVendorProfileReminderTestEmail

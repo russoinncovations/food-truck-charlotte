@@ -10,11 +10,13 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   fetchVendorReminderRecipients,
+  fetchVendorProfileReminderRecipients,
   isPlausibleVendorEmail,
 } from "@/lib/trucks/vendor-reminder-recipients"
 import { VendorScheduleReminderSend } from "@/components/admin/vendor-schedule-reminder-send"
 import { VendorScheduleReminderTestSend } from "@/components/admin/vendor-schedule-reminder-test-send"
 import { VendorProfileReminderTestSend } from "@/components/admin/vendor-profile-reminder-test-send"
+import { VendorProfileReminderBulkSend } from "@/components/admin/vendor-profile-reminder-bulk-send"
 
 export const metadata: Metadata = {
   title: "Vendor Applications | Admin | Food Truck CLT",
@@ -215,6 +217,12 @@ export default async function AdminVendorsPage({
     profileReminderTest?: string
     profileTestOk?: string
     profileTestErr?: string
+    profileBulk?: string
+    pbAttempted?: string
+    pbSent?: string
+    pbSkipped?: string
+    pbFailed?: string
+    pbErrs?: string
   }>
 }) {
   const params = await searchParams
@@ -239,6 +247,19 @@ export default async function AdminVendorsPage({
   const profileReminderTestDone = params?.profileReminderTest === "1"
   const profileReminderTestOk = params?.profileTestOk === "1"
   const profileReminderTestErr = params?.profileTestErr?.trim() ?? ""
+  const profileBulkDone = params?.profileBulk === "1"
+  const pbAttempted = parseInt(params?.pbAttempted ?? "", 10)
+  const pbSent = parseInt(params?.pbSent ?? "", 10)
+  const pbSkipped = parseInt(params?.pbSkipped ?? "", 10)
+  const pbFailed = parseInt(params?.pbFailed ?? "", 10)
+  let profileBulkErrors: { email: string; message: string }[] = []
+  if (params?.pbErrs) {
+    try {
+      profileBulkErrors = JSON.parse(decodeURIComponent(params.pbErrs)) as { email: string; message: string }[]
+    } catch {
+      profileBulkErrors = []
+    }
+  }
 
   const adminKey = process.env.ADMIN_KEY ?? "7985"
   if (key !== adminKey) {
@@ -252,6 +273,11 @@ export default async function AdminVendorsPage({
   const supabase = await createClient()
   const { recipients: reminderRecipients, eligibleTruckCount: reminderEligibleCount } =
     await fetchVendorReminderRecipients(supabase)
+
+  const {
+    recipients: profileReminderRecipients,
+    eligibleTruckCount: profileReminderEligibleCount,
+  } = await fetchVendorProfileReminderRecipients(supabase)
 
   const testEmailConfigured = isPlausibleVendorEmail(process.env.VENDOR_REMINDER_TEST_EMAIL)
   const inquiryEmailConfigured = isPlausibleVendorEmail(process.env.INQUIRY_TO_EMAIL)
@@ -332,6 +358,43 @@ export default async function AdminVendorsPage({
                   {profileReminderTestErr || "Unknown error — check server logs and Resend configuration."}
                 </p>
               )}
+            </div>
+          ) : null}
+
+          {profileBulkDone && Number.isFinite(pbAttempted) ? (
+            <div className="mb-6 rounded-lg border border-border bg-card px-4 py-3 text-sm space-y-2">
+              <p className="font-medium text-foreground">Profile reminder bulk send complete</p>
+              <ul className="list-disc list-inside text-muted-foreground space-y-0.5">
+                <li>
+                  Attempted: <span className="text-foreground tabular-nums">{pbAttempted}</span>
+                </li>
+                <li>
+                  Sent: <span className="text-foreground tabular-nums">{pbSent}</span>
+                </li>
+                <li>
+                  Skipped (duplicate inbox vs. eligible listings):{" "}
+                  <span className="text-foreground tabular-nums">
+                    {Number.isFinite(pbSkipped) ? pbSkipped : "—"}
+                  </span>
+                </li>
+                {Number.isFinite(pbFailed) && pbFailed > 0 ? (
+                  <li className="text-destructive">
+                    Failed: <span className="tabular-nums">{pbFailed}</span>
+                  </li>
+                ) : null}
+              </ul>
+              {profileBulkErrors.length > 0 ? (
+                <div className="pt-2 border-t border-border">
+                  <p className="text-xs font-medium text-destructive mb-1">Errors</p>
+                  <ul className="text-xs text-muted-foreground space-y-1 break-all">
+                    {profileBulkErrors.map((e, i) => (
+                      <li key={`${e.email}-pb-${i}`}>
+                        <span className="text-foreground">{e.email}</span>: {e.message}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
             </div>
           ) : null}
 
@@ -416,9 +479,9 @@ export default async function AdminVendorsPage({
                     </div>
                   ) : null}
                 </div>
-              </div> 
+              </div>
 
-              <div className="pt-6 border-t border-border space-y-2">
+              <div className="pt-6 border-t border-border space-y-4">
                 <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                   Profile + live pin reminder (preview)
                 </p>
@@ -428,6 +491,13 @@ export default async function AdminVendorsPage({
                 </p>
                 {key ? (
                   <VendorProfileReminderTestSend adminKey={key} inquiryEmailConfigured={inquiryEmailConfigured} />
+                ) : null}
+                {key ? (
+                  <VendorProfileReminderBulkSend
+                    adminKey={key}
+                    recipientCount={profileReminderRecipients.length}
+                    eligibleTruckCount={profileReminderEligibleCount}
+                  />
                 ) : null}
               </div>
             </CardContent>

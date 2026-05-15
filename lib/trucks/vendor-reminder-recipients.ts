@@ -51,3 +51,56 @@ export async function fetchVendorReminderRecipients(
 
   return { recipients, eligibleTruckCount }
 }
+
+/**
+ * Recipients for the “profile + live pin” bulk reminder: active directory trucks, non-test names,
+ * non-empty email, deduped by email (one send per inbox).
+ */
+export async function fetchVendorProfileReminderRecipients(
+  supabase: SupabaseClient
+): Promise<{ recipients: VendorReminderRecipient[]; eligibleTruckCount: number }> {
+  const { data, error } = await supabase
+    .from("trucks")
+    .select("id, name, email")
+    .eq("show_in_directory", true)
+    .eq("status", "active")
+    .eq("is_active", true)
+    .not("email", "is", null)
+    .neq("email", "")
+
+  if (error) {
+    console.error("[vendor-profile-reminder] fetch trucks:", error)
+    return { recipients: [], eligibleTruckCount: 0 }
+  }
+
+  const rows = data ?? []
+  type Row = { id: string; name: string | null; email: string | null }
+
+  const eligibleRows: Row[] = []
+  for (const row of rows as Row[]) {
+    const nameRaw = String(row.name ?? "").trim()
+    if (nameRaw.toLowerCase().includes("test")) continue
+    const email = (row.email ?? "").trim()
+    if (!email || !isPlausibleVendorEmail(email)) continue
+    eligibleRows.push(row)
+  }
+
+  const eligibleTruckCount = eligibleRows.length
+  const seenEmail = new Set<string>()
+  const recipients: VendorReminderRecipient[] = []
+
+  for (const row of eligibleRows) {
+    const email = (row.email ?? "").trim()
+    const key = email.toLowerCase()
+    if (seenEmail.has(key)) continue
+    seenEmail.add(key)
+    const nameRaw = String(row.name ?? "").trim()
+    recipients.push({
+      id: row.id,
+      name: nameRaw || "there",
+      email,
+    })
+  }
+
+  return { recipients, eligibleTruckCount }
+}
