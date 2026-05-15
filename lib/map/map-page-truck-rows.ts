@@ -29,7 +29,8 @@ export async function getMapSidebarAllListedTruckRows(supabase: SupabaseClient):
   return ((data ?? []) as ServingTruckRow[])
     .map((t) => ({
       ...t,
-      mapDisplaySource: (t.serving_today ? "live" : "listed") as "live" | "listed",
+      // Strict boolean — avoid accidental "live" from truthy non-booleans in row data.
+      mapDisplaySource: (t.serving_today === true ? "live" : "listed") as "live" | "listed",
     }))
     .sort((a, b) => {
       const sa = a.serving_today ? 0 : 1

@@ -51,8 +51,29 @@ const MapView = dynamic(() => import("@/components/map-view"), {
   ),
 })
 
-     function truckIsLiveOnMap(t: FoodTruck): boolean {
+function truckIsLiveOnMap(t: FoodTruck): boolean {
   return t.mapPinStatus === "live" || t.mapDisplaySource === "live"
+}
+
+/** Location/cuisine text used for sidebar search only (open + listed lists). */
+function truckMatchesSidebarFilters(
+  truck: FoodTruck,
+  q: string,
+  selectedCuisine: string,
+): { matchesSearch: boolean; matchesCuisine: boolean } {
+  const haystack = [
+    truck.name,
+    ...truck.cuisine,
+    truck.directoryLocationHint ?? "",
+    truck.location?.address ?? "",
+  ]
+    .join(" ")
+    .toLowerCase()
+  const matchesSearch = q === "" || haystack.includes(q)
+  const matchesCuisine =
+    selectedCuisine === "all" ||
+    truck.cuisine.some((c) => c.toLowerCase() === selectedCuisine.toLowerCase())
+  return { matchesSearch, matchesCuisine }
 }
 
 export function MapExplorer({
@@ -84,40 +105,30 @@ export function MapExplorer({
   const filteredLiveTrucks = useMemo(() => {
     const q = searchQuery.toLowerCase()
     return liveMapTrucks.filter((truck) => {
-      const hint = (truck.directoryLocationHint ?? "").toLowerCase()
-      const matchesSearch =
-        searchQuery === "" ||
-        truck.name.toLowerCase().includes(q) ||
-        truck.cuisine.some((c) => c.toLowerCase().includes(q)) ||
-        hint.includes(q)
-      const matchesCuisine =
-        selectedCuisine === "all" ||
-        truck.cuisine.some((c) => c.toLowerCase() === selectedCuisine.toLowerCase())
+      const { matchesSearch, matchesCuisine } = truckMatchesSidebarFilters(truck, q, selectedCuisine)
       const matchesOpen = !showOpenOnly || truck.isOpen
       return matchesSearch && matchesCuisine && matchesOpen
     })
   }, [liveMapTrucks, searchQuery, selectedCuisine, showOpenOnly])
 
+  const openNowTruckIdSet = useMemo(
+    () => new Set(filteredLiveTrucks.map((t) => t.id)),
+    [filteredLiveTrucks],
+  )
+
   const filteredAllListedTrucks = useMemo(() => {
     const q = searchQuery.toLowerCase()
     return allListedMapTrucks.filter((truck) => {
-      const hint = (truck.directoryLocationHint ?? "").toLowerCase()
-      const matchesSearch =
-        searchQuery === "" ||
-        truck.name.toLowerCase().includes(q) ||
-        truck.cuisine.some((c) => c.toLowerCase().includes(q)) ||
-        hint.includes(q)
-      const matchesCuisine =
-        selectedCuisine === "all" ||
-        truck.cuisine.some((c) => c.toLowerCase() === selectedCuisine.toLowerCase())
-      const matchesOpen = !showOpenOnly || truckIsLiveOnMap(truck)
+      const { matchesSearch, matchesCuisine } = truckMatchesSidebarFilters(truck, q, selectedCuisine)
+      const matchesOpen = !showOpenOnly || openNowTruckIdSet.has(truck.id)
       return matchesSearch && matchesCuisine && matchesOpen
     })
-  }, [allListedMapTrucks, searchQuery, selectedCuisine, showOpenOnly])
+  }, [allListedMapTrucks, searchQuery, selectedCuisine, showOpenOnly, openNowTruckIdSet])
 
+  /** Directory rows not in the Open now list (Open now is the source of truth). */
   const listedOnlySidebarTrucks = useMemo(
-    () => filteredAllListedTrucks.filter((t) => !truckIsLiveOnMap(t)),
-    [filteredAllListedTrucks]
+    () => filteredAllListedTrucks.filter((t) => !openNowTruckIdSet.has(t.id)),
+    [filteredAllListedTrucks, openNowTruckIdSet],
   )
 
   const filteredMapPinEvents = useMemo(() => {
@@ -197,10 +208,10 @@ export function MapExplorer({
         Green pins are trucks serving now. Orange pins are events happening now.
       </p>
 
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex min-h-0 flex-1 overflow-hidden">
         {/* Sidebar - Desktop */}
         <aside
-          className={`hidden lg:flex flex-col w-96 border-r bg-background transition-all ${
+          className={`hidden lg:flex h-full min-h-0 flex-col w-96 shrink-0 border-r bg-background transition-all ${
             isSidebarOpen ? "" : "w-0 overflow-hidden border-0"
           }`}
         >
@@ -258,7 +269,7 @@ export function MapExplorer({
         </Sheet>
 
         {/* Map or List View */}
-        <main className="flex-1 relative">
+        <main className="min-h-0 flex-1 relative">
           {viewMode === "map" || isLg ? (
             <MapView
               trucks={filteredLiveTrucks}
@@ -374,9 +385,9 @@ function SidebarContent({
     listedOnlySidebarTrucks.length === 0
 
   return (
-    <>
+    <div className="flex h-full min-h-0 flex-col">
       {/* Search & Filters */}
-      <div className="p-4 border-b space-y-4">
+      <div className="shrink-0 p-4 border-b space-y-4">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
@@ -418,7 +429,7 @@ function SidebarContent({
       </div>
 
       {/* Results Count */}
-      <div className="px-4 py-3 border-b bg-muted/50 space-y-1">
+      <div className="shrink-0 px-4 py-3 border-b bg-muted/50 space-y-1">
         <p className="text-sm text-muted-foreground">
           <span className="font-medium text-foreground">{filteredLiveTrucks.length}</span> truck
           {filteredLiveTrucks.length === 1 ? "" : "s"} open now on the map
@@ -447,7 +458,7 @@ function SidebarContent({
         ) : null}
       </div>
 
-      <ScrollArea className="flex-1">
+      <ScrollArea className="min-h-0 flex-1 overflow-hidden">
         <div className="p-4 space-y-6">
           {/* 1 — Open now (live pins) */}
           <div className="space-y-2">
@@ -569,7 +580,7 @@ function SidebarContent({
           ) : null}
         </div>
       </ScrollArea>
-    </>
+    </div>
   )
 }
 
