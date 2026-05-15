@@ -12,6 +12,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { createClient } from "@/lib/supabase/server"
 import { buildGeocodableLineFromParts } from "@/lib/events/event-address"
 import { geocodeEventAddressForStorage } from "@/lib/events/event-geocode"
+import { DashboardPublicEvents } from "@/components/dashboard/dashboard-public-events"
+import { fetchPublicUpcomingEventsForVendorDashboard } from "@/lib/events/public-events"
 
 export const metadata: Metadata = {
   title: "Events | FoodTruck CLT",
@@ -104,6 +106,8 @@ export default async function DashboardEventsPage() {
     .select("id, name")
     .eq("email", user.email)
     .single()
+
+  const publicUpcomingEvents = await fetchPublicUpcomingEventsForVendorDashboard(supabase, { limit: 25 })
 
   const { data: myEvents } = truck
     ? await supabase
@@ -213,6 +217,9 @@ export default async function DashboardEventsPage() {
               <Card>
                 <CardHeader>
                   <CardTitle>Your submitted events</CardTitle>
+                  <CardDescription>
+                    Events you created from this account. Status shows whether each one is live on the public site.
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
                   {events.length === 0 ? (
@@ -249,6 +256,12 @@ export default async function DashboardEventsPage() {
                   )}
                 </CardContent>
               </Card>
+
+              <DashboardPublicEvents
+                events={publicUpcomingEvents}
+                title="Public events"
+                description="Approved, active listings from the public calendar — open to all vendors. These are not events you submitted."
+              />
             </div>
           )}
         </div>

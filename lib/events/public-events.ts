@@ -43,3 +43,39 @@ export async function countUpcomingPublicEvents(supabase: SupabaseClient): Promi
   }
   return count ?? 0
 }
+
+/** Row shape for vendor dashboard “public events” (same filters as `/events`). */
+export type VendorDashboardPublicEventRow = {
+  id: string
+  title: string
+  slug: string | null
+  location_name: string | null
+  address: string | null
+  date: string
+  description: string | null
+  start_time: string | null
+  end_time: string | null
+}
+
+const VENDOR_DASHBOARD_PUBLIC_EVENT_COLUMNS =
+  "id, title, slug, location_name, address, date, description, start_time, end_time"
+
+/**
+ * Upcoming public events for vendor dashboards — mirrors `/events` filtering (active, date, listing_status).
+ */
+export async function fetchPublicUpcomingEventsForVendorDashboard(
+  supabase: SupabaseClient,
+  options?: { limit?: number }
+): Promise<VendorDashboardPublicEventRow[]> {
+  const limit = options?.limit ?? 30
+  const { data, error } = await publicUpcomingEventsBase(supabase, VENDOR_DASHBOARD_PUBLIC_EVENT_COLUMNS)
+    .order("date", { ascending: true })
+    .limit(limit)
+
+  if (error) {
+    console.error("[vendor-dashboard] fetchPublicUpcomingEventsForVendorDashboard:", error)
+    return []
+  }
+
+  return (data ?? []) as VendorDashboardPublicEventRow[]
+}

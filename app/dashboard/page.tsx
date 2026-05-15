@@ -3,7 +3,7 @@ import Link from "next/link"
 import { redirect } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Calendar, Clock, Plus, Eye, Inbox, Truck } from "lucide-react"
+import { Calendar, Clock, Plus, Eye, Inbox } from "lucide-react"
 import { createClient } from "@/lib/supabase/server"
 import { EVENT_TYPES } from "@/lib/booking-types"
 import { ServingLocationForm } from "@/components/dashboard/serving-location-form"
@@ -13,6 +13,8 @@ import {
   DashboardEventOpportunities,
   type DashboardOpportunity,
 } from "@/components/dashboard-event-opportunities"
+import { DashboardPublicEvents } from "@/components/dashboard/dashboard-public-events"
+import { fetchPublicUpcomingEventsForVendorDashboard } from "@/lib/events/public-events"
 
 type TruckOpportunityRow = {
   id: string
@@ -43,6 +45,9 @@ export default async function DashboardPage() {
   if (!user) {
     redirect("/vendor-login")
   }
+
+  const publicUpcomingEvents = await fetchPublicUpcomingEventsForVendorDashboard(supabase, { limit: 25 })
+
   const { data: truckData } = await supabase
     .from("trucks")
     .select("id, name, slug, cuisine, cuisine_types, serving_today, today_location, street_address, latitude, longitude, updated_at")
@@ -215,10 +220,10 @@ export default async function DashboardPage() {
                     <Calendar className="h-5 w-5 text-primary" />
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-foreground">Upcoming Events</p>
+                    <p className="text-sm font-medium text-foreground">Your submitted events</p>
                     <p className="text-xs text-muted-foreground">
-                      Your submitted events with a date on or after today. Past events are hidden from this count; open
-                      Events to see your full list.
+                      Events you submitted with a date on or after today (Eastern). Open Events to manage the full list —
+                      this count is separate from the public calendar below.
                     </p>
                   </div>
                 </div>
@@ -271,6 +276,8 @@ export default async function DashboardPage() {
               </p>
             )}
           </div>
+
+          <DashboardPublicEvents events={publicUpcomingEvents} />
 
           <div className="grid lg:grid-cols-3 gap-6">
             {/* Left Column - Schedule & Profile */}
