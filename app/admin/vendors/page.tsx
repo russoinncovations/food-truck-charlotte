@@ -14,6 +14,7 @@ import {
 } from "@/lib/trucks/vendor-reminder-recipients"
 import { VendorScheduleReminderSend } from "@/components/admin/vendor-schedule-reminder-send"
 import { VendorScheduleReminderTestSend } from "@/components/admin/vendor-schedule-reminder-test-send"
+import { VendorProfileReminderTestSend } from "@/components/admin/vendor-profile-reminder-test-send"
 
 export const metadata: Metadata = {
   title: "Vendor Applications | Admin | Food Truck CLT",
@@ -211,6 +212,9 @@ export default async function AdminVendorsPage({
     testReminder?: string
     testOk?: string
     testErr?: string
+    profileReminderTest?: string
+    profileTestOk?: string
+    profileTestErr?: string
   }>
 }) {
   const params = await searchParams
@@ -232,6 +236,9 @@ export default async function AdminVendorsPage({
   const testReminderDone = params?.testReminder === "1"
   const testReminderOk = params?.testOk === "1"
   const testReminderErr = params?.testErr?.trim() ?? ""
+  const profileReminderTestDone = params?.profileReminderTest === "1"
+  const profileReminderTestOk = params?.profileTestOk === "1"
+  const profileReminderTestErr = params?.profileTestErr?.trim() ?? ""
 
   const adminKey = process.env.ADMIN_KEY ?? "7985"
   if (key !== adminKey) {
@@ -247,6 +254,7 @@ export default async function AdminVendorsPage({
     await fetchVendorReminderRecipients(supabase)
 
   const testEmailConfigured = isPlausibleVendorEmail(process.env.VENDOR_REMINDER_TEST_EMAIL)
+  const inquiryEmailConfigured = isPlausibleVendorEmail(process.env.INQUIRY_TO_EMAIL)
 
   const { data: applications } = await supabase
     .from("vendor_applications")
@@ -300,6 +308,28 @@ export default async function AdminVendorsPage({
                 <p>
                   <span className="font-medium">Test send failed.</span>{" "}
                   {testReminderErr || "Unknown error — check server logs and Resend configuration."}
+                </p>
+              )}
+            </div>
+          ) : null}
+
+          {profileReminderTestDone ? (
+            <div
+              className={`mb-6 rounded-lg border px-4 py-3 text-sm ${
+                profileReminderTestOk
+                  ? "border-green-600/35 bg-green-500/10 text-foreground"
+                  : "border-destructive/40 bg-destructive/10 text-destructive"
+              }`}
+            >
+              {profileReminderTestOk ? (
+                <p>
+                  <span className="font-medium text-foreground">Profile reminder preview sent.</span> Check{" "}
+                  <code className="text-xs">INQUIRY_TO_EMAIL</code>. No vendor inboxes were used.
+                </p>
+              ) : (
+                <p>
+                  <span className="font-medium">Send failed.</span>{" "}
+                  {profileReminderTestErr || "Unknown error — check server logs and Resend configuration."}
                 </p>
               )}
             </div>
@@ -386,6 +416,19 @@ export default async function AdminVendorsPage({
                     </div>
                   ) : null}
                 </div>
+              </div> 
+
+              <div className="pt-6 border-t border-border space-y-2">
+                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Profile + live pin reminder (preview)
+                </p>
+                <p className="text-xs text-muted-foreground max-w-2xl">
+                  Review the Nicole “update profile + drop your live pin” draft in your inquiry inbox before any vendor
+                  blast.
+                </p>
+                {key ? (
+                  <VendorProfileReminderTestSend adminKey={key} inquiryEmailConfigured={inquiryEmailConfigured} />
+                ) : null}
               </div>
             </CardContent>
           </Card>

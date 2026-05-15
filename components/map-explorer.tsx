@@ -117,11 +117,16 @@ export function MapExplorer({
     })
   }, [exploreMapTrucks, searchQuery, selectedCuisine, showOpenOnly])
 
-    const upcoming = sidebarMapEvents.filter((e) => e.pinPhase === "upcoming")
-    if (!searchQuery.trim()) return upcoming
+  const upcomingEvents = useMemo(
+    () => sidebarMapEvents.filter((e) => e.pinPhase === "upcoming"),
+    [sidebarMapEvents]
+  )
+
+  const filteredUpcomingMapEvents = useMemo(() => {
     const q = searchQuery.toLowerCase()
-    return upcoming.filter((e) => e.title.toLowerCase().includes(q))
-  }, [sidebarMapEvents, searchQuery])
+
+    return upcomingEvents.filter((e) => e.title.toLowerCase().includes(q))
+  }, [upcomingEvents, searchQuery])
 
   const filteredMapPinEvents = useMemo(() => {
     if (!searchQuery.trim()) return mapPinEvents
@@ -179,7 +184,7 @@ export function MapExplorer({
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-500 opacity-75" />
                 <span className="relative inline-flex h-2 w-2 rounded-full bg-green-500" />
               </span>
-              {liveCount} {liveCount === 1 ? "truck" : "trucks"} open now
+              {liveCount} {liveCount === 1 ? "truck" : "trucks"} checked in
             </Badge>
           ) : (
             <Badge variant="secondary" className="max-w-[18rem] text-left font-normal leading-snug text-muted-foreground">
@@ -814,33 +819,45 @@ function TruckCard({
 }
 
 function MobileListView({
-  trucks,
+  filteredLiveTrucks,
+  filteredExploreTrucks,
+  filteredMapPinEvents,
+  filteredUpcomingMapEvents,
   searchQuery,
   setSearchQuery,
   selectedCuisine,
   setSelectedCuisine,
+  selectedTruck,
+  selectedEvent,
+  setSelectedTruck,
+  setSelectedEvent,
 }: {
-  trucks: FoodTruck[]
+  filteredLiveTrucks: FoodTruck[]
+  filteredExploreTrucks: FoodTruck[]
+  filteredMapPinEvents: MapEventMarker[]
+  filteredUpcomingMapEvents: MapEventMarker[]
   searchQuery: string
   setSearchQuery: (v: string) => void
   selectedCuisine: string
   setSelectedCuisine: (v: string) => void
+  selectedTruck: FoodTruck | null
+  selectedEvent: MapEventMarker | null
+  setSelectedTruck: (v: FoodTruck | null) => void
+  setSelectedEvent: (v: MapEventMarker | null) => void
 }) {
   return (
-    <div className="space-y-4">
-      {/* Search */}
+    <div className="space-y-6">
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
           type="text"
-          placeholder="Search trucks..."
+          placeholder="Search trucks, cuisines, or events…"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="pl-9"
         />
       </div>
 
-      {/* Cuisine Filter */}
       <div className="flex gap-2 overflow-x-auto pb-2 -mx-4 px-4">
         {cuisineCategories.map((cat) => (
           <Button
@@ -855,14 +872,95 @@ function MobileListView({
         ))}
       </div>
 
-      {/* Results */}
-      <div className="space-y-3">
-        {trucks.map((truck) => (
-          <Link key={truck.id} href={`/trucks/${truck.slug}`}>
-            <TruckCard truck={truck} />
-          </Link>
-        ))}
+      <div className="space-y-2">
+        <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Live Now</h3>
+        {filteredLiveTrucks.length > 0 ? (
+          <div className="space-y-3">
+            {filteredLiveTrucks.map((truck) => (
+              <button
+                key={truck.id}
+                type="button"
+                className="w-full text-left"
+                onClick={() => setSelectedTruck(truck)}
+              >
+                <TruckCard truck={truck} isSelected={selectedTruck?.id === truck.id} />
+              </button>
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground border border-dashed rounded-lg p-3 bg-muted/30">
+            No trucks currently checked in.
+          </p>
+        )}
       </div>
+
+      {filteredMapPinEvents.length > 0 ? (
+        <div className="space-y-2">
+          <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Happening Now</h3>
+          <div className="space-y-2">
+            {filteredMapPinEvents.map((ev) => (
+              <button
+                key={ev.id}
+                type="button"
+                className={`w-full text-left rounded-xl border p-3 text-sm ${
+                  selectedEvent?.id === ev.id ? "border-amber-600 ring-1 ring-amber-600/30" : "border-border"
+                }`}
+                onClick={() => setSelectedEvent(ev)}
+              >
+                <p className="font-semibold text-foreground">{ev.title}</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {formatMapEventDateTime(ev.date, ev.startTime, ev.endTime)}
+                </p>
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      {filteredExploreTrucks.length > 0 ? (
+        <div className="space-y-2">
+          <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Explore Trucks</h3>
+          <p className="text-[11px] text-muted-foreground">Not on the map until checked in.</p>
+          <div className="space-y-3">
+            {filteredExploreTrucks.map((truck) => (
+              <button
+                key={truck.id}
+                type="button"
+                className="w-full text-left"
+                onClick={() => setSelectedTruck(truck)}
+              >
+                <TruckCard truck={truck} isSelected={selectedTruck?.id === truck.id} />
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      {filteredUpcomingMapEvents.length > 0 ? (
+        <div className="space-y-2">
+          <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Upcoming Events</h3>
+          <div className="space-y-2">
+            {filteredUpcomingMapEvents.map((ev) => (
+              <button
+                key={ev.id}
+                type="button"
+                className={`w-full text-left rounded-xl border p-3 text-sm ${
+                  selectedEvent?.id === ev.id ? "border-orange-500 ring-1 ring-orange-500/30" : "border-border"
+                }`}
+                onClick={() => setSelectedEvent(ev)}
+              >
+                <p className="font-semibold text-foreground">{ev.title}</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {formatMapEventDateTime(ev.date, ev.startTime, ev.endTime)}
+                </p>
+              </button>
+            ))}
+          </div>
+          <Link href="/events" className="text-xs text-primary font-medium">
+            Full events calendar →
+          </Link>
+        </div>
+      ) : null}
     </div>
   )
 }

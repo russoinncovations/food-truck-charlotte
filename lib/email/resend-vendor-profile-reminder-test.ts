@@ -1,0 +1,80 @@
+/**
+ * Test-only “profile + live pin” reminder — same copy as intended vendor blast, one recipient (e.g. INQUIRY_TO_EMAIL).
+ */
+
+export const VENDOR_PROFILE_REMINDER_SUBJECT =
+  "Quick FoodTruckCLT reminder: update your profile + drop your live pin"
+
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+}
+
+const LOGIN_URL = "https://www.foodtruckclt.com/vendor-login"
+
+/** Fixed vendor-facing body; preview is sent to admin only. */
+export function buildVendorProfileReminderHtml(): string {
+  return `
+<p>Hi everyone,</p>
+<p>FoodTruckCLT now has 67 trucks, carts, and tents listed, and I&apos;m getting ready to start sharing the site and live map more consistently in the Facebook group.</p>
+<p>Before I do that, please take a few minutes to make sure your profile is ready.</p>
+<p><strong>Please check:</strong></p>
+<ol>
+  <li>
+    <strong>Your photo is updated</strong><br />
+    Add a clear truck, cart, tent, logo, or food photo so people can recognize you.
+  </li>
+  <li>
+    <strong>Your profile information is complete</strong><br />
+    Make sure your cuisine, contact info, social links, and description are accurate.
+  </li>
+  <li>
+    <strong>Drop your live location pin when you&apos;re serving</strong><br />
+    This is the biggest one. I&apos;d love to help promote where trucks are each day, but I can&apos;t share your live location if there isn&apos;t a pin on the map.
+  </li>
+</ol>
+<p><strong>Vendor login:</strong><br />
+<a href="${LOGIN_URL}">${escapeHtml(LOGIN_URL)}</a></p>
+<p>Please use the same email address this message was sent to when logging in, since your dashboard is connected to that email.</p>
+<p>When you&apos;re out serving, log in and add your live location so people can find you in real time.</p>
+<p>Thank you for helping make this more useful for both vendors and the community.</p>
+<p>— Nicole<br />FoodTruckCLT</p>
+`.trim()
+}
+
+export async function sendVendorProfileReminderTestEmail(to: string): Promise<{ ok: true } | { ok: false; error: string }> {
+  const key = process.env.RESEND_API_KEY
+  const from =
+    process.env.RESEND_FROM_EMAIL?.trim() || "FoodTruck CLT <noreply@foodtruckclt.com>"
+
+  if (!key) {
+    return { ok: false, error: "RESEND_API_KEY is not configured" }
+  }
+
+  const trimmed = to.trim()
+  if (!trimmed || !trimmed.includes("@")) {
+    return { ok: false, error: "Invalid recipient address" }
+  }
+
+  try {
+    const { Resend } = await import("resend")
+    const resend = new Resend(key)
+    const html = buildVendorProfileReminderHtml()
+    const { error } = await resend.emails.send({
+      from,
+      to: trimmed,
+      subject: VENDOR_PROFILE_REMINDER_SUBJECT,
+      html,
+    })
+    if (error) {
+      return { ok: false, error: error.message ?? "Resend returned an error" }
+    }
+    return { ok: true }
+  } catch (e) {
+    const message = e instanceof Error ? e.message : "Unknown error"
+    return { ok: false, error: message }
+  }
+}

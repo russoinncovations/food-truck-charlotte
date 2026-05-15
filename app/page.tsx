@@ -8,7 +8,7 @@ import { Footer } from "@/components/footer"
 import { createClient } from "@/lib/supabase/server"
 import { countUpcomingPublicEvents } from "@/lib/events/public-events"
 import { fetchMapEventMarkers, filterMapEventsForRealtimePins } from "@/lib/events/map-event-markers"
-import { getMapPageTruckPinRows } from "@/lib/map/map-page-truck-rows"
+import { getMapPageTruckPinRows, getMapSidebarExploreTruckRows } from "@/lib/map/map-page-truck-rows"
 import { countPublicDirectoryTrucks } from "@/lib/trucks/public-directory"
 
 export default async function Home() {
@@ -16,7 +16,8 @@ export default async function Home() {
   const upcomingEventCount = await countUpcomingPublicEvents(supabase)
   const directoryTruckCount = await countPublicDirectoryTrucks(supabase)
 
-  const displayTrucks = await getMapPageTruckPinRows(supabase)
+  const liveTruckRows = await getMapPageTruckPinRows(supabase)
+  const exploreTruckRows = await getMapSidebarExploreTruckRows(supabase)
 
   let sidebarMapEvents: Awaited<ReturnType<typeof fetchMapEventMarkers>> = []
   try {
@@ -32,7 +33,8 @@ export default async function Home() {
       <Hero upcomingEventCount={upcomingEventCount} directoryTruckCount={directoryTruckCount} />
       <FeaturedTrucks />
       <MapPreviewClient
-        trucks={displayTrucks}
+        liveTruckRows={liveTruckRows}
+        exploreTruckRows={exploreTruckRows}
         sidebarMapEvents={sidebarMapEvents}
         mapPinEvents={mapPinEvents}
       />

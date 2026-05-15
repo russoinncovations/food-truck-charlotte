@@ -13,8 +13,7 @@ const DEFAULT_ZOOM = 12
 
 const ORANGE_EVENT = "#f97316"
 const ORANGE_EVENT_BORDER = "#c2410c"
-
-const TRUCK_LIVE_BG = "#16a34a"
+const TRUCK_LIVE = "#16a34a"
 const TRUCK_LIVE_BORDER = "#15803d"
 
 interface MapViewProps {
@@ -195,7 +194,7 @@ export default function MapView({
                 setInfoEventId(null)
               }}
             >
-              <Pin background={TRUCK_LIVE_BG} borderColor={TRUCK_LIVE_BORDER} glyphColor="#ffffff" />
+              <Pin background={TRUCK_LIVE} borderColor={TRUCK_LIVE_BORDER} glyphColor="#ffffff" />
             </AdvancedMarker>
           ))}
 

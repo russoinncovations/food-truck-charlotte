@@ -10,6 +10,7 @@ import {
   logVendorReminderAttempt,
   sendVendorScheduleReminderEmail,
 } from "@/lib/email/resend-vendor-schedule-reminder"
+import { sendVendorProfileReminderTestEmail } from "@/lib/email/resend-vendor-profile-reminder-test"
 
 function adminKeyOk(key: string | null | undefined): boolean {
   const expected = process.env.ADMIN_KEY ?? "7985"
@@ -114,4 +115,37 @@ export async function sendVendorScheduleReminderTest(formData: FormData) {
     errorMessage: result.error,
   })
   redirect(`/admin/vendors?key=${keyQ}&testReminder=1&testOk=0&testErr=${encodeURIComponent(result.error)}`)
+}
+
+/**
+ * Sends the profile + live pin reminder draft to INQUIRY_TO_EMAIL only (admin preview). No vendors.
+ */
+export async function sendVendorProfileReminderTestToAdmin(formData: FormData) {
+  const rawKey = (formData.get("adminKey") as string | null) ?? ""
+  const adminKey = rawKey.trim()
+
+  if (!adminKeyOk(adminKey)) {
+    redirect("/admin/vendors")
+  }
+
+  const keyQ = encodeURIComponent(adminKey)
+  const to = process.env.INQUIRY_TO_EMAIL?.trim()
+
+  if (!to || !isPlausibleVendorEmail(to)) {
+    redirect(
+      `/admin/vendors?key=${keyQ}&profileReminderTest=1&profileTestOk=0&profileTestErr=${encodeURIComponent(
+        "Set INQUIRY_TO_EMAIL in your environment to a valid address."
+      )}`
+    )
+  }
+
+  const result = await sendVendorProfileReminderTestEmail(to)
+
+  if (result.ok) {
+    redirect(`/admin/vendors?key=${keyQ}&profileReminderTest=1&profileTestOk=1`)
+  }
+
+  redirect(
+    `/admin/vendors?key=${keyQ}&profileReminderTest=1&profileTestOk=0&profileTestErr=${encodeURIComponent(result.error)}`
+  )
 }
