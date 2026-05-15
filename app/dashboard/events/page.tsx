@@ -216,10 +216,8 @@ export default async function DashboardEventsPage() {
 
               <Card>
                 <CardHeader>
-                  <CardTitle>Your submitted events</CardTitle>
-                  <CardDescription>
-                    Events you created from this account. Status shows whether each one is live on the public site.
-                  </CardDescription>
+                  <CardTitle>Your Submitted Events</CardTitle>
+                  <CardDescription>Events you submitted to FoodTruckCLT.</CardDescription>
                 </CardHeader>
                 <CardContent>
                   {events.length === 0 ? (
@@ -257,11 +255,7 @@ export default async function DashboardEventsPage() {
                 </CardContent>
               </Card>
 
-              <DashboardPublicEvents
-                events={publicUpcomingEvents}
-                title="Public events"
-                description="Approved, active listings from the public calendar — open to all vendors. These are not events you submitted."
-              />
+              <DashboardPublicEvents events={publicUpcomingEvents} />
             </div>
           )}
         </div>

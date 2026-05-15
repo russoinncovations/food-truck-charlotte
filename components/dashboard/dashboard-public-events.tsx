@@ -38,8 +38,9 @@ function eventHref(row: VendorDashboardPublicEventRow): string {
 
 export function DashboardPublicEvents({
   events,
-  title = "Upcoming public events",
-  description = "Community listings on the public calendar — not events you submitted. Reach out to organizers if you’d like to vend.",
+  title = "Public Events",
+  description =
+    "Community events listed on the public calendar. Reach out to the organizer if you'd like to vend.",
 }: {
   events: VendorDashboardPublicEventRow[]
   title?: string

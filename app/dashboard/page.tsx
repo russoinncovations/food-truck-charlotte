@@ -113,7 +113,7 @@ export default async function DashboardPage() {
     const sorted = sortOpportunitiesNewestFirst((rawOpportunities ?? []) as TruckOpportunityRow[])
     pendingCount = sorted.length
 
-    opportunityCards = sorted.slice(0, 5).map((opp) => {
+    opportunityCards = sorted.map((opp) => {
       const raw = opp.booking_requests
       const br = Array.isArray(raw) ? raw[0] : raw
       const row = br as
@@ -220,10 +220,10 @@ export default async function DashboardPage() {
                     <Calendar className="h-5 w-5 text-primary" />
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-foreground">Your submitted events</p>
+                    <p className="text-sm font-medium text-foreground">Your Submitted Events</p>
                     <p className="text-xs text-muted-foreground">
-                      Events you submitted with a date on or after today (Eastern). Open Events to manage the full list —
-                      this count is separate from the public calendar below.
+                      Events you submitted to FoodTruckCLT. Manage them on the Events page — separate from booking
+                      requests and from the public events calendar.
                     </p>
                   </div>
                 </div>
@@ -232,7 +232,7 @@ export default async function DashboardPage() {
                     {upcomingEventsCount}
                   </span>
                   <Button variant="outline" size="sm" asChild>
-                    <Link href="/dashboard/events">Open Events</Link>
+                    <Link href="/dashboard/events">Manage events</Link>
                   </Button>
                 </div>
               </CardContent>
@@ -250,14 +250,15 @@ export default async function DashboardPage() {
                     <div>
                       <h2 className="font-medium text-foreground">Requests to confirm</h2>
                       <p className="text-sm text-muted-foreground">
-                        {pendingCount} booking request{pendingCount === 1 ? "" : "s"} from hosts need a response. Open
-                        a card to view details, choose Interested or Pass, and email the organizer to finalize.
+                        {pendingCount} booking opportunit{pendingCount === 1 ? "y" : "ies"} need a response. Open{" "}
+                        <span className="font-medium text-foreground">Requests to Confirm</span> in the right column —
+                        not the public events calendar.
                       </p>
                     </div>
                   </div>
                   <Button variant="default" asChild>
-                    <a href="#vendor-booking-requests" className="shrink-0">
-                      View booking requests
+                    <a href="#vendor-requests-to-confirm" className="shrink-0">
+                      View requests
                     </a>
                   </Button>
                 </CardContent>
@@ -266,18 +267,16 @@ export default async function DashboardPage() {
             {truckData?.id && pendingCount === 0 && (
               <p className="text-sm text-muted-foreground">
                 <Link
-                  href="/dashboard#vendor-booking-requests"
+                  href="/dashboard#vendor-requests-to-confirm"
                   className="text-foreground font-medium underline-offset-2 hover:underline"
                 >
-                  Booking Requests
+                  Requests to Confirm
                 </Link>{" "}
-                (right column) is where host inquiries appear. Use the sidebar or{" "}
-                <span className="text-foreground font-medium">menu</span> (mobile) to jump there.
+                (right column) lists host booking opportunities with I&apos;m interested / Not available / email — separate
+                from <span className="font-medium text-foreground">Public Events</span> below.
               </p>
             )}
           </div>
-
-          <DashboardPublicEvents events={publicUpcomingEvents} />
 
           <div className="grid lg:grid-cols-3 gap-6">
             {/* Left Column - Schedule & Profile */}
@@ -318,8 +317,8 @@ export default async function DashboardPage() {
               </Card>
             </div>
 
-            <div className="space-y-6" aria-label="Booking requests and tips">
-              <Card id="vendor-booking-requests" className="scroll-mt-28">
+            <div className="space-y-6" aria-label="Requests to confirm and tips">
+              <Card id="vendor-requests-to-confirm" className="scroll-mt-28">
                 <DashboardEventOpportunities
                   opportunities={opportunityCards}
                   truckContext={truckContext}
@@ -352,6 +351,8 @@ export default async function DashboardPage() {
               </Card>
             </div>
           </div>
+
+          <DashboardPublicEvents events={publicUpcomingEvents} />
         </main>
       </div>
     </div>

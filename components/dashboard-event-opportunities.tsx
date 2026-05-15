@@ -1,7 +1,6 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { updateTruckOpportunityStatus } from "@/app/dashboard/actions"
 import { BOOKING_REQUEST_TYPE } from "@/lib/booking/booking-request-constants"
@@ -197,7 +196,7 @@ function OpportunityActions({
         href={buildReportMailto(opp, supportEmail)}
         className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground inline-block"
       >
-        Report this event
+        Report this booking request
       </a>
     </div>
   )
@@ -359,21 +358,18 @@ export function DashboardEventOpportunities({
             Requests to Confirm
           </CardTitle>
           <CardDescription>
-            Open a request for details, then choose I’m interested, Not available, or email the organizer.
+            Requests from customers looking to book a food truck, cart, or tent — not public calendar listings.
           </CardDescription>
           <p className="text-xs text-muted-foreground pt-1">
-            FoodTruckCLT shares booking opportunities from customers. All agreements and payments
-            are handled directly between you and the customer.
+            Direct bookings to your truck, open requests, and cuisine matches appear here when hosts submit them.
+            Use I&apos;m interested, Not available, or Email organizer. Public events are listed separately below on the
+            dashboard.
           </p>
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground py-2">
-            No pending requests right now. Direct bookings to your truck, citywide open calls, and cuisine
-            matches appear here when hosts submit them.
+            No pending requests right now. When a host reaches out, you&apos;ll see it here.
           </p>
-          <Button variant="outline" className="w-full mt-4" asChild>
-            <Link href="/dashboard/events">View All Events</Link>
-          </Button>
         </CardContent>
       </>
     )
@@ -387,11 +383,11 @@ export function DashboardEventOpportunities({
           Requests to Confirm
         </CardTitle>
         <CardDescription>
-          Tap a request for full details. Use I’m interested or Not available, or email the organizer.
+          Tap a request for full details. Choose I&apos;m interested or Not available, or email the organizer — these
+          are booking leads, not the community events calendar.
         </CardDescription>
         <p className="text-xs text-muted-foreground pt-1">
-          FoodTruckCLT shares booking opportunities from customers. All agreements and payments are
-          handled directly between you and the customer.
+          FoodTruckCLT shares opportunities from customers. Agreements and payments are between you and the host.
         </p>
       </CardHeader>
       <CardContent>
@@ -426,8 +422,11 @@ export function DashboardEventOpportunities({
                       <Calendar className="h-6 w-6 text-muted-foreground" />
                     </div>
                     <div className="flex-1 min-w-0 space-y-1">
-                      <p className="font-medium text-foreground text-sm truncate">{eventTypeLabel}</p>
+                      <p className="font-medium text-foreground text-sm truncate">
+                        {br?.event_display_name ?? eventTypeLabel}
+                      </p>
                       <p className="text-xs text-muted-foreground">
+                        {br?.event_display_name ? `${eventTypeLabel} · ` : ""}
                         {dateStr}
                         {br?.city != null && br.city !== "" ? ` · ${br.city}` : ""}
                         {br?.guest_count != null ? ` · ${br.guest_count} guests` : ""}
@@ -462,12 +461,9 @@ export function DashboardEventOpportunities({
           })}
         </div>
         <p className="text-xs text-muted-foreground mt-4 leading-relaxed">
-          FoodTruckCLT connects vendors and event organizers but does not verify events, payment terms, or
-          participants. Vendors should confirm details before committing.
+          FoodTruckCLT connects vendors and event organizers but does not verify events, payment terms, or participants.
+          Vendors should confirm details before committing.
         </p>
-        <Button variant="outline" className="w-full mt-3" asChild>
-          <Link href="/dashboard/events">View All Events</Link>
-        </Button>
       </CardContent>
 
       <Sheet open={detailOpp != null} onOpenChange={(open) => !open && setDetailOpp(null)}>
@@ -478,14 +474,17 @@ export function DashboardEventOpportunities({
                 <SheetTitle className="pr-8">
                   {detailOpp.booking?.event_display_name ??
                     EVENT_TYPES.find((t) => t.value === detailOpp.booking?.event_type)?.label ??
-                    "Event details"}
+                    "Booking request details"}
                 </SheetTitle>
                 <div className="pt-1">
                   <Badge variant="outline" className="text-xs font-normal">
                     {requestVisibilityLabel(detailOpp.booking)}
                   </Badge>
                 </div>
-                <SheetDescription className="sr-only">Booking request details and actions</SheetDescription>
+                <SheetDescription className="text-left text-xs text-muted-foreground max-w-[95%]">
+                  <span className="sr-only">Booking request details and actions. </span>
+                  Booking inquiry from a host — not a public calendar listing.
+                </SheetDescription>
               </SheetHeader>
               <div className="flex-1 overflow-y-auto px-4 pb-4">
                 <OpportunityDetailBody opp={detailOpp} />
