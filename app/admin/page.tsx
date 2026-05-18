@@ -3,6 +3,8 @@ import { Metadata } from "next"
 import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
 import { Header } from "@/components/header"
+import { fetchAdminCommandCenterData } from "@/lib/admin/command-center-data"
+import { AdminCommandCenter } from "@/components/admin/admin-command-center"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Truck } from "lucide-react"
@@ -126,6 +128,9 @@ export default async function AdminDashboardPage({
     )
   }
 
+  const keyQ = `?key=${encodeURIComponent(key ?? "")}`
+  const commandData = await fetchAdminCommandCenterData(key ?? "")
+
   const supabase = await createClient()
   const { data: applications } = await supabase
     .from("vendor_applications")
@@ -141,7 +146,7 @@ export default async function AdminDashboardPage({
 
       <main className="pt-24 pb-16">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <h1 className="font-display text-2xl sm:text-3xl font-bold text-foreground mb-8">Admin</h1>
+          <AdminCommandCenter keyQ={keyQ} data={commandData} />
 
           <Card className="border-primary/20">
             <CardHeader>
