@@ -37,7 +37,10 @@ export async function updateTruckOpportunityStatus(
 
   const { data: updated, error: updateError } = await supabase
     .from("truck_opportunities")
-    .update({ status })
+    .update({
+      status,
+      responded_at: new Date().toISOString(),
+    })
     .eq("id", opportunityId)
     .eq("truck_id", truck.id)
     .select("id")

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server"
+import { revalidatePath } from "next/cache"
 import { createAdminSupabaseClient } from "@/lib/supabase/admin"
 import { createClient } from "@/lib/supabase/server"
 import {
@@ -21,6 +22,7 @@ export async function POST(request: Request) {
     const file = formData.get("file")
     const adminKeyRaw = ((formData.get("adminKey") as string | null) ?? "").trim()
     const truckIdRaw = ((formData.get("truckId") as string | null) ?? "").trim()
+    const eventIdRaw = ((formData.get("eventId") as string | null) ?? "").trim()
 
     if (!(file instanceof File)) {
       return jsonError(400, "Choose an image file.")
@@ -31,12 +33,35 @@ export async function POST(request: Request) {
       return jsonError(400, metaErr)
     }
 
+    const admin = createAdminSupabaseClient()
+    if (!admin) {
+      return jsonError(
+        503,
+        "Uploads are temporarily unavailable. If this continues, contact support.",
+      )
+    }
+
     let pathPrefix: string
+    let adminEventIdForUpdate: string | null = null
+
     if (adminKeyRaw) {
       if (adminKeyRaw !== expectedAdminKey()) {
         return jsonError(403, "Unauthorized.")
       }
-      pathPrefix = "admin"
+      if (eventIdRaw) {
+        const { data: evRow, error: evErr } = await admin
+          .from("events")
+          .select("id")
+          .eq("id", eventIdRaw.trim())
+          .maybeSingle()
+        if (evErr || !evRow) {
+          return jsonError(404, "Event not found.")
+        }
+        pathPrefix = `admin/events/${evRow.id}`
+        adminEventIdForUpdate = evRow.id
+      } else {
+        pathPrefix = "admin"
+      }
     } else if (truckIdRaw) {
       const supabase = await createClient()
       const {
@@ -58,14 +83,6 @@ export async function POST(request: Request) {
       pathPrefix = `vendor/${truckIdRaw}`
     } else {
       pathPrefix = "promote"
-    }
-
-    const admin = createAdminSupabaseClient()
-    if (!admin) {
-      return jsonError(
-        503,
-        "Uploads are temporarily unavailable. If this continues, contact support.",
-      )
     }
 
     const objectPath = buildEventImageObjectPath(pathPrefix, file.type)
@@ -90,6 +107,29 @@ export async function POST(request: Request) {
     const {
       data: { publicUrl },
     } = admin.storage.from(EVENT_IMAGES_BUCKET).getPublicUrl(objectPath)
+
+    if (adminEventIdForUpdate) {
+      const { error: updateErr } = await admin
+        .from("events")
+        .update({ image_url: publicUrl, featured_image_url: publicUrl })
+        .eq("id", adminEventIdForUpdate)
+      if (updateErr) {
+        console.error("[upload-event-image] admin events.update error:", updateErr)
+        return jsonError(500, updateErr.message || "File uploaded but event row was not updated.")
+      }
+      revalidatePath("/events")
+      revalidatePath("/")
+      revalidatePath("/admin/events")
+      const { data: slugRow } = await admin
+        .from("events")
+        .select("slug")
+        .eq("id", adminEventIdForUpdate)
+        .maybeSingle()
+      const s = slugRow?.slug != null ? String(slugRow.slug).trim() : ""
+      if (s) {
+        revalidatePath(`/events/${s}`)
+      }
+    }
 
     return NextResponse.json({ success: true as const, publicUrl })
   } catch (err) {

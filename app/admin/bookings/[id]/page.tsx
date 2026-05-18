@@ -2,6 +2,7 @@ import { Metadata } from "next"
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
+import { createAdminSupabaseClient } from "@/lib/supabase/admin"
 import { Header } from "@/components/header"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -10,13 +11,10 @@ import { Separator } from "@/components/ui/separator"
 import { 
   ArrowLeft, 
   Calendar, 
-  Clock, 
   MapPin, 
   Users, 
   Mail, 
   Phone, 
-  Building2,
-  DollarSign,
   Utensils,
   MessageSquare,
   ExternalLink,
@@ -24,6 +22,9 @@ import {
 import { cn } from "@/lib/utils"
 import { EVENT_TYPES, BUDGET_RANGES, type BookingRequest, type BookingStatus } from "@/lib/booking-types"
 import { normalizeBookingRowForAdmin } from "@/lib/admin/normalize-booking-row"
+import { fetchVendorRoutingForBookingRequest } from "@/lib/admin/fetch-booking-vendor-routing"
+import { AdminBookingEmailCustomer } from "@/components/admin/admin-booking-email-customer"
+import { AdminBookingFollowUpAction } from "@/components/admin/admin-booking-follow-up-action"
 
 export const metadata: Metadata = {
   title: "Booking Details | Admin | Food Truck CLT",
@@ -39,21 +40,48 @@ const STATUS_CONFIG: Record<BookingStatus, { label: string; color: string }> = {
   cancelled: { label: "Cancelled", color: "bg-red-500" },
 }
 
+function opportunityStatusLabel(status: string): string {
+  const s = status.toLowerCase()
+  if (s === "interested") return "Interested"
+  if (s === "pass") return "Not available"
+  if (s === "pending") return "Pending"
+  return status
+}
+
+function formatDateTime(iso: string | null | undefined): string {
+  if (!iso) return "—"
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return iso
+  return d.toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  })
+}
+
 async function getBooking(id: string): Promise<BookingRequest | null> {
   const supabase = await createClient()
-  
-  const { data, error } = await supabase
-    .from("booking_requests")
-    .select("*")
-    .eq("id", id)
-    .single()
 
-  if (error) {
-    console.error("[v0] Error fetching booking:", error)
-    return null
+  const { data, error } = await supabase.from("booking_requests").select("*").eq("id", id).single()
+
+  if (data && !error) {
+    return normalizeBookingRowForAdmin(data as Record<string, unknown>)
   }
 
-  return normalizeBookingRowForAdmin(data as Record<string, unknown>)
+  const admin = createAdminSupabaseClient()
+  if (admin) {
+    const r2 = await admin.from("booking_requests").select("*").eq("id", id).maybeSingle()
+    if (r2.data) {
+      return normalizeBookingRowForAdmin(r2.data as Record<string, unknown>)
+    }
+  }
+
+  if (error) {
+    console.error("[admin/bookings/[id]] Error fetching booking:", error)
+  }
+  return null
 }
 
 export default async function BookingDetailPage({
@@ -67,6 +95,9 @@ export default async function BookingDetailPage({
   if (!booking) {
     notFound()
   }
+
+  const vendorRouting = await fetchVendorRoutingForBookingRequest(booking.id)
+  const hasServiceRole = Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY)
 
   const eventType = EVENT_TYPES.find((t) => t.value === booking.event_type)
   const budgetRange = BUDGET_RANGES.find((b) => b.value === booking.budget_range)
@@ -126,12 +157,12 @@ export default async function BookingDetailPage({
                   Submitted {new Date(booking.created_at).toLocaleDateString()}
                 </p>
               </div>
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm">
-                  <Mail className="h-4 w-4 mr-2" />
-                  Send Email
-                </Button>
-                <Button size="sm">
+              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-end gap-3">
+                <div className="flex flex-col gap-3 w-full max-w-md sm:items-end">
+                  <AdminBookingEmailCustomer booking={booking} />
+                  <AdminBookingFollowUpAction booking={booking} />
+                </div>
+                <Button size="sm" disabled className="shrink-0">
                   Update Status
                 </Button>
               </div>
@@ -141,6 +172,84 @@ export default async function BookingDetailPage({
           <div className="grid gap-6 md:grid-cols-3">
             {/* Main Content */}
             <div className="md:col-span-2 space-y-6">
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-lg">Vendor Routing</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4 text-sm">
+                  {!hasServiceRole ? (
+                    <p className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-amber-900 dark:text-amber-100 text-xs leading-relaxed">
+                      Set <code className="text-[10px]">SUPABASE_SERVICE_ROLE_KEY</code> on the server to load all vendor
+                      opportunities. Without it, this list may be empty even when trucks were notified.
+                    </p>
+                  ) : null}
+                  {vendorRouting.fetchError ? (
+                    <p className="text-destructive text-sm">Could not load routing: {vendorRouting.fetchError}</p>
+                  ) : null}
+                  <p className="text-muted-foreground">
+                    <span className="font-medium text-foreground tabular-nums">{vendorRouting.rows.length}</span>{" "}
+                    vendor {vendorRouting.rows.length === 1 ? "opportunity" : "opportunities"} (one per truck notified).
+                  </p>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    When a vendor uses <strong className="font-medium text-foreground">I&apos;m interested</strong> or{" "}
+                    <strong className="font-medium text-foreground">Not available</strong> on the dashboard, their row
+                    updates here. <strong className="font-medium text-foreground">Email organizer</strong> is a mailto to
+                    the customer email below — vendors can reach the host directly when that email is visible on their
+                    dashboard.
+                  </p>
+                  {vendorRouting.rows.length === 0 ? (
+                    <p className="text-muted-foreground border border-dashed border-border rounded-md px-3 py-6 text-center text-sm">
+                      No vendor opportunities have been created for this request.
+                    </p>
+                  ) : (
+                    <div className="overflow-x-auto rounded-md border border-border">
+                      <table className="w-full text-left text-sm">
+                        <thead className="bg-muted/50 border-b border-border">
+                          <tr>
+                            <th className="p-3 font-medium">Truck</th>
+                            <th className="p-3 font-medium">Truck email</th>
+                            <th className="p-3 font-medium">Status</th>
+                            <th className="p-3 font-medium whitespace-nowrap">Sent</th>
+                            <th className="p-3 font-medium whitespace-nowrap">Responded</th>
+                            <th className="p-3 font-medium whitespace-nowrap">Created</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {vendorRouting.rows.map((row) => (
+                            <tr key={row.id} className="border-b border-border/80 last:border-0 align-top">
+                              <td className="p-3 font-medium text-foreground">{row.truck_name ?? "—"}</td>
+                              <td className="p-3 text-muted-foreground break-all max-w-[180px]">
+                                {row.truck_email ? (
+                                  <a href={`mailto:${row.truck_email}`} className="hover:text-primary hover:underline">
+                                    {row.truck_email}
+                                  </a>
+                                ) : (
+                                  "—"
+                                )}
+                              </td>
+                              <td className="p-3">
+                                <Badge variant="secondary" className="capitalize font-normal">
+                                  {opportunityStatusLabel(row.status)}
+                                </Badge>
+                              </td>
+                              <td className="p-3 text-muted-foreground whitespace-nowrap tabular-nums">
+                                {formatDateTime(row.sent_at)}
+                              </td>
+                              <td className="p-3 text-muted-foreground whitespace-nowrap tabular-nums">
+                                {formatDateTime(row.responded_at)}
+                              </td>
+                              <td className="p-3 text-muted-foreground whitespace-nowrap tabular-nums">
+                                {formatDateTime(row.created_at)}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
               <Card>
                 <CardHeader className="pb-3">
                   <CardTitle className="text-lg">Request routing</CardTitle>

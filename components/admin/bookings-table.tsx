@@ -37,12 +37,15 @@ import {
   Calendar,
   Users,
   MapPin,
+  MessageCircle,
   Trash2,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { BookingRequest, BookingStatus } from "@/lib/booking-types"
 import { EVENT_TYPES } from "@/lib/booking-types"
 import { deleteBookingRequest } from "@/lib/admin/booking-requests-queries"
+import { buildBookingCustomerMailtoFromRequest } from "@/lib/admin/booking-customer-mailto"
+import { buildBookingFollowUpMailtoFromRequest } from "@/lib/admin/booking-follow-up-mailto"
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -315,10 +318,32 @@ export function BookingsTable({ bookings }: BookingsTableProps) {
                               View Details
                             </Link>
                           </DropdownMenuItem>
-                          <DropdownMenuItem>
-                            <Mail className="h-4 w-4 mr-2" />
-                            Send Email
-                          </DropdownMenuItem>
+                          {booking.contact_email?.trim() ? (
+                            <DropdownMenuItem asChild>
+                              <a href={buildBookingCustomerMailtoFromRequest(booking)}>
+                                <Mail className="h-4 w-4 mr-2" />
+                                Send Email
+                              </a>
+                            </DropdownMenuItem>
+                          ) : (
+                            <DropdownMenuItem disabled>
+                              <Mail className="h-4 w-4 mr-2" />
+                              Send Email — No email available
+                            </DropdownMenuItem>
+                          )}
+                          {booking.contact_email?.trim() ? (
+                            <DropdownMenuItem asChild>
+                              <a href={buildBookingFollowUpMailtoFromRequest(booking) ?? "#"}>
+                                <MessageCircle className="h-4 w-4 mr-2" />
+                                Follow up
+                              </a>
+                            </DropdownMenuItem>
+                          ) : (
+                            <DropdownMenuItem disabled>
+                              <MessageCircle className="h-4 w-4 mr-2" />
+                              Follow up — No email available
+                            </DropdownMenuItem>
+                          )}
                           <DropdownMenuItem>
                             <CheckCircle className="h-4 w-4 mr-2" />
                             Mark Contacted

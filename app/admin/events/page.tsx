@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Calendar, Plus, ExternalLink } from "lucide-react"
 import { approveEventById, rejectEventById } from "./actions"
+import { AdminEventImageReplace } from "@/components/admin/admin-event-image-replace"
 
 export const metadata: Metadata = {
   title: "Events | Admin | FoodTruck CLT",
@@ -25,6 +26,8 @@ type EventAdminRow = {
   updated_at: string | null
   slug: string | null
   submitted_by_truck_id: string | null
+  image_url: string | null
+  featured_image_url: string | null
 }
 
 function fmtDate(s: string | null | undefined): string {
@@ -75,7 +78,7 @@ export default async function AdminEventsPage({ searchParams }: { searchParams: 
   const { data: allEvents } = await supabase
     .from("events")
     .select(
-      "id, title, date, location_name, address, active, listing_status, created_at, updated_at, slug, submitted_by_truck_id"
+      "id, title, date, location_name, address, active, listing_status, created_at, updated_at, slug, submitted_by_truck_id, image_url, featured_image_url"
     )
     .order("date", { ascending: false })
 
@@ -137,6 +140,16 @@ export default async function AdminEventsPage({ searchParams }: { searchParams: 
                           </div>
                         </CardHeader>
                         <CardContent className="space-y-3">
+                          {key ? (
+                            <AdminEventImageReplace
+                              adminKey={key}
+                              eventId={ev.id}
+                              slug={ev.slug}
+                              imageUrl={ev.image_url}
+                              featuredImageUrl={ev.featured_image_url}
+                              uploadsEnabled={hasServiceRole}
+                            />
+                          ) : null}
                           {ev.location_name ? <p className="text-sm text-muted-foreground">{ev.location_name}</p> : null}
                           <div className="flex flex-wrap gap-2 pt-2">
                             <form action={approveEventById}>
@@ -172,6 +185,7 @@ export default async function AdminEventsPage({ searchParams }: { searchParams: 
               <table className="w-full text-sm text-left">
                 <thead className="bg-muted/50 border-b border-border">
                   <tr>
+                    <th className="p-3 font-medium">Image</th>
                     <th className="p-3 font-medium">Name</th>
                     <th className="p-3 font-medium">Date</th>
                     <th className="p-3 font-medium">Venue</th>
@@ -187,6 +201,18 @@ export default async function AdminEventsPage({ searchParams }: { searchParams: 
                     const canView = Boolean(ev.active && ev.slug)
                     return (
                       <tr key={ev.id} className="border-b border-border/80 last:border-0">
+                        <td className="p-3 align-top min-w-[200px]">
+                          {key ? (
+                            <AdminEventImageReplace
+                              adminKey={key}
+                              eventId={ev.id}
+                              slug={ev.slug}
+                              imageUrl={ev.image_url}
+                              featuredImageUrl={ev.featured_image_url}
+                              uploadsEnabled={hasServiceRole}
+                            />
+                          ) : null}
+                        </td>
                         <td className="p-3 align-top font-medium text-foreground max-w-[200px]">{ev.title}</td>
                         <td className="p-3 align-top text-muted-foreground whitespace-nowrap">{dayOnly(ev.date)}</td>
                         <td className="p-3 align-top text-muted-foreground max-w-[220px]">{venue}</td>

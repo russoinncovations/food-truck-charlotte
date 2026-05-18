@@ -17,6 +17,7 @@ import { VendorScheduleReminderSend } from "@/components/admin/vendor-schedule-r
 import { VendorScheduleReminderTestSend } from "@/components/admin/vendor-schedule-reminder-test-send"
 import { VendorProfileReminderTestSend } from "@/components/admin/vendor-profile-reminder-test-send"
 import { VendorProfileReminderBulkSend } from "@/components/admin/vendor-profile-reminder-bulk-send"
+import { AdminTruckPhotoReplace } from "@/components/admin/admin-truck-photo-replace"
 
 export const metadata: Metadata = {
   title: "Vendor Applications | Admin | Food Truck CLT",
@@ -270,6 +271,8 @@ export default async function AdminVendorsPage({
     )
   }
 
+  const hasServiceRole = Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY)
+
   const supabase = await createClient()
   const { recipients: reminderRecipients, eligibleTruckCount: reminderEligibleCount } =
     await fetchVendorReminderRecipients(supabase)
@@ -287,6 +290,21 @@ export default async function AdminVendorsPage({
     .select("*")
     .eq("status", "pending")
     .order("created_at", { ascending: false })
+
+  const { data: directoryTrucks } = await supabase
+    .from("trucks")
+    .select("id, name, slug, photo_url")
+    .eq("show_in_directory", true)
+    .eq("status", "active")
+    .eq("is_active", true)
+    .order("name", { ascending: true })
+
+  const trucksList = (directoryTrucks ?? []) as {
+    id: string
+    name: string | null
+    slug: string | null
+    photo_url: string | null
+  }[]
 
   const list = (applications ?? []) as Record<string, unknown>[]
   const keyQ = `?key=${encodeURIComponent(key ?? "")}`
@@ -500,6 +518,71 @@ export default async function AdminVendorsPage({
                   />
                 ) : null}
               </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-border mb-8">
+            <CardHeader>
+              <CardTitle className="text-lg">Directory listing photos</CardTitle>
+              <CardDescription>
+                Add or replace hero images for live directory trucks. This updates public{" "}
+                <code className="text-xs">photo_url</code> only; vendor accounts and dashboards are unchanged.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {!hasServiceRole ? (
+                <p className="mb-4 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-900 dark:text-amber-100">
+                  Photo uploads require <code className="text-xs">SUPABASE_SERVICE_ROLE_KEY</code> on the server.
+                </p>
+              ) : null}
+              {trucksList.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No active directory trucks.</p>
+              ) : (
+                <div className="overflow-x-auto rounded-md border border-border">
+                  <table className="w-full text-left text-sm">
+                    <thead className="border-b bg-muted/50">
+                      <tr>
+                        <th className="p-3 font-medium">Listing</th>
+                        <th className="p-3 font-medium min-w-[280px]">Photo</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {trucksList.map((t) => {
+                        const id = String(t.id)
+                        const name = t.name ?? "—"
+                        const slug = t.slug?.trim() ?? ""
+                        return (
+                          <tr key={id} className="border-b border-border/60 align-top last:border-0">
+                            <td className="p-3">
+                              <p className="font-medium text-foreground">{name}</p>
+                              {slug ? (
+                                <Link
+                                  href={`/trucks/${slug}`}
+                                  className="text-xs text-primary hover:underline"
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                >
+                                  View public page
+                                </Link>
+                              ) : null}
+                            </td>
+                            <td className="p-3">
+                              {key ? (
+                                <AdminTruckPhotoReplace
+                                  adminKey={key}
+                                  truckId={id}
+                                  initialPhotoUrl={t.photo_url}
+                                  uploadsEnabled={hasServiceRole}
+                                />
+                              ) : null}
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </CardContent>
           </Card>
 
