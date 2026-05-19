@@ -3,6 +3,7 @@ import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { createClient } from "@/lib/supabase/server"
 import { countPublicDirectoryTrucks } from "@/lib/trucks/public-directory"
+import { PUBLIC_LISTED_TRUCK_EQ } from "@/lib/trucks/public-listed-truck-query"
 import { TrucksDirectoryClient, type DirectoryTruckRow } from "@/components/trucks/trucks-directory-client"
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -21,9 +22,9 @@ export default async function TrucksPage() {
   const { data: trucks } = await supabase
     .from("trucks")
     .select("id, name, cuisine, cuisine_types, slug, serving_today, today_location, show_in_directory, photo_url, catering")
-    .eq("show_in_directory", true)
-    .eq("status", "active")
-    .eq("is_active", true)
+    .eq("show_in_directory", PUBLIC_LISTED_TRUCK_EQ.show_in_directory)
+    .eq("status", PUBLIC_LISTED_TRUCK_EQ.status)
+    .eq("is_active", PUBLIC_LISTED_TRUCK_EQ.is_active)
     .order("name")
 
   const rows: DirectoryTruckRow[] = (trucks ?? []).map((t) => ({

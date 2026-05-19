@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 import { MAP_DISPLAY_TRUCK_SELECT, getPublicMapLiveTruckRows } from "@/lib/map/load-map-display-trucks"
+import { PUBLIC_LISTED_TRUCK_EQ } from "@/lib/trucks/public-listed-truck-query"
 import type { ServingTruckRow } from "@/lib/map/serving-row-to-food-truck"
 
 /**
@@ -17,9 +18,9 @@ export async function getMapSidebarAllListedTruckRows(supabase: SupabaseClient):
   const { data, error } = await supabase
     .from("trucks")
     .select(MAP_DISPLAY_TRUCK_SELECT)
-    .eq("show_in_directory", true)
-    .eq("status", "active")
-    .eq("is_active", true)
+    .eq("show_in_directory", PUBLIC_LISTED_TRUCK_EQ.show_in_directory)
+    .eq("status", PUBLIC_LISTED_TRUCK_EQ.status)
+    .eq("is_active", PUBLIC_LISTED_TRUCK_EQ.is_active)
 
   if (error) {
     console.error("[map] getMapSidebarAllListedTruckRows:", error)

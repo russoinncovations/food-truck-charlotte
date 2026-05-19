@@ -42,7 +42,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     .from("trucks")
     .select("name, short_description, description, full_description")
     .eq("slug", slug)
-    .single()
+    .eq("show_in_directory", PUBLIC_LISTED_TRUCK_EQ.show_in_directory)
+    .eq("is_active", PUBLIC_LISTED_TRUCK_EQ.is_active)
+    .eq("status", PUBLIC_LISTED_TRUCK_EQ.status)
+    .maybeSingle()
 
   if (!truck) {
     return { title: "Truck Not Found | FoodTruck CLT" }
@@ -69,7 +72,10 @@ export default async function TruckProfilePage({ params }: Props) {
       "id, name, slug, short_description, description, full_description, cuisine, website, instagram, phone, booking_phone, serving_today, today_location, price_range, tagline, photo_url"
     )
     .eq("slug", slug)
-    .single()
+    .eq("show_in_directory", PUBLIC_LISTED_TRUCK_EQ.show_in_directory)
+    .eq("is_active", PUBLIC_LISTED_TRUCK_EQ.is_active)
+    .eq("status", PUBLIC_LISTED_TRUCK_EQ.status)
+    .maybeSingle()
 
   if (!truck) {
     notFound()

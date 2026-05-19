@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
+import { PUBLIC_LISTED_TRUCK_EQ } from "@/lib/trucks/public-listed-truck-query"
 
 /**
  * Trucks eligible for public directory totals / stats:
@@ -8,9 +9,9 @@ export async function countPublicDirectoryTrucks(supabase: SupabaseClient): Prom
   const { count, error } = await supabase
     .from("trucks")
     .select("id", { count: "exact", head: true })
-    .eq("show_in_directory", true)
-    .eq("status", "active")
-    .eq("is_active", true)
+    .eq("show_in_directory", PUBLIC_LISTED_TRUCK_EQ.show_in_directory)
+    .eq("status", PUBLIC_LISTED_TRUCK_EQ.status)
+    .eq("is_active", PUBLIC_LISTED_TRUCK_EQ.is_active)
 
   if (error) {
     console.error("[countPublicDirectoryTrucks]", error)

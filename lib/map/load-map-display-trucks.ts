@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 import { getDisplayTrucks, parseTimeToMinutes } from "@/lib/map/get-display-trucks"
+import { PUBLIC_LISTED_TRUCK_EQ } from "@/lib/trucks/public-listed-truck-query"
 import type { ServingTruckRow } from "@/lib/map/serving-row-to-food-truck"
 
 /** Columns needed for map display rows (live / schedule / directory). */
@@ -68,7 +69,13 @@ async function buildUpcomingFromSchedule(supabase: SupabaseClient): Promise<Serv
   if (deduped.length === 0) return []
 
   const ids = deduped.map((c) => c.truck_id)
-  const { data: truckRows } = await supabase.from("trucks").select(MAP_DISPLAY_TRUCK_SELECT).in("id", ids)
+  const { data: truckRows } = await supabase
+    .from("trucks")
+    .select(MAP_DISPLAY_TRUCK_SELECT)
+    .in("id", ids)
+    .eq("show_in_directory", PUBLIC_LISTED_TRUCK_EQ.show_in_directory)
+    .eq("is_active", PUBLIC_LISTED_TRUCK_EQ.is_active)
+    .eq("status", PUBLIC_LISTED_TRUCK_EQ.status)
   const byId = new Map((truckRows ?? []).map((t) => [(t as ServingTruckRow).id, t as ServingTruckRow]))
 
   const out: ServingTruckRow[] = []
@@ -100,6 +107,9 @@ export async function getMapTruckDisplayLayers(supabase: SupabaseClient): Promis
     .from("trucks")
     .select(MAP_DISPLAY_TRUCK_SELECT)
     .eq("serving_today", true)
+    .eq("show_in_directory", PUBLIC_LISTED_TRUCK_EQ.show_in_directory)
+    .eq("is_active", PUBLIC_LISTED_TRUCK_EQ.is_active)
+    .eq("status", PUBLIC_LISTED_TRUCK_EQ.status)
   const liveTrucks = (liveData ?? []) as ServingTruckRow[]
 
   const upcomingTrucks = liveTrucks.length === 0 ? await buildUpcomingFromSchedule(supabase) : []
@@ -107,7 +117,9 @@ export async function getMapTruckDisplayLayers(supabase: SupabaseClient): Promis
   const { data: listedData } = await supabase
     .from("trucks")
     .select(MAP_DISPLAY_TRUCK_SELECT)
-    .eq("show_in_directory", true)
+    .eq("show_in_directory", PUBLIC_LISTED_TRUCK_EQ.show_in_directory)
+    .eq("is_active", PUBLIC_LISTED_TRUCK_EQ.is_active)
+    .eq("status", PUBLIC_LISTED_TRUCK_EQ.status)
     .order("name")
 
   const listedDirectoryTrucks = (listedData ?? []) as ServingTruckRow[]
@@ -121,6 +133,9 @@ export async function getPublicMapLiveTruckRows(supabase: SupabaseClient): Promi
     .from("trucks")
     .select(MAP_DISPLAY_TRUCK_SELECT)
     .eq("serving_today", true)
+    .eq("show_in_directory", PUBLIC_LISTED_TRUCK_EQ.show_in_directory)
+    .eq("is_active", PUBLIC_LISTED_TRUCK_EQ.is_active)
+    .eq("status", PUBLIC_LISTED_TRUCK_EQ.status)
   return ((liveData ?? []) as ServingTruckRow[]).map((t) => ({
     ...t,
     mapDisplaySource: "live" as const,

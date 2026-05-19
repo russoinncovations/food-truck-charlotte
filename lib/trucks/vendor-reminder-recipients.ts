@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
+import { PUBLIC_LISTED_TRUCK_EQ } from "@/lib/trucks/public-listed-truck-query"
 
 export type VendorReminderRecipient = {
   id: string
@@ -22,9 +23,9 @@ export async function fetchVendorReminderRecipients(
   const { data, error } = await supabase
     .from("trucks")
     .select("id, name, email")
-    .eq("show_in_directory", true)
-    .eq("status", "active")
-    .eq("is_active", true)
+    .eq("show_in_directory", PUBLIC_LISTED_TRUCK_EQ.show_in_directory)
+    .eq("status", PUBLIC_LISTED_TRUCK_EQ.status)
+    .eq("is_active", PUBLIC_LISTED_TRUCK_EQ.is_active)
 
   if (error) {
     console.error("[vendor-reminder] fetch trucks:", error)
@@ -62,9 +63,9 @@ export async function fetchVendorProfileReminderRecipients(
   const { data, error } = await supabase
     .from("trucks")
     .select("id, name, email")
-    .eq("show_in_directory", true)
-    .eq("status", "active")
-    .eq("is_active", true)
+    .eq("show_in_directory", PUBLIC_LISTED_TRUCK_EQ.show_in_directory)
+    .eq("status", PUBLIC_LISTED_TRUCK_EQ.status)
+    .eq("is_active", PUBLIC_LISTED_TRUCK_EQ.is_active)
     .not("email", "is", null)
     .neq("email", "")
 

@@ -9,6 +9,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { MapPin, ArrowRight } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { getTruckDisplayImage } from "@/lib/trucks/truck-display-image"
+import { PUBLIC_LISTED_TRUCK_EQ } from "@/lib/trucks/public-listed-truck-query"
 
 type FeaturedTruckRow = {
   id: string
@@ -39,9 +40,9 @@ export function FeaturedTrucks() {
       const { data } = await supabase
         .from("trucks")
         .select("id, name, slug, cuisine, serving_today, today_location, show_in_directory, photo_url, catering")
-        .eq("show_in_directory", true)
-        .eq("status", "active")
-        .eq("is_active", true)
+        .eq("show_in_directory", PUBLIC_LISTED_TRUCK_EQ.show_in_directory)
+        .eq("status", PUBLIC_LISTED_TRUCK_EQ.status)
+        .eq("is_active", PUBLIC_LISTED_TRUCK_EQ.is_active)
         .limit(4)
 
       if (!cancelled) {
