@@ -2,7 +2,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react"
 import Link from "next/link"
-import { APIProvider, AdvancedMarker, InfoWindow, Map, Pin, useMap } from "@vis.gl/react-google-maps"
+import { APIProvider, AdvancedMarker, AdvancedMarkerAnchorPoint, InfoWindow, Map, Pin, useMap } from "@vis.gl/react-google-maps"
 import { type FoodTruck } from "@/lib/data"
 import { isValidTruckMapCoordinates } from "@/lib/location/truck-map-coords"
 import { formatMapEventDateTime, type MapEventMarker } from "@/lib/events/map-event-markers"
@@ -27,6 +27,34 @@ interface MapViewProps {
   homeMapPreview?: boolean
   /** When filters/search are inactive, show live-map empty copy instead of “adjust search”. */
   filtersInactive?: boolean
+}
+
+function LiveTruckMarkerVisual({ truck }: { truck: FoodTruck }) {
+  const src = truck.markerPhotoUrl?.trim()
+  if (!src) {
+    return <Pin background={TRUCK_LIVE} borderColor={TRUCK_LIVE_BORDER} glyphColor="#ffffff" />
+  }
+  return (
+    <div className="relative flex h-11 w-11 items-center justify-center touch-manipulation [-webkit-tap-highlight-color:transparent]">
+      <div
+        className="relative h-10 w-10 overflow-hidden rounded-full bg-muted shadow-md ring-[3px] ring-green-600 ring-offset-[3px] ring-offset-background"
+        aria-hidden
+      >
+        {/* External truck URLs (Supabase storage, etc.) — avoid next/image domain config */}
+        <img src={src} alt="" className="h-full w-full object-cover" decoding="async" />
+      </div>
+      <span
+        className="pointer-events-none absolute bottom-0 right-0 z-[1] h-3 w-3 rounded-full border-2 border-background bg-green-500 shadow-sm"
+        aria-hidden
+      />
+    </div>
+  )
+}
+
+function truckServingUntilLabel(truck: FoodTruck): string | null {
+  const slot = truck.schedule[0]
+  if (!slot?.endTime || String(slot.endTime).trim() === "") return null
+  return String(slot.endTime).slice(0, 5)
 }
 
 function truckPinIsLive(truck: FoodTruck): boolean {
@@ -149,6 +177,7 @@ export default function MapView({
   }, [infoEventId, mapEvents.length])
 
   const infoTruck = infoTruckId != null ? mappable.find((t) => t.id === infoTruckId) : undefined
+  const infoTruckServingUntil = infoTruck ? truckServingUntilLabel(infoTruck) : null
   const infoEvent =
     infoEventId == null
       ? undefined
@@ -181,6 +210,7 @@ export default function MapView({
           {mappable.map((truck) => (
             <AdvancedMarker
               key={`t-${truck.id}`}
+              anchorPoint={AdvancedMarkerAnchorPoint.BOTTOM}
               ref={(el) => {
                 if (el) markerById.current.set(truck.id, el)
                 else markerById.current.delete(truck.id)
@@ -194,13 +224,14 @@ export default function MapView({
                 setInfoEventId(null)
               }}
             >
-              <Pin background={TRUCK_LIVE} borderColor={TRUCK_LIVE_BORDER} glyphColor="#ffffff" />
+              <LiveTruckMarkerVisual truck={truck} />
             </AdvancedMarker>
           ))}
 
           {mapEvents.map((ev) => (
             <AdvancedMarker
               key={`e-${ev.id}`}
+              anchorPoint={AdvancedMarkerAnchorPoint.BOTTOM}
               ref={(el) => {
                 if (el) eventMarkerById.current.set(ev.id, el)
                 else eventMarkerById.current.delete(ev.id)
@@ -243,6 +274,12 @@ export default function MapView({
                     {infoTruck.location?.address?.trim() ? infoTruck.location.address : "Address not set"}
                   </p>
                 </div>
+                {infoTruckServingUntil ? (
+                  <p className="text-xs text-muted-foreground mb-2">
+                    <span className="font-medium text-foreground">Serving until </span>
+                    {infoTruckServingUntil}
+                  </p>
+                ) : null}
                 <div className="flex flex-wrap gap-x-3 gap-y-1">
                   <Link
                     href={`/trucks/${encodeURIComponent(infoTruck.slug)}`}
@@ -311,8 +348,8 @@ export default function MapView({
                 <>
                   <p className="font-medium text-foreground">Nothing live on the map right now</p>
                   <p className="text-xs leading-snug">
-                    Green pins appear when vendors check in as open. Orange pins show events happening now. For
-                    what&apos;s coming up, see{" "}
+                    Green markers show trucks serving now (photo when available). Orange pins show events happening now.
+                    For what&apos;s coming up, see{" "}
                     <Link href="/events" className="font-semibold text-primary hover:underline">
                       the events page
                     </Link>
@@ -323,7 +360,7 @@ export default function MapView({
                     <Link href="/trucks" className="font-semibold text-primary hover:underline">
                       the trucks page
                     </Link>
-                    — directory trucks never appear as pins until they check in as open.
+                    — directory trucks stay off the map until they check in as open.
                   </p>
                   <Link
                     href="/map"

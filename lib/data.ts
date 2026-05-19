@@ -32,6 +32,8 @@ export interface FoodTruck {
     twitter?: string
     website?: string
   }
+  /** Uploaded photo / hero / logo URL for live map marker only (omit → green pin). */
+  markerPhotoUrl?: string | null
 }
 
 export interface ScheduleItem {

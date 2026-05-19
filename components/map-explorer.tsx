@@ -331,7 +331,7 @@ function MapPinLegend({ className }: { className?: string }) {
       >
         <div className="flex items-center gap-1.5">
           <span className="h-2.5 w-2.5 rounded-full bg-green-600 shrink-0" />
-          <span>Open Now</span>
+          <span>Open now · truck photo or pin</span>
         </div>
         <div className="flex items-center gap-1.5">
           <span className="h-2.5 w-2.5 rounded-full bg-orange-500 shrink-0" />

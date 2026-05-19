@@ -123,8 +123,8 @@ function MapPreviewContent({
           <div>
             <h2 className="font-display text-2xl md:text-3xl font-bold text-foreground">Live truck map</h2>
             <p className="mt-2 text-muted-foreground">
-              Green pins are trucks serving now. Orange pins are events happening now. The sidebar also lists directory
-              vendors without pins until they check in.
+              Live trucks appear as photo markers (or a green pin) when checked in. Orange pins are events happening
+              now. The sidebar lists directory vendors without map pins until they go live.
             </p>
           </div>
           <Button variant="outline" asChild className="hidden md:flex">
@@ -170,7 +170,7 @@ function MapPreviewContent({
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-[11px] mt-2 text-muted-foreground">
                   <div className="flex items-center gap-1.5">
                     <div className="h-3 w-3 rounded-full bg-green-600 shrink-0" />
-                    <span>Open Now</span>
+                    <span>Open now (photo or pin)</span>
                   </div>
                   <div className="flex items-center gap-1.5">
                     <div className="h-3 w-3 rounded-full bg-orange-500 shrink-0" />

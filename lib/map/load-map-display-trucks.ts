@@ -5,7 +5,7 @@ import type { ServingTruckRow } from "@/lib/map/serving-row-to-food-truck"
 
 /** Columns needed for map display rows (live / schedule / directory). */
 export const MAP_DISPLAY_TRUCK_SELECT =
-  "id, name, slug, cuisine, latitude, longitude, serving_today, today_location, street_address, today_specials, photo_url"
+  "id, name, slug, cuisine, cuisine_types, latitude, longitude, serving_today, today_location, street_address, today_specials, photo_url, hero_photo_url, logo_url"
 
 function easternNowMinutesAndDow(): { dow: string; nowM: number } {
   const s = new Date().toLocaleString("en-US", { timeZone: "America/New_York" })

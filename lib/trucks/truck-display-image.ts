@@ -30,6 +30,18 @@ export function pickTruckPhotoUrlForDisplay(
   return h || null
 }
 
+/** Best URL for a live map marker (photo → hero → logo). No Unsplash fallback. */
+export function pickTruckMarkerImageUrl(
+  photoUrl: string | null | undefined,
+  heroPhotoUrl: string | null | undefined,
+  logoUrl: string | null | undefined
+): string | null {
+  const fromHero = pickTruckPhotoUrlForDisplay(photoUrl, heroPhotoUrl)
+  if (fromHero) return fromHero
+  const l = logoUrl?.trim()
+  return l || null
+}
+
 /** Public URL from uploaded photo/hero, or deterministic Unsplash fallback. */
 export function getTruckDisplayImage(
   truckId: string,

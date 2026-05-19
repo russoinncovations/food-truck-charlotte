@@ -1,13 +1,14 @@
 import { type FoodTruck } from "@/lib/data"
 import { easternDateStringToday } from "@/lib/events/public-events"
 import { isValidTruckMapCoordinates } from "@/lib/location/truck-map-coords"
-import { getTruckDisplayImage } from "@/lib/trucks/truck-display-image"
+import { getTruckDisplayImage, pickTruckMarkerImageUrl } from "@/lib/trucks/truck-display-image"
 
 export type ServingTruckRow = {
   id: string
   name: string
   slug: string | null
   cuisine: string | string[] | null
+  cuisine_types?: string[] | null
   latitude: number | string | null
   longitude: number | string | null
   serving_today: boolean | null
@@ -15,6 +16,8 @@ export type ServingTruckRow = {
   street_address: string | null
   today_specials: string | null
   photo_url?: string | null
+  hero_photo_url?: string | null
+  logo_url?: string | null
   mapDisplaySource?: "live" | "upcoming" | "listed"
   scheduledStartTime?: string | null
   scheduledEndTime?: string | null
@@ -40,16 +43,22 @@ function buildScheduleFromRow(truck: ServingTruckRow): FoodTruck["schedule"] {
   ]
 }
 
+function cuisineLabelsForMap(truck: ServingTruckRow): string[] {
+  const fromTypes = Array.isArray(truck.cuisine_types)
+    ? truck.cuisine_types.map((x) => String(x ?? "").trim()).filter(Boolean)
+    : []
+  if (fromTypes.length > 0) return fromTypes
+  const raw = truck.cuisine
+  return Array.isArray(raw) ? raw.filter(Boolean).map(String) : raw ? [String(raw)] : []
+}
+
 export function mapRowsToMapTrucks(rows: ServingTruckRow[]): FoodTruck[] {
   return rows.map((truck) => {
     const lat = Number(truck.latitude)
     const lng = Number(truck.longitude)
     const hasMapPin = isValidTruckMapCoordinates(lat, lng)
-    const cuisine = Array.isArray(truck.cuisine)
-      ? truck.cuisine
-      : truck.cuisine
-        ? [truck.cuisine]
-        : []
+    const cuisine = cuisineLabelsForMap(truck)
+    const markerPhotoUrl = pickTruckMarkerImageUrl(truck.photo_url, truck.hero_photo_url, truck.logo_url)
     const fallbackSlug =
       truck.name
         .toLowerCase()
@@ -73,7 +82,8 @@ export function mapRowsToMapTrucks(rows: ServingTruckRow[]): FoodTruck[] {
       slug,
       cuisine,
       description: "",
-      image: getTruckDisplayImage(truck.id, truck.photo_url),
+      image: getTruckDisplayImage(truck.id, truck.photo_url, truck.hero_photo_url),
+      markerPhotoUrl,
       rating: 0,
       reviewCount: 0,
       priceRange: "$",
