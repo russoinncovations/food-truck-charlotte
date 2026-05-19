@@ -19,8 +19,23 @@ export function getTruckFallbackImage(truckId: string): string {
   return TRUCK_IMAGE_FALLBACK_URLS[index]
 }
 
-/** Public URL from photo_url, or deterministic Unsplash fallback. */
-export function getTruckDisplayImage(truckId: string, photoUrl: string | null | undefined): string {
-  const trimmed = photoUrl?.trim()
-  return trimmed ? trimmed : getTruckFallbackImage(truckId)
+/** Prefer uploaded truck photo; falls back to hero image when present. */
+export function pickTruckPhotoUrlForDisplay(
+  photoUrl: string | null | undefined,
+  heroPhotoUrl: string | null | undefined
+): string | null {
+  const p = photoUrl?.trim()
+  if (p) return p
+  const h = heroPhotoUrl?.trim()
+  return h || null
+}
+
+/** Public URL from uploaded photo/hero, or deterministic Unsplash fallback. */
+export function getTruckDisplayImage(
+  truckId: string,
+  photoUrl: string | null | undefined,
+  heroPhotoUrl?: string | null | undefined
+): string {
+  const picked = pickTruckPhotoUrlForDisplay(photoUrl, heroPhotoUrl)
+  return picked ? picked : getTruckFallbackImage(truckId)
 }

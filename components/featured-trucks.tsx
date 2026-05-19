@@ -1,61 +1,27 @@
-"use client"
-
-import { useEffect, useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
 import { MapPin, ArrowRight } from "lucide-react"
-import { createClient } from "@/lib/supabase/client"
+import type { HomepageFeaturedTruckRow } from "@/lib/trucks/homepage-featured-trucks"
 import { getTruckDisplayImage } from "@/lib/trucks/truck-display-image"
-import { PUBLIC_LISTED_TRUCK_EQ } from "@/lib/trucks/public-listed-truck-query"
 
-type FeaturedTruckRow = {
-  id: string
-  name: string
-  slug: string
-  cuisine: string | string[] | null
-  serving_today: boolean | null
-  today_location: string | null
-  show_in_directory: boolean | null
-  photo_url: string | null
-  catering: boolean | null
-}
-
-function cuisineTagsForTruck(truck: FeaturedTruckRow): string[] {
+function cuisineTagsForTruck(truck: HomepageFeaturedTruckRow): string[] {
+  const fromTypes = Array.isArray(truck.cuisine_types)
+    ? truck.cuisine_types.map((x) => String(x ?? "").trim()).filter(Boolean)
+    : []
+  if (fromTypes.length > 0) return fromTypes.slice(0, 2)
   const raw = truck.cuisine
-  const list = Array.isArray(raw) ? raw : raw ? [raw] : []
+  const list = Array.isArray(raw) ? raw.map(String) : raw ? [String(raw)] : []
   return list.filter(Boolean).slice(0, 2)
 }
 
-export function FeaturedTrucks() {
-  const [trucks, setTrucks] = useState<FeaturedTruckRow[]>([])
+type Props = {
+  trucks: HomepageFeaturedTruckRow[]
+}
 
-  useEffect(() => {
-    let cancelled = false
-
-    async function load() {
-      const supabase = createClient()
-      const { data } = await supabase
-        .from("trucks")
-        .select("id, name, slug, cuisine, serving_today, today_location, show_in_directory, photo_url, catering")
-        .eq("show_in_directory", PUBLIC_LISTED_TRUCK_EQ.show_in_directory)
-        .eq("status", PUBLIC_LISTED_TRUCK_EQ.status)
-        .eq("is_active", PUBLIC_LISTED_TRUCK_EQ.is_active)
-        .limit(4)
-
-      if (!cancelled) {
-        setTrucks((data as FeaturedTruckRow[] | null) ?? [])
-      }
-    }
-
-    void load()
-    return () => {
-      cancelled = true
-    }
-  }, [])
-
+export function FeaturedTrucks({ trucks }: Props) {
   return (
     <section className="py-16 md:py-24 bg-muted/30">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -65,8 +31,9 @@ export function FeaturedTrucks() {
             <h2 className="font-display text-2xl md:text-3xl font-bold text-foreground">
               Popular in Charlotte
             </h2>
-            <p className="mt-2 text-muted-foreground">
-              Trucks with consistently great reviews from local food lovers.
+            <p className="mt-2 text-muted-foreground max-w-2xl">
+              Spotlight on Charlotte vendors with strong FoodTruckCLT profiles—photos, menus, and ways to
+              connect.
             </p>
           </div>
           <Button variant="outline" asChild className="hidden md:flex">
@@ -98,11 +65,11 @@ export function FeaturedTrucks() {
   )
 }
 
-function TruckCard({ truck }: { truck: FeaturedTruckRow }) {
+function TruckCard({ truck }: { truck: HomepageFeaturedTruckRow }) {
   const cuisineTags = cuisineTagsForTruck(truck)
   const servingToday = Boolean(truck.serving_today)
   const showTodayLocation = servingToday && Boolean(truck.today_location?.trim())
-  const imageSrc = getTruckDisplayImage(truck.id, truck.photo_url)
+  const imageSrc = getTruckDisplayImage(truck.id, truck.photo_url, truck.hero_photo_url)
   const booking = Boolean(truck.catering)
 
   return (
