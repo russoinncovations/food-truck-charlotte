@@ -1,6 +1,12 @@
 /**
- * Test-only “profile + live pin” reminder — same copy as intended vendor blast, one recipient (e.g. INQUIRY_TO_EMAIL).
+ * “Profile + live pin” reminder — same HTML/subject for admin test and vendor bulk.
  */
+
+import {
+  VENDOR_EMAIL_CAMPAIGN_PROFILE_PIN_REMINDER,
+  VENDOR_EMAIL_CAMPAIGN_PROFILE_PIN_TEST,
+} from "@/lib/email/vendor-email-campaigns"
+import { insertVendorEmailEvent } from "@/lib/email/vendor-email-events"
 
 export const VENDOR_PROFILE_REMINDER_SUBJECT =
   "Quick FoodTruckCLT reminder: update your profile + drop your live pin"
@@ -45,8 +51,17 @@ export function buildVendorProfileReminderHtml(): string {
 `.trim()
 }
 
+export type VendorProfileReminderSendResult =
+  | { ok: true; resendEmailId?: string }
+  | { ok: false; error: string }
+
 /** Single send — same HTML/subject for admin test and vendor bulk. */
-export async function sendVendorProfileReminderTestEmail(to: string): Promise<{ ok: true } | { ok: false; error: string }> {
+export async function sendVendorProfileReminderEmail(opts: {
+  to: string
+  truckId?: string | null
+  /** Defaults: production campaign when truckId set, test campaign otherwise. */
+  campaign?: string
+}): Promise<VendorProfileReminderSendResult> {
   const key = process.env.RESEND_API_KEY
   const from =
     process.env.RESEND_FROM_EMAIL?.trim() || "FoodTruck CLT <noreply@foodtruckclt.com>"
@@ -55,16 +70,22 @@ export async function sendVendorProfileReminderTestEmail(to: string): Promise<{ 
     return { ok: false, error: "RESEND_API_KEY is not configured" }
   }
 
-  const trimmed = to.trim()
+  const trimmed = opts.to.trim()
   if (!trimmed || !trimmed.includes("@")) {
     return { ok: false, error: "Invalid recipient address" }
   }
+
+  const campaign =
+    opts.campaign ??
+    (opts.truckId
+      ? VENDOR_EMAIL_CAMPAIGN_PROFILE_PIN_REMINDER
+      : VENDOR_EMAIL_CAMPAIGN_PROFILE_PIN_TEST)
 
   try {
     const { Resend } = await import("resend")
     const resend = new Resend(key)
     const html = buildVendorProfileReminderHtml()
-    const { error } = await resend.emails.send({
+    const { data, error } = await resend.emails.send({
       from,
       to: trimmed,
       subject: VENDOR_PROFILE_REMINDER_SUBJECT,
@@ -73,11 +94,23 @@ export async function sendVendorProfileReminderTestEmail(to: string): Promise<{ 
     if (error) {
       return { ok: false, error: error.message ?? "Resend returned an error" }
     }
-    return { ok: true }
+    const resendEmailId = data?.id ? String(data.id) : undefined
+    if (resendEmailId) {
+      void insertVendorEmailEvent({
+        resendEmailId,
+        vendorEmail: trimmed,
+        truckId: opts.truckId ?? null,
+        campaign,
+        eventType: "dispatch.log",
+        rawPayload: {
+          template: "vendor_profile_pin_reminder",
+          subject: VENDOR_PROFILE_REMINDER_SUBJECT,
+        },
+      })
+    }
+    return { ok: true, resendEmailId }
   } catch (e) {
     const message = e instanceof Error ? e.message : "Unknown error"
     return { ok: false, error: message }
   }
 }
-
-export const sendVendorProfileReminderEmail = sendVendorProfileReminderTestEmail

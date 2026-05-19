@@ -1,4 +1,9 @@
 import { getPublicSiteBase } from "@/lib/email/public-site-base"
+import {
+  VENDOR_EMAIL_CAMPAIGN_SCHEDULE_REMINDER,
+  VENDOR_EMAIL_CAMPAIGN_SCHEDULE_REMINDER_TEST,
+} from "@/lib/email/vendor-email-campaigns"
+import { insertVendorEmailEvent } from "@/lib/email/vendor-email-events"
 
 function escapeHtml(s: string): string {
   return s
@@ -28,7 +33,9 @@ export function buildVendorScheduleReminderHtml(truckName: string, dashboardUrl:
 `
 }
 
-export type VendorReminderSendResult = { ok: true } | { ok: false; error: string }
+export type VendorReminderSendResult =
+  | { ok: true; resendEmailId?: string }
+  | { ok: false; error: string }
 
 /**
  * Single vendor schedule / map reminder. Uses RESEND_API_KEY and RESEND_FROM_EMAIL.
@@ -36,6 +43,9 @@ export type VendorReminderSendResult = { ok: true } | { ok: false; error: string
 export async function sendVendorScheduleReminderEmail(opts: {
   to: string
   truckName: string
+  truckId?: string | null
+  /** Defaults to production schedule campaign; use test campaign for test sends. */
+  campaign?: string
 }): Promise<VendorReminderSendResult> {
   const key = process.env.RESEND_API_KEY
   const from =
@@ -49,11 +59,16 @@ export async function sendVendorScheduleReminderEmail(opts: {
   }
 
   const dashboardUrl = `${getPublicSiteBase()}/dashboard`
+  const campaign =
+    opts.campaign ??
+    (opts.truckId
+      ? VENDOR_EMAIL_CAMPAIGN_SCHEDULE_REMINDER
+      : VENDOR_EMAIL_CAMPAIGN_SCHEDULE_REMINDER_TEST)
 
   try {
     const { Resend } = await import("resend")
     const resend = new Resend(key)
-    const { error } = await resend.emails.send({
+    const { data, error } = await resend.emails.send({
       from,
       to,
       subject: VENDOR_SCHEDULE_REMINDER_SUBJECT,
@@ -62,7 +77,21 @@ export async function sendVendorScheduleReminderEmail(opts: {
     if (error) {
       return { ok: false, error: error.message ?? String(error) }
     }
-    return { ok: true }
+    const resendEmailId = data?.id ? String(data.id) : undefined
+    if (resendEmailId) {
+      void insertVendorEmailEvent({
+        resendEmailId,
+        vendorEmail: to,
+        truckId: opts.truckId ?? null,
+        campaign,
+        eventType: "dispatch.log",
+        rawPayload: {
+          template: "vendor_schedule_reminder",
+          subject: VENDOR_SCHEDULE_REMINDER_SUBJECT,
+        },
+      })
+    }
+    return { ok: true, resendEmailId }
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e)
     return { ok: false, error: message }

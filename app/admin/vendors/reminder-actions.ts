@@ -12,6 +12,10 @@ import {
   sendVendorScheduleReminderEmail,
 } from "@/lib/email/resend-vendor-schedule-reminder"
 import { sendVendorProfileReminderEmail } from "@/lib/email/resend-vendor-profile-reminder-test"
+import {
+  VENDOR_EMAIL_CAMPAIGN_PROFILE_PIN_TEST,
+  VENDOR_EMAIL_CAMPAIGN_SCHEDULE_REMINDER_TEST,
+} from "@/lib/email/vendor-email-campaigns"
 
 function adminKeyOk(key: string | null | undefined): boolean {
   const expected = process.env.ADMIN_KEY ?? "7985"
@@ -36,7 +40,11 @@ export async function sendVendorScheduleReminders(formData: FormData) {
 
   for (const r of recipients) {
     attempted++
-    const result = await sendVendorScheduleReminderEmail({ to: r.email, truckName: r.name })
+    const result = await sendVendorScheduleReminderEmail({
+      to: r.email,
+      truckName: r.name,
+      truckId: r.id,
+    })
     if (result.ok) {
       sent++
       logVendorReminderAttempt({
@@ -97,6 +105,7 @@ export async function sendVendorScheduleReminderTest(formData: FormData) {
   const result = await sendVendorScheduleReminderEmail({
     to: testTo,
     truckName: TEST_GREETING_NAME,
+    campaign: VENDOR_EMAIL_CAMPAIGN_SCHEDULE_REMINDER_TEST,
   })
 
   if (result.ok) {
@@ -140,7 +149,10 @@ export async function sendVendorProfileReminderTestToAdmin(formData: FormData) {
     )
   }
 
-  const result = await sendVendorProfileReminderEmail(to)
+  const result = await sendVendorProfileReminderEmail({
+    to,
+    campaign: VENDOR_EMAIL_CAMPAIGN_PROFILE_PIN_TEST,
+  })
 
   if (result.ok) {
     redirect(`/admin/vendors?key=${keyQ}&profileReminderTest=1&profileTestOk=1`)
@@ -183,7 +195,7 @@ export async function sendVendorProfileRemindersBulk(formData: FormData) {
     }
 
     const r = recipients[i]
-    const result = await sendVendorProfileReminderEmail(r.email)
+    const result = await sendVendorProfileReminderEmail({ to: r.email, truckId: r.id })
     if (result.ok) {
       sent++
       logVendorReminderAttempt({
