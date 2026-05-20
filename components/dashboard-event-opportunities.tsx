@@ -79,6 +79,14 @@ function requestVisibilityLabel(br: NonNullable<DashboardOpportunity["booking"]>
   return "Booking request"
 }
 
+function opportunityResponseLabel(status: string): string {
+  const s = status.toLowerCase()
+  if (s === "interested") return "Interested"
+  if (s === "pass" || s === "not_available") return "Not available"
+  if (s === "pending") return "Pending"
+  return status
+}
+
 function formatLocation(br: NonNullable<DashboardOpportunity["booking"]>) {
   const lines: string[] = []
   if (br.venue_name?.trim()) lines.push(br.venue_name.trim())
@@ -142,20 +150,27 @@ function OpportunityActions({
   supportEmail: string
   isPending: boolean
   busy: boolean
-  submitting: "interested" | "pass" | null
+  submitting: "interested" | "not_available" | null
   interestRecorded: boolean
   onAction: (formData: FormData) => void | Promise<void>
   className?: string
 }) {
   const br = opp.booking
   const organizerMailto =
-    truckContext != null && isPending && br ? buildOrganizerMailto(opp, truckContext, siteBaseUrl) : null
+    truckContext != null && isPending && br && interestRecorded
+      ? buildOrganizerMailto(opp, truckContext, siteBaseUrl)
+      : null
 
   if (!isPending) return null
 
   return (
     <div className={cn("space-y-2 pt-1", className)} onClick={(e) => e.stopPropagation()}>
-      <p className="text-xs font-medium text-foreground">I’m interested / Not available / Email organizer</p>
+      <p className="text-xs font-medium text-foreground">I’m interested / Not available</p>
+      <p className="text-xs text-muted-foreground leading-relaxed">
+        After you mark <span className="font-medium text-foreground">I&apos;m interested</span>, an{" "}
+        <span className="font-medium text-foreground">Email organizer</span> button appears so you can reach the host
+        directly.
+      </p>
       <div className="flex gap-2">
         <form action={onAction} className="flex-1">
           <input type="hidden" name="opportunityId" value={opp.id} />
@@ -175,9 +190,9 @@ function OpportunityActions({
         </form>
         <form action={onAction} className="flex-1">
           <input type="hidden" name="opportunityId" value={opp.id} />
-          <input type="hidden" name="status" value="pass" />
+          <input type="hidden" name="status" value="not_available" />
           <Button type="submit" variant="outline" size="sm" className="w-full" disabled={!!busy || interestRecorded}>
-            {busy && submitting === "pass" ? "Saving…" : "Not available"}
+            {busy && submitting === "not_available" ? "Saving…" : "Not available"}
           </Button>
         </form>
       </div>
@@ -279,7 +294,7 @@ function OpportunityDetailBody({ opp }: { opp: DashboardOpportunity }) {
       <div>
         <p className="text-xs font-medium text-muted-foreground">Your response</p>
         <Badge variant="secondary" className="text-xs capitalize mt-1">
-          {opp.status}
+          {opportunityResponseLabel(opp.status)}
         </Badge>
       </div>
     </div>
@@ -288,33 +303,39 @@ function OpportunityDetailBody({ opp }: { opp: DashboardOpportunity }) {
 
 export function DashboardEventOpportunities({
   opportunities,
+  historyOpportunities = [],
   truckContext,
   siteBaseUrl,
   supportEmail,
 }: {
   opportunities: DashboardOpportunity[]
+  historyOpportunities?: DashboardOpportunity[]
   truckContext: TruckContext | null
   siteBaseUrl: string
   supportEmail: string
 }) {
   const router = useRouter()
-  const [submitting, setSubmitting] = useState<"interested" | "pass" | null>(null)
+  const [submitting, setSubmitting] = useState<"interested" | "not_available" | null>(null)
   const [activeOppId, setActiveOppId] = useState<string | null>(null)
   const [interestSentIds, setInterestSentIds] = useState<Record<string, true>>({})
   const [detailOpp, setDetailOpp] = useState<DashboardOpportunity | null>(null)
   const busyRef = useRef(false)
 
   useEffect(() => {
-    if (detailOpp && !opportunities.some((o) => o.id === detailOpp.id)) {
+    const inActive = opportunities.some((o) => o.id === detailOpp?.id)
+    const inHistory = historyOpportunities.some((o) => o.id === detailOpp?.id)
+    if (detailOpp && !inActive && !inHistory) {
       setDetailOpp(null)
     }
-  }, [opportunities, detailOpp])
+  }, [opportunities, historyOpportunities, detailOpp])
 
   async function handleAction(formData: FormData) {
     if (busyRef.current) return
     const id = String(formData.get("opportunityId") ?? "")
-    const nextStatus = formData.get("status") as "interested" | "pass"
-    if (!id || (nextStatus !== "interested" && nextStatus !== "pass")) return
+    const raw = formData.get("status") as string | null
+    const nextStatus =
+      raw === "pass" ? "not_available" : raw === "not_available" || raw === "interested" ? raw : null
+    if (!id || (nextStatus !== "interested" && nextStatus !== "not_available")) return
     busyRef.current = true
     setActiveOppId(id)
     setSubmitting(nextStatus)
@@ -330,7 +351,7 @@ export function DashboardEventOpportunities({
         } else {
           toast({
             title: "Marked as not available",
-            description: "We’ve recorded that. Open and cuisine requests may still appear for other events.",
+            description: "We’ve recorded that. You won’t see this request in your active list anymore.",
           })
         }
         setDetailOpp((open) => (open?.id === id ? null : open))
@@ -349,7 +370,9 @@ export function DashboardEventOpportunities({
     }
   }
 
-  if (opportunities.length === 0) {
+  const bothEmpty = opportunities.length === 0 && historyOpportunities.length === 0
+
+  if (bothEmpty) {
     return (
       <>
         <CardHeader>
@@ -361,9 +384,9 @@ export function DashboardEventOpportunities({
             Requests from customers looking to book a food truck, cart, or tent — not public calendar listings.
           </CardDescription>
           <p className="text-xs text-muted-foreground pt-1">
-            Direct bookings to your truck, open requests, and cuisine matches appear here when hosts submit them.
-            Use I&apos;m interested, Not available, or Email organizer. Public events are listed separately below on the
-            dashboard.
+            Direct bookings to your truck, open requests, and cuisine matches appear here when hosts submit them. After
+            you mark <span className="font-medium text-foreground">I&apos;m interested</span>, you can email the host
+            from this panel.
           </p>
         </CardHeader>
         <CardContent>
@@ -383,14 +406,20 @@ export function DashboardEventOpportunities({
           Requests to Confirm
         </CardTitle>
         <CardDescription>
-          Tap a request for full details. Choose I&apos;m interested or Not available, or email the organizer — these
-          are booking leads, not the community events calendar.
+          Tap a request for full details. Mark <span className="font-medium text-foreground">I&apos;m interested</span>{" "}
+          or <span className="font-medium text-foreground">Not available</span>, then email the organizer only after
+          you&apos;ve recorded interest.
         </CardDescription>
         <p className="text-xs text-muted-foreground pt-1">
           FoodTruckCLT shares opportunities from customers. Agreements and payments are between you and the host.
         </p>
       </CardHeader>
       <CardContent>
+        {opportunities.length === 0 ? (
+          <p className="text-sm text-muted-foreground py-2 mb-4">
+            No active requests need a response right now. Recent responses are below.
+          </p>
+        ) : null}
         <div className="space-y-4">
           {opportunities.map((opp) => {
             const br = opp.booking
@@ -436,7 +465,7 @@ export function DashboardEventOpportunities({
                           {visibilityLabel}
                         </Badge>
                         <Badge variant="secondary" className="text-xs capitalize">
-                          {opp.status}
+                          {opportunityResponseLabel(opp.status)}
                         </Badge>
                       </div>
                     </div>
@@ -460,6 +489,94 @@ export function DashboardEventOpportunities({
             )
           })}
         </div>
+
+        {historyOpportunities.length > 0 ? (
+          <div className="mt-8 space-y-3">
+            <div>
+              <p className="text-sm font-medium text-foreground">Your recent responses</p>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Opportunities you&apos;ve already marked. Use <span className="font-medium text-foreground">Email organizer</span>{" "}
+                only for requests where you said you were interested.
+              </p>
+            </div>
+            <div className="space-y-4">
+              {historyOpportunities.map((opp) => {
+                const br = opp.booking
+                const eventTypeLabel =
+                  EVENT_TYPES.find((t) => t.value === br?.event_type)?.label ?? br?.event_type ?? "—"
+                const dateStr = br?.event_date
+                  ? new Date(br.event_date).toLocaleDateString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                    })
+                  : "—"
+                const st = opp.status.toLowerCase()
+                const isInterested = st === "interested"
+                const organizerMailto =
+                  truckContext && isInterested && br
+                    ? buildOrganizerMailto(opp, truckContext, siteBaseUrl)
+                    : null
+                const visibilityLabel = requestVisibilityLabel(br)
+
+                return (
+                  <div key={opp.id} className="relative rounded-lg border border-border/80 bg-muted/20">
+                    <button
+                      type="button"
+                      className="absolute inset-0 z-0 rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                      aria-label={`View details: ${br?.event_display_name ?? eventTypeLabel}`}
+                      onClick={() => setDetailOpp(opp)}
+                    />
+                    <div className="relative z-10 space-y-3 p-3 pointer-events-none">
+                      <div className="flex items-start gap-3">
+                        <div className="h-12 w-12 rounded-lg bg-muted flex items-center justify-center shrink-0">
+                          <Calendar className="h-6 w-6 text-muted-foreground" />
+                        </div>
+                        <div className="flex-1 min-w-0 space-y-1">
+                          <p className="font-medium text-foreground text-sm truncate">
+                            {br?.event_display_name ?? eventTypeLabel}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {br?.event_display_name ? `${eventTypeLabel} · ` : ""}
+                            {dateStr}
+                            {br?.city != null && br.city !== "" ? ` · ${br.city}` : ""}
+                          </p>
+                          <div className="flex flex-wrap gap-1.5 pt-0.5">
+                            <Badge variant="outline" className="text-xs font-normal max-w-full truncate">
+                              {visibilityLabel}
+                            </Badge>
+                            <Badge variant="secondary" className="text-xs capitalize">
+                              {opportunityResponseLabel(opp.status)}
+                            </Badge>
+                          </div>
+                        </div>
+                      </div>
+                      {organizerMailto ? (
+                        <div className="pointer-events-auto" onClick={(e) => e.stopPropagation()}>
+                          <Button variant="outline" size="sm" className="w-full" asChild>
+                            <a href={organizerMailto}>
+                              <Mail className="h-3.5 w-3.5 mr-1.5" />
+                              Email organizer
+                            </a>
+                          </Button>
+                        </div>
+                      ) : null}
+                      <div className="pointer-events-auto" onClick={(e) => e.stopPropagation()}>
+                        <a
+                          href={buildReportMailto(opp, supportEmail)}
+                          className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground inline-block"
+                        >
+                          Report this booking request
+                        </a>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        ) : null}
+
         <p className="text-xs text-muted-foreground mt-4 leading-relaxed">
           FoodTruckCLT connects vendors and event organizers but does not verify events, payment terms, or participants.
           Vendors should confirm details before committing.
@@ -505,6 +622,24 @@ export function DashboardEventOpportunities({
                     />
                   </>
                 )}
+                {detailOpp.status.toLowerCase() === "interested" && truckContext && detailOpp.booking?.contact_email ? (
+                  <>
+                    <Separator className="my-4" />
+                    <div className="space-y-2">
+                      <p className="text-xs font-medium text-foreground">Follow up with the host</p>
+                      <Button variant="outline" size="sm" className="w-full" asChild>
+                        <a
+                          href={
+                            buildOrganizerMailto(detailOpp, truckContext, siteBaseUrl) ?? "#"
+                          }
+                        >
+                          <Mail className="h-3.5 w-3.5 mr-1.5" />
+                          Email organizer
+                        </a>
+                      </Button>
+                    </div>
+                  </>
+                ) : null}
               </div>
             </>
           )}

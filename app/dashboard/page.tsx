@@ -15,6 +15,7 @@ import {
 } from "@/components/dashboard-event-opportunities"
 import { DashboardPublicEvents } from "@/components/dashboard/dashboard-public-events"
 import { fetchPublicUpcomingEventsForVendorDashboard } from "@/lib/events/public-events"
+import { isBookingActiveForVendorOpportunities } from "@/lib/booking/booking-request-status"
 
 type TruckOpportunityRow = {
   id: string
@@ -29,6 +30,68 @@ function sortOpportunitiesNewestFirst<T extends { created_at?: string }>(rows: T
   return [...rows].sort(
     (a, b) => new Date(b.created_at ?? 0).getTime() - new Date(a.created_at ?? 0).getTime()
   )
+}
+
+function mapRowsToDashboardOpportunities(sorted: TruckOpportunityRow[]): DashboardOpportunity[] {
+  return sorted.map((opp) => {
+    const raw = opp.booking_requests
+    const br = Array.isArray(raw) ? raw[0] : raw
+    const row = br as
+      | {
+          event_type: string | null
+          event_date: string | null
+          city: string | null
+          guest_count: number | null
+          contact_email: string | null
+          venue_name: string | null
+          start_time: string | null
+          end_time: string | null
+          street_address: string | null
+          state: string | null
+          zip_code: string | null
+          additional_notes: string | null
+          request_type: string | null
+          truck_id: string | null
+          cuisines: string[] | null
+          vendor_type: string | null
+          status?: string | null
+        }
+      | null
+      | undefined
+    const eventTypeLabel =
+      row != null
+        ? (EVENT_TYPES.find((t) => t.value === row.event_type)?.label ?? row.event_type ?? "Event")
+        : "Event"
+    const eventDisplayName =
+      row != null && row.venue_name != null && String(row.venue_name).trim() !== ""
+        ? String(row.venue_name).trim()
+        : eventTypeLabel
+    return {
+      id: opp.id,
+      status: String(opp.status),
+      booking: row
+        ? {
+            event_type: row.event_type,
+            event_date: row.event_date,
+            city: row.city,
+            guest_count: row.guest_count,
+            contact_email: row.contact_email,
+            venue_name: row.venue_name,
+            event_display_name: eventDisplayName,
+            start_time: row.start_time,
+            end_time: row.end_time,
+            street_address: row.street_address,
+            state: row.state,
+            zip_code: row.zip_code,
+            additional_notes: row.additional_notes,
+            request_type: row.request_type,
+            booking_truck_id: row.truck_id,
+            cuisines: row.cuisines,
+            vendor_type: row.vendor_type,
+          }
+        : null,
+    }
+  })
 }
 
 export const metadata: Metadata = {
@@ -80,6 +143,7 @@ export default async function DashboardPage() {
       : null
 
   let opportunityCards: DashboardOpportunity[] = []
+  let historyOpportunityCards: DashboardOpportunity[] = []
   let pendingCount = 0
   let upcomingEventsCount = 0
 
@@ -102,75 +166,39 @@ export default async function DashboardPage() {
     if (!upcomingErr && upcomingN != null) {
       upcomingEventsCount = upcomingN
     }
-    const { data: rawOpportunities } = await supabase
+    const { data: rawPending } = await supabase
       .from("truck_opportunities")
       .select("*, booking_requests(*)")
       .eq("truck_id", truckData.id)
       .eq("status", "pending")
       .order("created_at", { ascending: false })
-      .limit(50)
+      .limit(75)
 
-    const sorted = sortOpportunitiesNewestFirst((rawOpportunities ?? []) as TruckOpportunityRow[])
-    pendingCount = sorted.length
-
-    opportunityCards = sorted.map((opp) => {
+    const pendingRows = sortOpportunitiesNewestFirst((rawPending ?? []) as TruckOpportunityRow[]).filter((opp) => {
       const raw = opp.booking_requests
       const br = Array.isArray(raw) ? raw[0] : raw
-      const row = br as
-        | {
-            event_type: string | null
-            event_date: string | null
-            city: string | null
-            guest_count: number | null
-            contact_email: string | null
-            venue_name: string | null
-            start_time: string | null
-            end_time: string | null
-            street_address: string | null
-            state: string | null
-            zip_code: string | null
-            additional_notes: string | null
-            request_type: string | null
-            truck_id: string | null
-            cuisines: string[] | null
-            vendor_type: string | null
-          }
-        | null
-        | undefined
-      const eventTypeLabel =
-        row != null
-          ? (EVENT_TYPES.find((t) => t.value === row.event_type)?.label ?? row.event_type ?? "Event")
-          : "Event"
-      const eventDisplayName =
-        row != null && row.venue_name != null && String(row.venue_name).trim() !== ""
-          ? String(row.venue_name).trim()
-          : eventTypeLabel
-      return {
-        id: opp.id,
-        status: String(opp.status),
-        booking: row
-          ? {
-              event_type: row.event_type,
-              event_date: row.event_date,
-              city: row.city,
-              guest_count: row.guest_count,
-              contact_email: row.contact_email,
-              venue_name: row.venue_name,
-              event_display_name: eventDisplayName,
-              start_time: row.start_time,
-              end_time: row.end_time,
-              street_address: row.street_address,
-              state: row.state,
-              zip_code: row.zip_code,
-              additional_notes: row.additional_notes,
-              request_type: row.request_type,
-              booking_truck_id: row.truck_id,
-              cuisines: row.cuisines,
-              vendor_type: row.vendor_type,
-            }
-          : null,
-      }
+      const st =
+        br && typeof br === "object" && "status" in br
+          ? String((br as { status?: string }).status ?? "")
+          : ""
+      return isBookingActiveForVendorOpportunities(st)
     })
+
+    pendingCount = pendingRows.length
+    opportunityCards = mapRowsToDashboardOpportunities(pendingRows)
+
+    const { data: rawHistory } = await supabase
+      .from("truck_opportunities")
+      .select("*, booking_requests(*)")
+      .eq("truck_id", truckData.id)
+      .in("status", ["interested", "not_available", "pass"])
+      .order("responded_at", { ascending: false, nullsFirst: false })
+      .order("created_at", { ascending: false })
+      .limit(25)
+
+    historyOpportunityCards = mapRowsToDashboardOpportunities(
+      sortOpportunitiesNewestFirst((rawHistory ?? []) as TruckOpportunityRow[])
+    )
   }
 
   return (
@@ -321,6 +349,7 @@ export default async function DashboardPage() {
               <Card id="vendor-requests-to-confirm" className="scroll-mt-28">
                 <DashboardEventOpportunities
                   opportunities={opportunityCards}
+                  historyOpportunities={historyOpportunityCards}
                   truckContext={truckContext}
                   siteBaseUrl={publicSiteBase}
                   supportEmail={supportEmail}

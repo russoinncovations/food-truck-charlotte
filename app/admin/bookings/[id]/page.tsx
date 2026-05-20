@@ -25,6 +25,7 @@ import { normalizeBookingRowForAdmin } from "@/lib/admin/normalize-booking-row"
 import { fetchVendorRoutingForBookingRequest } from "@/lib/admin/fetch-booking-vendor-routing"
 import { AdminBookingEmailCustomer } from "@/components/admin/admin-booking-email-customer"
 import { AdminBookingFollowUpAction } from "@/components/admin/admin-booking-follow-up-action"
+import { AdminBookingLifecycleActions } from "@/components/admin/admin-booking-lifecycle-actions"
 
 export const metadata: Metadata = {
   title: "Booking Details | Admin | Food Truck CLT",
@@ -38,12 +39,14 @@ const STATUS_CONFIG: Record<BookingStatus, { label: string; color: string }> = {
   confirmed: { label: "Confirmed", color: "bg-green-500" },
   completed: { label: "Completed", color: "bg-gray-500" },
   cancelled: { label: "Cancelled", color: "bg-red-500" },
+  fulfilled: { label: "Fulfilled", color: "bg-emerald-600" },
+  closed: { label: "Closed", color: "bg-slate-500" },
 }
 
 function opportunityStatusLabel(status: string): string {
   const s = status.toLowerCase()
   if (s === "interested") return "Interested"
-  if (s === "pass") return "Not available"
+  if (s === "pass" || s === "not_available") return "Not available"
   if (s === "pending") return "Pending"
   return status
 }
@@ -86,10 +89,23 @@ async function getBooking(id: string): Promise<BookingRequest | null> {
 
 export default async function BookingDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>
+  searchParams: Promise<{ key?: string }>
 }) {
   const { id } = await params
+  const key = (await searchParams)?.key
+  const adminKey = process.env.ADMIN_KEY ?? "7985"
+  if (key !== adminKey) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-muted-foreground">Page not found.</p>
+      </div>
+    )
+  }
+
+  const keyQ = `?key=${encodeURIComponent(key)}`
   const booking = await getBooking(id)
 
   if (!booking) {
@@ -98,6 +114,7 @@ export default async function BookingDetailPage({
 
   const vendorRouting = await fetchVendorRoutingForBookingRequest(booking.id)
   const hasServiceRole = Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY)
+  const interestedRows = vendorRouting.rows.filter((r) => r.status.toLowerCase() === "interested")
 
   const eventType = EVENT_TYPES.find((t) => t.value === booking.event_type)
   const budgetRange = BUDGET_RANGES.find((b) => b.value === booking.budget_range)
@@ -136,7 +153,7 @@ export default async function BookingDetailPage({
           {/* Header */}
           <div className="mb-6">
             <Button variant="ghost" size="sm" asChild className="mb-4">
-              <Link href="/admin/bookings">
+              <Link href={`/admin/bookings${keyQ}`}>
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Back to Bookings
               </Link>
@@ -162,9 +179,6 @@ export default async function BookingDetailPage({
                   <AdminBookingEmailCustomer booking={booking} />
                   <AdminBookingFollowUpAction booking={booking} />
                 </div>
-                <Button size="sm" disabled className="shrink-0">
-                  Update Status
-                </Button>
               </div>
             </div>
           </div>
@@ -188,15 +202,47 @@ export default async function BookingDetailPage({
                   ) : null}
                   <p className="text-muted-foreground">
                     <span className="font-medium text-foreground tabular-nums">{vendorRouting.rows.length}</span>{" "}
-                    vendor {vendorRouting.rows.length === 1 ? "opportunity" : "opportunities"} (one per truck notified).
+                    vendor {vendorRouting.rows.length === 1 ? "opportunity" : "opportunities"} (scoped to eligible
+                    directory trucks).{" "}
+                    <span className="font-medium text-foreground tabular-nums">{interestedRows.length}</span> interested.
                   </p>
                   <p className="text-xs text-muted-foreground leading-relaxed">
-                    When a vendor uses <strong className="font-medium text-foreground">I&apos;m interested</strong> or{" "}
-                    <strong className="font-medium text-foreground">Not available</strong> on the dashboard, their row
-                    updates here. <strong className="font-medium text-foreground">Email organizer</strong> is a mailto to
-                    the customer email below — vendors can reach the host directly when that email is visible on their
-                    dashboard.
+                    Open and cuisine requests create dashboard opportunities for matching vendors—FoodTruckCLT does not
+                    email every vendor. When a vendor marks <strong className="font-medium text-foreground">I&apos;m interested</strong>
+                    , their contact is shown on their dashboard so they can mail the host. Mark the booking fulfilled or
+                    closed when the host has found a truck to hide it from vendors.
                   </p>
+                  {interestedRows.length > 0 ? (
+                    <div className="rounded-md border border-border bg-muted/30 px-3 py-3 space-y-2">
+                      <p className="text-sm font-medium text-foreground">
+                        Interested vendors ({interestedRows.length})
+                      </p>
+                      <ul className="space-y-2 text-sm">
+                        {interestedRows.map((row) => (
+                          <li key={row.id} className="border-b border-border/70 pb-2 last:border-0 last:pb-0">
+                            <p className="font-medium text-foreground">{row.truck_name ?? "—"}</p>
+                            <div className="text-xs text-muted-foreground mt-1 space-y-0.5">
+                              {row.truck_email ? (
+                                <p>
+                                  <a
+                                    href={`mailto:${row.truck_email}`}
+                                    className="text-primary hover:underline break-all"
+                                  >
+                                    {row.truck_email}
+                                  </a>
+                                </p>
+                              ) : (
+                                <p>Email: —</p>
+                              )}
+                              {row.truck_phone ? <p>Phone: {row.truck_phone}</p> : null}
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">No vendors have marked interested yet.</p>
+                  )}
                   {vendorRouting.rows.length === 0 ? (
                     <p className="text-muted-foreground border border-dashed border-border rounded-md px-3 py-6 text-center text-sm">
                       No vendor opportunities have been created for this request.
@@ -208,6 +254,7 @@ export default async function BookingDetailPage({
                           <tr>
                             <th className="p-3 font-medium">Truck</th>
                             <th className="p-3 font-medium">Truck email</th>
+                            <th className="p-3 font-medium whitespace-nowrap">Truck phone</th>
                             <th className="p-3 font-medium">Status</th>
                             <th className="p-3 font-medium whitespace-nowrap">Sent</th>
                             <th className="p-3 font-medium whitespace-nowrap">Responded</th>
@@ -226,6 +273,9 @@ export default async function BookingDetailPage({
                                 ) : (
                                   "—"
                                 )}
+                              </td>
+                              <td className="p-3 text-muted-foreground whitespace-nowrap tabular-nums">
+                                {row.truck_phone ?? "—"}
                               </td>
                               <td className="p-3">
                                 <Badge variant="secondary" className="capitalize font-normal">
@@ -458,22 +508,10 @@ export default async function BookingDetailPage({
               {/* Quick Actions */}
               <Card>
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-lg">Quick Actions</CardTitle>
+                  <CardTitle className="text-lg">Request lifecycle</CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-2">
-                  <Button className="w-full" variant="outline" size="sm">
-                    Mark as Contacted
-                  </Button>
-                  <Button className="w-full" variant="outline" size="sm">
-                    Send to Trucks
-                  </Button>
-                  <Button className="w-full" variant="outline" size="sm">
-                    Add Note
-                  </Button>
-                  <Separator className="my-3" />
-                  <Button className="w-full" variant="destructive" size="sm">
-                    Cancel Request
-                  </Button>
+                <CardContent>
+                  <AdminBookingLifecycleActions bookingId={booking.id} adminKey={key} status={booking.status} />
                 </CardContent>
               </Card>
 

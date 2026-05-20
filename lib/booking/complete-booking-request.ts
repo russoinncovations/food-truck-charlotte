@@ -3,6 +3,7 @@ import {
   BOOKING_REQUEST_TYPE,
   type BookingRequestTypeValue,
 } from "@/lib/booking/booking-request-constants"
+import { fetchEligibleTruckIdsForBroadcast } from "@/lib/booking/eligible-trucks-for-opportunities"
 
 export { BOOKING_REQUEST_TYPE }
 export type { BookingRequestTypeValue }
@@ -80,17 +81,19 @@ export async function completeBookingRequest(
   }
 
   if (isBroadcast) {
-    const { data: listedTrucks } = await supabase
-      .from("trucks")
-      .select("id")
-      .eq("show_in_directory", true)
+    const requestType =
+      row.request_type === BOOKING_REQUEST_TYPE.CUISINE_MATCH ? "cuisine_match" : "open_request"
+    const truckIds = await fetchEligibleTruckIdsForBroadcast(supabase, {
+      requestType,
+      cuisines: row.cuisines,
+      vendorType: row.vendor_type,
+    })
 
-    const rows =
-      listedTrucks?.map((t) => ({
-        booking_request_id: id,
-        truck_id: t.id as string,
-        status: "pending" as const,
-      })) ?? []
+    const rows = truckIds.map((truckId) => ({
+      booking_request_id: id,
+      truck_id: truckId,
+      status: "pending" as const,
+    }))
 
     if (rows.length > 0) {
       const { error: oppErr } = await supabase.from("truck_opportunities").insert(rows)

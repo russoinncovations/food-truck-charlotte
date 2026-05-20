@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
-import { useSearchParams } from "next/navigation"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -58,6 +57,8 @@ import {
 
 interface BookingsTableProps {
   bookings: BookingRequest[]
+  adminKey: string
+  interestedCountByBookingId: Record<string, number>
 }
 
 const REQUEST_TYPE_SHORT: Record<string, string> = {
@@ -74,12 +75,11 @@ const STATUS_CONFIG: Record<BookingStatus, { label: string; variant: "default" |
   confirmed: { label: "Confirmed", variant: "default" },
   completed: { label: "Completed", variant: "outline" },
   cancelled: { label: "Cancelled", variant: "destructive" },
+  fulfilled: { label: "Fulfilled", variant: "default" },
+  closed: { label: "Closed", variant: "outline" },
 }
 
-export function BookingsTable({ bookings }: BookingsTableProps) {
-  const searchParams = useSearchParams()
-  const adminKey = searchParams.get("key") ?? ""
-
+export function BookingsTable({ bookings, adminKey, interestedCountByBookingId }: BookingsTableProps) {
   const [rows, setRows] = useState<BookingRequest[]>(bookings)
   const [searchQuery, setSearchQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState<string>("all")
@@ -200,6 +200,7 @@ export function BookingsTable({ bookings }: BookingsTableProps) {
               <TableHead className="hidden lg:table-cell min-w-[9rem]">Routing</TableHead>
               <TableHead className="hidden md:table-cell">Location</TableHead>
               <TableHead className="hidden sm:table-cell">Guests</TableHead>
+              <TableHead className="text-center tabular-nums w-[5rem]">Interested</TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="hidden lg:table-cell">Submitted</TableHead>
               <TableHead className="w-[100px]">Delete</TableHead>
@@ -209,7 +210,7 @@ export function BookingsTable({ bookings }: BookingsTableProps) {
           <TableBody>
             {filteredBookings.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
                   No bookings found matching your criteria
                 </TableCell>
               </TableRow>
@@ -276,6 +277,9 @@ export function BookingsTable({ bookings }: BookingsTableProps) {
                         <span className="text-sm">{booking.expected_guests}</span>
                       </div>
                     </TableCell>
+                    <TableCell className="text-center text-sm tabular-nums text-muted-foreground">
+                      {interestedCountByBookingId[booking.id] ?? 0}
+                    </TableCell>
                     <TableCell>
                       <Badge
                         variant={statusConfig.variant}
@@ -313,7 +317,7 @@ export function BookingsTable({ bookings }: BookingsTableProps) {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem asChild>
-                            <Link href={`/admin/bookings/${booking.id}`}>
+                            <Link href={`/admin/bookings/${booking.id}?key=${encodeURIComponent(adminKey)}`}>
                               <Eye className="h-4 w-4 mr-2" />
                               View Details
                             </Link>

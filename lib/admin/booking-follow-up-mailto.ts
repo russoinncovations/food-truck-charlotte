@@ -9,6 +9,8 @@ const FOLLOW_UP_BODY_CORE = [
   "",
   "If you're still looking, feel free to reply here and I'll do my best to help point you in the right direction.",
   "",
+  "Once you’ve found a truck, reply to this thread and we can close the request on our side.",
+  "",
   "Thanks,",
   "Nicole",
   "FoodTruckCLT",

@@ -29,6 +29,8 @@ export type BookingStatus =
   | 'confirmed'
   | 'completed'
   | 'cancelled'
+  | 'fulfilled'
+  | 'closed'
 
 export interface BookingRequest {
   id: string

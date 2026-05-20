@@ -10,8 +10,9 @@ function coerceBookingStatus(s: unknown): BookingStatus {
     confirmed: "confirmed",
     completed: "completed",
     cancelled: "cancelled",
+    fulfilled: "fulfilled",
+    closed: "closed",
     matched: "in_progress",
-    closed: "completed",
     archived: "cancelled",
   }
   return direct[v] ?? "new"

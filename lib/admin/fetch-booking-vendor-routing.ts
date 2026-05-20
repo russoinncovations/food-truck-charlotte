@@ -10,6 +10,7 @@ export type VendorOpportunityAdminRow = {
   responded_at: string | null
   truck_name: string | null
   truck_email: string | null
+  truck_phone: string | null
 }
 
 type OppRow = {
@@ -74,11 +75,11 @@ export async function fetchVendorRoutingForBookingRequest(
   const list = opps ?? []
   const truckIds = [...new Set(list.map((o) => o.truck_id).filter(Boolean))]
 
-  let truckMap = new Map<string, { name: string | null; email: string | null }>()
+  let truckMap = new Map<string, { name: string | null; email: string | null; phone: string | null }>()
   if (truckIds.length > 0) {
     const { data: trucks, error: truckErr } = await client
       .from("trucks")
-      .select("id, name, email")
+      .select("id, name, email, booking_phone")
       .in("id", truckIds)
 
     if (truckErr) {
@@ -87,14 +88,18 @@ export async function fetchVendorRoutingForBookingRequest(
       truckMap = new Map(
         (trucks ?? []).map((t) => [
           t.id as string,
-          { name: (t.name as string | null) ?? null, email: (t.email as string | null) ?? null },
+          {
+            name: (t.name as string | null) ?? null,
+            email: (t.email as string | null) ?? null,
+            phone: (t.booking_phone as string | null) ?? null,
+          },
         ])
       )
     }
   }
 
   const rows: VendorOpportunityAdminRow[] = list.map((r) => {
-    const t = truckMap.get(r.truck_id) ?? { name: null, email: null }
+    const t = truckMap.get(r.truck_id) ?? { name: null, email: null, phone: null }
     return {
       id: r.id,
       truck_id: r.truck_id,
@@ -104,6 +109,7 @@ export async function fetchVendorRoutingForBookingRequest(
       responded_at: r.responded_at ?? null,
       truck_name: t.name,
       truck_email: t.email,
+      truck_phone: t.phone,
     }
   })
 

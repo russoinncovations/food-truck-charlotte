@@ -80,7 +80,7 @@ function distinctRespondedBookings(opps: { booking_request_id: string | null; st
     const bid = o.booking_request_id
     if (!bid) continue
     const s = (o.status ?? "").toLowerCase()
-    if (s === "interested" || s === "pass") ids.add(bid)
+    if (s === "interested" || s === "pass" || s === "not_available") ids.add(bid)
   }
   return ids.size
 }

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
 import { Header } from "@/components/header"
 import { BookingsTable } from "@/components/admin/bookings-table"
+import { fetchInterestedVendorCountByBookingId } from "@/lib/admin/fetch-booking-interested-counts"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -209,6 +210,9 @@ export default async function AdminBookingsPage({
   }
 
   const bookings = await getBookings()
+  const interestedCountByBookingId = Object.fromEntries(
+    (await fetchInterestedVendorCountByBookingId(bookings.map((b) => b.id))).entries()
+  )
   const counts = getStatusCounts(bookings)
   const vendorApplications = await getPendingVendorApplications()
   const adminEvents = await getRecentEventsForAdmin()
@@ -471,7 +475,11 @@ export default async function AdminBookingsPage({
             </CardHeader>
             <CardContent>
               {bookings.length > 0 ? (
-                <BookingsTable bookings={bookings} />
+                <BookingsTable
+                  bookings={bookings}
+                  adminKey={key}
+                  interestedCountByBookingId={interestedCountByBookingId}
+                />
               ) : (
                 <div className="text-center py-12">
                   <Inbox className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
