@@ -110,11 +110,11 @@ export async function fetchAdminCommandCenterData(adminKeyForHref: string): Prom
     eventsForPendingRes,
     activePublicTrucksHead,
   ] = await Promise.all([
-    db.from("booking_requests").select("*", { count: "exact", head: true }),
-    db.from("booking_requests").select("*", { count: "exact", head: true }).eq("status", "new"),
-    db.from("booking_requests").select("*", { count: "exact", head: true }).in("status", OPEN_BOOKING_STATUSES),
-    db.from("vendor_applications").select("*", { count: "exact", head: true }).eq("status", "pending"),
-    db.from("trucks").select("*", { count: "exact", head: true }),
+    db.from("booking_requests").select("id", { count: "exact", head: true }),
+    db.from("booking_requests").select("id", { count: "exact", head: true }).eq("status", "new"),
+    db.from("booking_requests").select("id", { count: "exact", head: true }).in("status", OPEN_BOOKING_STATUSES),
+    db.from("vendor_applications").select("id", { count: "exact", head: true }).eq("status", "pending"),
+    db.from("trucks").select("id", { count: "exact", head: true }),
     db
       .from("events")
       .select("id", { count: "exact", head: true })
@@ -122,11 +122,13 @@ export async function fetchAdminCommandCenterData(adminKeyForHref: string): Prom
       .gte("date", today)
       .or(publicUpcomingEventsOrFilter()),
     db.from("truck_opportunities").select("booking_request_id, status, created_at, id, truck_id").limit(8000),
+    /** Recent bookings: `booking_requests` has no `updated_at` — use `created_at` only. */
     db
       .from("booking_requests")
       .select("id, contact_name, status, created_at")
       .order("created_at", { ascending: false })
       .limit(14),
+    /** Recent vendor applications: truck name is stored as `business_name` (not `truck_name`). */
     db
       .from("vendor_applications")
       .select("id, business_name, contact_name, status, created_at")
@@ -152,7 +154,7 @@ export async function fetchAdminCommandCenterData(adminKeyForHref: string): Prom
     db.from("events").select("id, active, listing_status, submitted_by_truck_id").limit(5000),
     db
       .from("trucks")
-      .select("*", { count: "exact", head: true })
+      .select("id", { count: "exact", head: true })
       .eq("show_in_directory", true)
       .eq("status", "active")
       .eq("is_active", true),
