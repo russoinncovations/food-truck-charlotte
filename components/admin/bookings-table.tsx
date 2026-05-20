@@ -42,7 +42,12 @@ import {
 import { cn } from "@/lib/utils"
 import type { BookingRequest, BookingStatus } from "@/lib/booking-types"
 import { EVENT_TYPES } from "@/lib/booking-types"
-import { deleteBookingRequest } from "@/lib/admin/booking-requests-queries"
+import {
+  isAdminBookingPipelineStatus,
+  type AdminBookingsDashboardFilter,
+  ADMIN_BOOKINGS_DASHBOARD_FILTER_LABEL,
+} from "@/lib/admin/booking-admin-filters"
+import type { BookingOpportunityMetrics } from "@/lib/admin/fetch-booking-interested-counts"
 import { buildBookingCustomerMailtoFromRequest } from "@/lib/admin/booking-customer-mailto"
 import { buildBookingFollowUpMailtoFromRequest } from "@/lib/admin/booking-follow-up-mailto"
 import {
@@ -58,7 +63,36 @@ import {
 interface BookingsTableProps {
   bookings: BookingRequest[]
   adminKey: string
-  interestedCountByBookingId: Record<string, number>
+  opportunityMetricsByBookingId: Record<string, BookingOpportunityMetrics>
+  dashboardFilter: AdminBookingsDashboardFilter | null
+}
+
+function defaultMetrics(): BookingOpportunityMetrics {
+  return {
+    interestedCount: 0,
+    totalOpportunities: 0,
+    hasVendorResponse: false,
+  }
+}
+
+function passesDashboardFilter(
+  booking: BookingRequest,
+  filter: AdminBookingsDashboardFilter | null,
+  metrics: BookingOpportunityMetrics
+): boolean {
+  if (!filter) return true
+  switch (filter) {
+    case "open":
+      return isAdminBookingPipelineStatus(booking.status)
+    case "needs-follow-up":
+      return booking.status === "new"
+    case "no-vendor-response":
+      return metrics.totalOpportunities > 0 && !metrics.hasVendorResponse
+    case "vendor-interest":
+      return metrics.hasVendorResponse
+    default:
+      return true
+  }
 }
 
 const REQUEST_TYPE_SHORT: Record<string, string> = {
@@ -79,7 +113,12 @@ const STATUS_CONFIG: Record<BookingStatus, { label: string; variant: "default" |
   closed: { label: "Closed", variant: "outline" },
 }
 
-export function BookingsTable({ bookings, adminKey, interestedCountByBookingId }: BookingsTableProps) {
+export function BookingsTable({
+  bookings,
+  adminKey,
+  opportunityMetricsByBookingId,
+  dashboardFilter,
+}: BookingsTableProps) {
   const [rows, setRows] = useState<BookingRequest[]>(bookings)
   const [searchQuery, setSearchQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState<string>("all")
@@ -91,6 +130,9 @@ export function BookingsTable({ bookings, adminKey, interestedCountByBookingId }
   }, [bookings])
 
   const filteredBookings = rows.filter((booking) => {
+    const metrics = opportunityMetricsByBookingId[booking.id] ?? defaultMetrics()
+    if (!passesDashboardFilter(booking, dashboardFilter, metrics)) return false
+
     const matchesSearch =
       (booking.contact_name?.toLowerCase() ?? "").includes(searchQuery.toLowerCase()) ||
       (booking.contact_email?.toLowerCase() ?? "").includes(searchQuery.toLowerCase()) ||
@@ -127,17 +169,10 @@ export function BookingsTable({ bookings, adminKey, interestedCountByBookingId }
     return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
   }
 
-  const formatCreatedAt = (dateString: string) => {
+  const formatSubmittedDate = (dateString: string) => {
     const date = new Date(dateString)
-    const now = new Date()
-    const diffMs = now.getTime() - date.getTime()
-    const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
-    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
-
-    if (diffHours < 1) return "Just now"
-    if (diffHours < 24) return `${diffHours}h ago`
-    if (diffDays < 7) return `${diffDays}d ago`
-    return date.toLocaleDateString("en-US", { month: "short", day: "numeric" })
+    if (Number.isNaN(date.getTime())) return "—"
+    return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
   }
 
   return (
@@ -200,9 +235,11 @@ export function BookingsTable({ bookings, adminKey, interestedCountByBookingId }
               <TableHead className="hidden lg:table-cell min-w-[9rem]">Routing</TableHead>
               <TableHead className="hidden md:table-cell">Location</TableHead>
               <TableHead className="hidden sm:table-cell">Guests</TableHead>
-              <TableHead className="text-center tabular-nums w-[5rem]">Interested</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="hidden lg:table-cell">Submitted</TableHead>
+              <TableHead>Request status</TableHead>
+              <TableHead className="text-center tabular-nums w-[4.5rem]">Interested</TableHead>
+              <TableHead className="text-center tabular-nums w-[4rem]">Opps</TableHead>
+              <TableHead className="text-center w-[5rem]">Replied</TableHead>
+              <TableHead className="min-w-[7.5rem]">Submitted</TableHead>
               <TableHead className="w-[100px]">Delete</TableHead>
               <TableHead className="w-[50px]"></TableHead>
             </TableRow>
@@ -210,7 +247,7 @@ export function BookingsTable({ bookings, adminKey, interestedCountByBookingId }
           <TableBody>
             {filteredBookings.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={12} className="text-center py-8 text-muted-foreground">
                   No bookings found matching your criteria
                 </TableCell>
               </TableRow>
@@ -218,6 +255,7 @@ export function BookingsTable({ bookings, adminKey, interestedCountByBookingId }
               filteredBookings.map((booking) => {
                 const eventType = EVENT_TYPES.find((t) => t.value === booking.event_type)
                 const statusConfig = STATUS_CONFIG[booking.status as keyof typeof STATUS_CONFIG] ?? { label: "Pending", variant: "secondary" as const }
+                const metrics = opportunityMetricsByBookingId[booking.id] ?? defaultMetrics()
 
                 return (
                   <TableRow key={booking.id} className="hover:bg-muted/30">
@@ -277,9 +315,6 @@ export function BookingsTable({ bookings, adminKey, interestedCountByBookingId }
                         <span className="text-sm">{booking.expected_guests}</span>
                       </div>
                     </TableCell>
-                    <TableCell className="text-center text-sm tabular-nums text-muted-foreground">
-                      {interestedCountByBookingId[booking.id] ?? 0}
-                    </TableCell>
                     <TableCell>
                       <Badge
                         variant={statusConfig.variant}
@@ -291,8 +326,29 @@ export function BookingsTable({ bookings, adminKey, interestedCountByBookingId }
                         {statusConfig.label}
                       </Badge>
                     </TableCell>
-                    <TableCell className="hidden lg:table-cell text-sm text-muted-foreground">
-                      {formatCreatedAt(booking.created_at)}
+                    <TableCell className="text-center text-sm tabular-nums text-muted-foreground">
+                      {metrics.interestedCount}
+                    </TableCell>
+                    <TableCell className="text-center text-sm tabular-nums text-muted-foreground">
+                      {metrics.totalOpportunities}
+                    </TableCell>
+                    <TableCell className="text-center">
+                      {metrics.totalOpportunities === 0 ? (
+                        <span className="text-xs text-muted-foreground">—</span>
+                      ) : (
+                        <Badge
+                          variant={metrics.hasVendorResponse ? "default" : "secondary"}
+                          className={cn(
+                            "text-[10px] font-normal",
+                            metrics.hasVendorResponse && "bg-emerald-600 hover:bg-emerald-700"
+                          )}
+                        >
+                          {metrics.hasVendorResponse ? "Yes" : "No"}
+                        </Badge>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground whitespace-nowrap tabular-nums">
+                      {formatSubmittedDate(booking.created_at)}
                     </TableCell>
                     <TableCell>
                       <Button
@@ -370,6 +426,12 @@ export function BookingsTable({ bookings, adminKey, interestedCountByBookingId }
       {/* Results count */}
       <p className="text-sm text-muted-foreground">
         Showing {filteredBookings.length} of {rows.length} requests
+        {dashboardFilter ? (
+          <>
+            {" "}
+            · {ADMIN_BOOKINGS_DASHBOARD_FILTER_LABEL[dashboardFilter].title}
+          </>
+        ) : null}
       </p>
     </div>
   )

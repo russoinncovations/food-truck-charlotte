@@ -5,6 +5,8 @@ import {
   CalendarDays,
   Camera,
   ClipboardList,
+  CheckCircle2,
+  Clock,
   ImageOff,
   Inbox,
   LayoutDashboard,
@@ -60,18 +62,32 @@ export function AdminCommandCenter({ keyQ, data }: Props) {
       icon: CalendarDays,
     },
     {
-      title: "New bookings",
-      count: needsAction.newBookings,
-      desc: "Status: new — need first touch",
-      href: `/admin/bookings${keyQ}`,
+      title: "Open booking requests",
+      count: bookingSummary.openPipeline,
+      desc: "Customer requests still in the booking pipeline",
+      href: `/admin/bookings${keyQ}&filter=open`,
       icon: Inbox,
     },
     {
-      title: "Bookings — no vendor reply",
+      title: "Requests with no vendor responses",
       count: needsAction.bookingsNoVendorResponse,
-      desc: "All routed trucks still pending",
-      href: `/admin/bookings${keyQ}`,
+      desc: "No vendors have marked interested or not available yet",
+      href: `/admin/bookings${keyQ}&filter=no-vendor-response`,
       icon: ClipboardList,
+    },
+    {
+      title: "Requests with vendor interest",
+      count: bookingSummary.withVendorResponse,
+      desc: "At least one vendor has responded",
+      href: `/admin/bookings${keyQ}&filter=vendor-interest`,
+      icon: CheckCircle2,
+    },
+    {
+      title: "Needs admin follow-up",
+      count: bookingSummary.needsFollowUp,
+      desc: "Requests that may need a customer or vendor follow-up",
+      href: `/admin/bookings${keyQ}&filter=needs-follow-up`,
+      icon: Clock,
     },
     {
       title: "Trucks missing photos",
@@ -176,15 +192,15 @@ export function AdminCommandCenter({ keyQ, data }: Props) {
               <span className="font-medium tabular-nums">{bookingSummary.total}</span>
             </div>
             <div className="flex justify-between gap-2">
-              <span className="text-muted-foreground">Open pipeline</span>
+              <span className="text-muted-foreground">Open booking requests</span>
               <span className="font-medium tabular-nums">{bookingSummary.openPipeline}</span>
             </div>
             <div className="flex justify-between gap-2">
-              <span className="text-muted-foreground">With vendor response</span>
+              <span className="text-muted-foreground">Requests with vendor interest</span>
               <span className="font-medium tabular-nums">{bookingSummary.withVendorResponse}</span>
             </div>
             <div className="flex justify-between gap-2">
-              <span className="text-muted-foreground">New (follow-up)</span>
+              <span className="text-muted-foreground">Needs admin follow-up</span>
               <span className="font-medium tabular-nums">{bookingSummary.needsFollowUp}</span>
             </div>
             <Button variant="outline" size="sm" className="w-full mt-2" asChild>

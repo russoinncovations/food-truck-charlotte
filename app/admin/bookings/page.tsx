@@ -4,7 +4,11 @@ import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
 import { Header } from "@/components/header"
 import { BookingsTable } from "@/components/admin/bookings-table"
-import { fetchInterestedVendorCountByBookingId } from "@/lib/admin/fetch-booking-interested-counts"
+import { fetchBookingOpportunityMetricsByBookingId } from "@/lib/admin/fetch-booking-interested-counts"
+import {
+  parseAdminBookingsDashboardFilter,
+  ADMIN_BOOKINGS_DASHBOARD_FILTER_LABEL,
+} from "@/lib/admin/booking-admin-filters"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -197,9 +201,10 @@ async function getPendingVendorApplications(): Promise<Record<string, unknown>[]
 export default async function AdminBookingsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ key?: string }>
+  searchParams: Promise<{ key?: string; filter?: string }>
 }) {
-  const key = (await searchParams)?.key
+  const sp = await searchParams
+  const key = sp?.key
   const adminKey = process.env.ADMIN_KEY ?? "7985"
   if (key !== adminKey) {
     return (
@@ -210,9 +215,11 @@ export default async function AdminBookingsPage({
   }
 
   const bookings = await getBookings()
-  const interestedCountByBookingId = Object.fromEntries(
-    (await fetchInterestedVendorCountByBookingId(bookings.map((b) => b.id))).entries()
+  const dashboardFilter = parseAdminBookingsDashboardFilter(sp?.filter)
+  const opportunityMetricsByBookingId = Object.fromEntries(
+    (await fetchBookingOpportunityMetricsByBookingId(bookings.map((b) => b.id))).entries()
   )
+  const filterBanner = dashboardFilter ? ADMIN_BOOKINGS_DASHBOARD_FILTER_LABEL[dashboardFilter] : null
   const counts = getStatusCounts(bookings)
   const vendorApplications = await getPendingVendorApplications()
   const adminEvents = await getRecentEventsForAdmin()
@@ -471,14 +478,32 @@ export default async function AdminBookingsPage({
           {/* Bookings Table */}
           <Card>
             <CardHeader className="pb-4">
-              <CardTitle className="text-lg">All Requests</CardTitle>
+              <CardTitle className="text-lg">
+                {filterBanner ? "Filtered requests" : "All requests"}
+              </CardTitle>
+              {filterBanner ? (
+                <CardDescription className="text-sm text-foreground font-medium">
+                  Showing: {filterBanner.title}
+                </CardDescription>
+              ) : null}
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-4">
+              {filterBanner ? (
+                <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-muted/40 px-4 py-3 text-sm">
+                  <span className="text-muted-foreground">
+                    Dashboard filter active — only matching rows are listed. Clear to see every request.
+                  </span>
+                  <Button variant="outline" size="sm" asChild>
+                    <Link href={`/admin/bookings${keyQ}`}>Show all requests</Link>
+                  </Button>
+                </div>
+              ) : null}
               {bookings.length > 0 ? (
                 <BookingsTable
                   bookings={bookings}
                   adminKey={key}
-                  interestedCountByBookingId={interestedCountByBookingId}
+                  opportunityMetricsByBookingId={opportunityMetricsByBookingId}
+                  dashboardFilter={dashboardFilter}
                 />
               ) : (
                 <div className="text-center py-12">
