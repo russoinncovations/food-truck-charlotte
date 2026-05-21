@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 import { PUBLIC_LISTED_TRUCK_EQ } from "@/lib/trucks/public-listed-truck-query"
+import { isInternalDemoVendorTruck } from "@/lib/trucks/internal-demo-vendor"
 
 export type VendorReminderRecipient = {
   id: string
@@ -32,7 +33,7 @@ export async function fetchVendorReminderRecipients(
     return { recipients: [], eligibleTruckCount: 0 }
   }
 
-  const rows = data ?? []
+  const rows = (data ?? []).filter((row) => !isInternalDemoVendorTruck(row as { name?: string; email?: string }))
   const eligibleTruckCount = rows.length
   const seenEmail = new Set<string>()
   const recipients: VendorReminderRecipient[] = []
@@ -74,11 +75,12 @@ export async function fetchVendorProfileReminderRecipients(
     return { recipients: [], eligibleTruckCount: 0 }
   }
 
-  const rows = data ?? []
   type Row = { id: string; name: string | null; email: string | null }
 
+  const rows = ((data ?? []) as Row[]).filter((row) => !isInternalDemoVendorTruck(row))
+
   const eligibleRows: Row[] = []
-  for (const row of rows as Row[]) {
+  for (const row of rows) {
     const nameRaw = String(row.name ?? "").trim()
     if (nameRaw.toLowerCase().includes("test")) continue
     const email = (row.email ?? "").trim()

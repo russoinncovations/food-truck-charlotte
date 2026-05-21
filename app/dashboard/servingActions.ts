@@ -49,6 +49,7 @@ export async function stopServing(truckId: string): Promise<ServingActionResult>
 
   if (error) return { success: false, error: error.message }
   revalidatePath("/dashboard")
+  revalidatePath("/dashboard/live")
   revalidatePath("/map")
   return { success: true }
 }
@@ -101,6 +102,7 @@ export async function startServingWithPin(
 
   if (error) return { success: false, error: error.message }
   revalidatePath("/dashboard")
+  revalidatePath("/dashboard/live")
   revalidatePath("/map")
   return { success: true }
 }

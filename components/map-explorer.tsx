@@ -35,6 +35,7 @@ import {
 import { cuisineCategories, type FoodTruck } from "@/lib/data"
 import { mapRowsToMapTrucks, type ServingTruckRow } from "@/lib/map/serving-row-to-food-truck"
 import { type MapEventMarker, formatMapEventDateTime } from "@/lib/events/map-event-markers"
+import { MapAddToHomePrompt } from "@/components/pwa/map-add-to-home-prompt"
 
 export type { ServingTruckRow }
 
@@ -203,6 +204,8 @@ export function MapExplorer({
           </Button>
         </div>
       </header>
+
+      <MapAddToHomePrompt />
 
       <p className="shrink-0 border-b border-border/80 bg-muted/30 px-4 py-2 text-center text-xs text-muted-foreground leading-snug">
         Green pins are trucks serving now. Orange pins are events happening now.

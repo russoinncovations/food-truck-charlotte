@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 import { PUBLIC_LISTED_TRUCK_EQ } from "@/lib/trucks/public-listed-truck-query"
+import { fetchInternalDemoVendorTruckId } from "@/lib/trucks/internal-demo-vendor"
 
 export type DirectoryTruckRow = {
   id: string
@@ -97,5 +98,11 @@ export async function fetchEligibleTruckIdsForBroadcast(
     return true
   })
 
-  return filtered.map((t) => t.id as string)
+  const publicIds = filtered.map((t) => t.id as string)
+  const demoId = await fetchInternalDemoVendorTruckId(supabase)
+  if (!demoId) return publicIds
+
+  const merged = new Set(publicIds)
+  merged.add(demoId)
+  return [...merged]
 }

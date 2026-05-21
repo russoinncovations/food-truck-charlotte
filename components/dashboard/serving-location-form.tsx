@@ -1,6 +1,7 @@
 "use client"
 
 import { useActionState, useEffect, useMemo, useState, type FormEvent } from "react"
+import { useRouter } from "next/navigation"
 import { startServingWithPin, stopServingAction, geocodeServingAddress, type ServingActionResult } from "@/app/dashboard/servingActions"
 import { isValidTruckMapCoordinates } from "@/lib/location/truck-map-coords"
 import { servingAddressSearchLine, SERVING_REQUIRES_MAP_PIN_ERROR } from "@/lib/serving-location"
@@ -22,6 +23,13 @@ export type TruckServingFields = {
 
 const initial: ServingActionResult | null = null
 
+async function stopServingWrapped(
+  _prev: ServingActionResult | null,
+  formData: FormData
+): Promise<ServingActionResult> {
+  return stopServingAction(formData)
+}
+
 function parsePin(t: TruckServingFields): { lat: number | null; lng: number | null } {
   const la = t.latitude == null || t.latitude === "" ? NaN : Number(t.latitude)
   const lo = t.longitude == null || t.longitude === "" ? NaN : Number(t.longitude)
@@ -29,7 +37,17 @@ function parsePin(t: TruckServingFields): { lat: number | null; lng: number | nu
   return { lat: null, lng: null }
 }
 
-export function ServingLocationForm({ truck }: { truck: TruckServingFields }) {
+export function ServingLocationForm({
+  truck,
+  submitLabels,
+  showStatusStrip = true,
+}: {
+  truck: TruckServingFields
+  /** Optional labels (e.g. vendor “Go live” quick page). */
+  submitLabels?: { start: string; update: string; busy?: string }
+  /** When false, hides the top serving status card (e.g. live page has its own headline). */
+  showStatusStrip?: boolean
+}) {
   const [locationName, setLocationName] = useState(() => (truck.today_location ?? "").trim() || "")
   const [street, setStreet] = useState(() => (truck.street_address ?? "").trim() || "")
   const initialPin = useMemo(() => parsePin(truck), [truck])
@@ -47,6 +65,18 @@ export function ServingLocationForm({ truck }: { truck: TruckServingFields }) {
   const [clientBlockError, setClientBlockError] = useState<string | null>(null)
 
   const [startState, startAction, startPending] = useActionState(startServingWithPin, initial)
+
+  const [stopState, stopAction, stopPending] = useActionState(stopServingWrapped, null)
+
+  const router = useRouter()
+
+  useEffect(() => {
+    if (startState?.success) router.refresh()
+  }, [startState, router])
+
+  useEffect(() => {
+    if (stopState?.success) router.refresh()
+  }, [stopState, router])
 
   const [geocodeSuccessMessage, setGeocodeSuccessMessage] = useState<string | null>(null)
 
@@ -108,32 +138,34 @@ export function ServingLocationForm({ truck }: { truck: TruckServingFields }) {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between gap-4 rounded-lg border p-4">
-        <div className="flex items-center gap-3 min-w-0">
-          <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center shrink-0">
-            <MapPin className="h-6 w-6 text-muted-foreground" />
+      {showStatusStrip ? (
+        <div className="flex items-center justify-between gap-4 rounded-lg border p-4">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center shrink-0">
+              <MapPin className="h-6 w-6 text-muted-foreground" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-foreground">Serving status</p>
+              <p className="text-xs text-muted-foreground">
+                {truck.serving_today
+                  ? "You’re on the map with a saved pin. Update your spot below."
+                  : "Set your location and pin, then start serving to appear on the map."}
+              </p>
+            </div>
           </div>
-          <div>
-            <p className="text-sm font-medium text-foreground">Serving status</p>
-            <p className="text-xs text-muted-foreground">
-              {truck.serving_today
-                ? "You’re on the map with a saved pin. Update your spot below."
-                : "Set your location and pin, then start serving to appear on the map."}
-            </p>
+          <div
+            className={
+              truck.serving_today
+                ? "shrink-0 rounded-full bg-green-500 px-2.5 py-1 text-xs font-medium text-white"
+                : "shrink-0 rounded-full border border-muted-foreground/30 px-2.5 py-1 text-xs"
+            }
+          >
+            {truck.serving_today ? "Serving" : "Not serving"}
           </div>
         </div>
-        <div
-          className={
-            truck.serving_today
-              ? "shrink-0 rounded-full bg-green-500 px-2.5 py-1 text-xs font-medium text-white"
-              : "shrink-0 rounded-full border border-muted-foreground/30 px-2.5 py-1 text-xs"
-          }
-        >
-          {truck.serving_today ? "Serving" : "Not serving"}
-        </div>
-      </div>
+      ) : null}
 
-      <form action={startAction} onSubmit={handleStartFormSubmit} className="flex flex-col gap-3 rounded-lg border p-4">
+      <form action={startAction} onSubmit={handleStartFormSubmit} id="vendor-live-pin-form" className="flex flex-col gap-3 rounded-lg border p-4">
         <input type="hidden" name="truckId" value={truck.id} />
         <input type="hidden" name="latitude" value={pinLat != null ? String(pinLat) : ""} />
         <input type="hidden" name="longitude" value={pinLng != null ? String(pinLng) : ""} />
@@ -211,16 +243,25 @@ export function ServingLocationForm({ truck }: { truck: TruckServingFields }) {
         )}
 
         <Button type="submit" className="w-full sm:w-auto" disabled={!canSave || startPending}>
-          {startPending ? "Saving…" : truck.serving_today ? "Save location" : "Start serving"}
+          {startPending
+            ? submitLabels?.busy ?? "Saving…"
+            : truck.serving_today
+              ? submitLabels?.update ?? "Save location"
+              : submitLabels?.start ?? "Start serving"}
         </Button>
       </form>
 
       {truck.serving_today && (
-        <form action={stopServingAction} className="rounded-lg border border-dashed p-4">
+        <form action={stopAction} id="vendor-stop-serving" className="rounded-lg border border-dashed p-4">
           <input type="hidden" name="truckId" value={truck.id} />
           <p className="text-sm text-muted-foreground mb-2">Stop showing as open and remove your map pin for today.</p>
-          <Button type="submit" variant="outline" className="w-full sm:w-auto">
-            Stop serving
+          {stopState && !stopState.success ? (
+            <p className="text-sm text-destructive mb-2" role="alert">
+              {stopState.error}
+            </p>
+          ) : null}
+          <Button type="submit" variant="outline" className="w-full sm:w-auto" disabled={stopPending}>
+            {stopPending ? "Stopping…" : "Stop serving"}
           </Button>
         </form>
       )}

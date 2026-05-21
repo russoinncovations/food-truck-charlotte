@@ -9,7 +9,7 @@ import { AdminCommandCenter } from "@/components/admin/admin-command-center"
 import { AdminVendorEmailEngagement } from "@/components/admin/admin-vendor-email-engagement"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Truck } from "lucide-react"
+import { Smartphone, Truck } from "lucide-react"
 
 export const metadata: Metadata = {
   title: "Admin | Food Truck CLT",
@@ -150,6 +150,22 @@ export default async function AdminDashboardPage({
       <main className="pt-24 pb-16">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <AdminCommandCenter keyQ={keyQ} data={commandData} />
+
+          <Card className="mb-12 border border-border/70 bg-muted/15 shadow-none">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base font-medium flex items-center gap-2 text-foreground">
+                <Smartphone className="h-4 w-4 text-muted-foreground shrink-0" aria-hidden />
+                Add Command Center to your phone
+              </CardTitle>
+              <CardDescription className="text-sm text-muted-foreground">
+                Quick access to bookings, vendors, events, and site quality checks.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="text-xs text-muted-foreground pb-6">
+              Tap Share → Add to Home Screen.
+            </CardContent>
+          </Card>
+
           <AdminVendorEmailEngagement keyQ={keyQ} data={emailEngagement} />
 
           <Card className="border-primary/20">

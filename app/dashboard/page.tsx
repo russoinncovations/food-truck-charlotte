@@ -3,7 +3,7 @@ import Link from "next/link"
 import { redirect } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Calendar, Clock, Plus, Eye, Inbox } from "lucide-react"
+import { Calendar, Clock, Plus, Eye, Inbox, Smartphone } from "lucide-react"
 import { createClient } from "@/lib/supabase/server"
 import { EVENT_TYPES } from "@/lib/booking-types"
 import { ServingLocationForm } from "@/components/dashboard/serving-location-form"
@@ -239,6 +239,28 @@ export default async function DashboardPage() {
               </Button>
             </div>
           </div>
+
+          {truckData?.id ? (
+            <Card className="border-primary/20 bg-primary/[0.04]">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Smartphone className="h-4 w-4 text-primary shrink-0" />
+                  Add your vendor shortcut to your phone
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3 text-sm text-muted-foreground">
+                <p>Use this to go live, update your location, and respond to requests quickly.</p>
+                <div>
+                  <Button size="sm" asChild className="w-full sm:w-auto">
+                    <Link href="/dashboard/live">Open Go Live page</Link>
+                  </Button>
+                </div>
+                <p className="text-xs leading-snug border-t border-border/80 pt-3">
+                  Then tap Share → Add to Home Screen.
+                </p>
+              </CardContent>
+            </Card>
+          ) : null}
 
           {truckData?.id && (
             <Card>

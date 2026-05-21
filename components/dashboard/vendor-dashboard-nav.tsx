@@ -14,6 +14,7 @@ import {
   TrendingUp,
   Inbox,
   Eye,
+  Radio,
 } from "lucide-react"
 
 type NavItem =
@@ -22,7 +23,8 @@ type NavItem =
 
 const VENDOR_NAV: NavItem[] = [
   { type: "link", href: "/dashboard", label: "Overview", icon: TrendingUp },
-  { type: "link", href: "/dashboard#vendor-booking-requests", label: "Booking Requests", icon: Inbox },
+  { type: "link", href: "/dashboard/live", label: "Go Live", icon: Radio },
+  { type: "link", href: "/dashboard#vendor-requests-to-confirm", label: "Booking Requests", icon: Inbox },
   { type: "link", href: "/dashboard/schedule", label: "Schedule", icon: Calendar },
   { type: "link", href: "/dashboard/profile", label: "Truck Profile", icon: Truck },
   { type: "link", href: "/dashboard/events", label: "Events", icon: MapPin },
