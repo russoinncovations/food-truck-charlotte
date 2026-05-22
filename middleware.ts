@@ -5,6 +5,26 @@ import { type NextRequest, NextResponse } from 'next/server'
 export async function middleware(request: NextRequest) {
   const supabaseResponse = await updateSession(request)
 
+  const pathname = request.nextUrl.pathname
+  const searchParams = request.nextUrl.searchParams
+
+  /** When Supabase can't complete magic-link OAuth, Site URL `/` often gets `error` / `error_code` query params — keep users on-path with /auth/error (same host, including vendor.*). */
+  if (
+    pathname === '/' &&
+    (searchParams.has('error_code') || searchParams.get('error') === 'access_denied')
+  ) {
+    const url = request.nextUrl.clone()
+    url.pathname = '/auth/error'
+    url.search = ''
+    const redirectResponse = NextResponse.redirect(url)
+    supabaseResponse.headers.forEach((value, key) => {
+      if (key.toLowerCase() === 'set-cookie') {
+        redirectResponse.headers.append(key, value)
+      }
+    })
+    return redirectResponse
+  }
+
   const host = request.headers.get('x-forwarded-host') ?? request.headers.get('host')
   const role = getRoleSubdomainFromHost(host)
   if (role && request.nextUrl.pathname === '/') {

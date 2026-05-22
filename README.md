@@ -69,3 +69,19 @@ Without these variables, form submissions show a **configuration error** instead
 4. Deploy.
 
 **Required for working inquiry forms:** `RESEND_API_KEY`, `INQUIRY_TO_EMAIL`, and a verified `RESEND_FROM_EMAIL` (or Resend’s documented test sender for development). See [Environment variables](#environment-variables-forms--email) above.
+
+## Supabase auth (vendor subdomain)
+
+In **Supabase Dashboard → Authentication → URL Configuration**:
+
+- **`Site URL`** is often `https://www.foodtruckclt.com` (or apex). Vendor magic links must resolve on `vendor.foodtruckclt.com`, so callbacks need to be explicitly allowlisted.
+- Under **Redirect URLs**, include at least:
+
+  `https://vendor.foodtruckclt.com/auth/callback*`  
+  `https://www.foodtruckclt.com/auth/callback*`
+
+  Add apex, preview, or staging hosts that sign users in via email links.
+
+Magic links append `next=/dashboard/live` (vendor) via `…/auth/callback?next=…`. If full callback URLs with query strings are not allowed, Supabase may fall back to the site URL (`www`), which breaks the vendor-subdomain login flow.
+
+For reference on the vendor host, flows use **`/vendor-login`**, **`/dashboard`**, and **`/dashboard/live`** (`https://vendor.foodtruckclt.com/...`).

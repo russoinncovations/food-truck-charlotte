@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { createClient } from "@/lib/supabase/client"
+import { getRoleSubdomainFromHost } from "@/lib/subdomain-routing"
 
 export default function VendorLoginPage() {
   const [email, setEmail] = useState("")
@@ -20,11 +21,16 @@ export default function VendorLoginPage() {
     setSuccess(false)
     setLoading(true)
 
+    const host = window.location.host
+    const postAuthPath = getRoleSubdomainFromHost(host) === "vendor" ? "/dashboard/live" : "/dashboard"
+    /** Callback URL must be allowlisted in Supabase (Auth → Redirect URLs), e.g. …/auth/callback and …/auth/callback*. */
+    const callbackUrl = `${window.location.origin}/auth/callback?next=${encodeURIComponent(postAuthPath)}`
+
     const supabase = createClient()
     const { error: signInError } = await supabase.auth.signInWithOtp({
       email: email.trim(),
       options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
+        emailRedirectTo: callbackUrl,
       },
     })
 

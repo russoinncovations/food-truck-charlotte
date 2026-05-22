@@ -1,12 +1,20 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
+import { safeAuthNextPath } from '@/lib/auth/safe-auth-next-path'
+import { getRoleSubdomainFromHost } from '@/lib/subdomain-routing'
 
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = request.nextUrl
   const code = searchParams.get('code')
   const token_hash = searchParams.get('token_hash')
   const type = searchParams.get('type')
-  const next = searchParams.get('next') ?? '/dashboard'
+
+  const rawHost = request.headers.get('x-forwarded-host') ?? request.headers.get('host') ?? ''
+  const defaultNext =
+    getRoleSubdomainFromHost(rawHost) === 'vendor' ? '/dashboard/live' : '/dashboard'
+
+  const nextParam = searchParams.get('next')
+  const next = safeAuthNextPath(nextParam, defaultNext)
 
   if (code) {
     const supabase = await createClient()
