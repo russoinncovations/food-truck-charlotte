@@ -1,26 +1,10 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
-  <!-- FoodTruckCLT-style app tile: primary red + simplified food truck silhouette -->
-  <rect width="512" height="512" rx="112" fill="#BF3F2F"/>
-  <!-- Small vent stacks (kitchen truck cue) -->
-  <rect x="180" y="152" width="36" height="52" rx="8" fill="#FFFFFF"/>
-  <rect x="232" y="144" width="36" height="60" rx="8" fill="#FFFFFF"/>
-  <!-- Awning -->
-  <rect x="104" y="208" width="288" height="52" rx="14" fill="#FFFFFF"/>
-  <!-- Serving body -->
-  <rect x="88" y="252" width="228" height="126" rx="22" fill="#FFFFFF"/>
-  <!-- Serving window inset -->
-  <rect x="120" y="284" width="108" height="56" rx="12" fill="#9E3428"/>
-  <!-- Hatch line -->
-  <rect x="120" y="308" width="108" height="8" rx="3" fill="#FFFFFF"/>
-  <!-- Cab -->
-  <rect x="294" y="276" width="130" height="102" rx="20" fill="#FFFFFF"/>
-  <!-- Roof over cab -->
-  <rect x="286" y="252" width="146" height="36" rx="12" fill="#FFFFFF"/>
-  <!-- Windshield -->
-  <path d="M312 294h94c8 0 14 7 13 15l-6 54c-1 10-10 17-19 17h-94c-8 0-14-8-13-17l14-61c2-10 11-17 21-17z" fill="#E8BEB8" opacity=".35"/>
-  <!-- Wheels -->
-  <circle cx="176" cy="398" r="38" fill="#FFFFFF"/>
-  <circle cx="176" cy="398" r="18" fill="#BF3F2F"/>
-  <circle cx="368" cy="398" r="38" fill="#FFFFFF"/>
-  <circle cx="368" cy="398" r="18" fill="#BF3F2F"/>
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Canonical raster art (red tile, white CLT food truck): ftclt-app-icon.png — 1024×1024 master.
+  PWA builds use `npm run generate:pwa-icons`, which rasterizes from the PNG directly.
+  This SVG references the PNG for previews and tooling; keep both files together.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="1024" height="1024" viewBox="0 0 1024 1024" role="img" aria-label="FoodTruckCLT app icon — CLT truck on red rounded tile">
+  <title>FoodTruckCLT</title>
+  <image width="1024" height="1024" preserveAspectRatio="xMidYMid meet" xlink:href="ftclt-app-icon.png" href="ftclt-app-icon.png" />
 </svg>
