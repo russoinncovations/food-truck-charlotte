@@ -3,7 +3,7 @@ import Link from "next/link"
 import { redirect } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Calendar, Clock, Plus, Eye, Inbox, Smartphone } from "lucide-react"
+import { Calendar, Clock, Plus, Eye, Inbox, MapPin, Smartphone } from "lucide-react"
 import { createClient } from "@/lib/supabase/server"
 import { EVENT_TYPES } from "@/lib/booking-types"
 import { ServingLocationForm } from "@/components/dashboard/serving-location-form"
@@ -241,6 +241,30 @@ export default async function DashboardPage() {
           </div>
 
           {truckData?.id ? (
+            <Card className="border-2 border-primary/45 bg-gradient-to-br from-primary/14 via-background to-background shadow-md">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg md:text-xl font-display flex flex-wrap items-center gap-2 gap-y-1 text-foreground">
+                  <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/15 text-primary">
+                    <MapPin className="h-5 w-5" aria-hidden />
+                  </span>
+                  Go Live on the Map
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p className="text-sm text-muted-foreground">
+                  Turn your live location pin on or off so customers can find you in real time.
+                </p>
+                <Button size="lg" className="w-full sm:w-auto font-semibold" asChild>
+                  <Link href="/dashboard/live">Open Go Live Page</Link>
+                </Button>
+                <p className="text-xs text-muted-foreground leading-relaxed pt-1 border-t border-primary/15">
+                  On your phone, open the Go Live page, then tap Share → Add to Home Screen to save it as a shortcut.
+                </p>
+              </CardContent>
+            </Card>
+          ) : null}
+
+          {truckData?.id ? (
             <Card className="border-primary/20 bg-primary/[0.04]">
               <CardHeader className="pb-2">
                 <CardTitle className="text-base flex items-center gap-2">
@@ -254,7 +278,7 @@ export default async function DashboardPage() {
                   to your Go Live page.
                 </p>
                 <div>
-                  <Button size="sm" asChild className="w-full sm:w-auto">
+                  <Button variant="outline" size="sm" asChild className="w-full sm:w-auto bg-background">
                     <Link href="/dashboard/live">Open Go Live page</Link>
                   </Button>
                 </div>
