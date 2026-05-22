@@ -10,6 +10,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 export const metadata: Metadata = {
   title: "Go Live | Vendor | Food Truck CLT",
   description: "Start or update your live map pin from your phone.",
+  /** Overrides default `/manifest.webmanifest` so Add to Home Screen uses vendor start URL. */
+  manifest: "/manifest-vendor.webmanifest",
 }
 
 export default async function VendorLivePage() {
