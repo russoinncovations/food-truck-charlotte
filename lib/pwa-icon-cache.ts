@@ -1,9 +1,6 @@
 /**
  * Bump `PWA_ICON_CACHE_QUERY` when regenerating PNG/ICO via `npm run generate:pwa-icons`
  * so clients refetch icons instead of using stale CDN / home-screen caches.
- *
- * Must stay in sync with `icon[].src` query strings in `public/manifest-vendor.webmanifest`
- * (same `?v=N` suffix as here).
  */
 export const PWA_ICON_CACHE_QUERY = '?v=2'
 

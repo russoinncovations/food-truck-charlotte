@@ -2,6 +2,7 @@
 
 import { useActionState, useEffect, useMemo, useState, type FormEvent } from "react"
 import { useRouter } from "next/navigation"
+import Link from "next/link"
 import { startServingWithPin, stopServingAction, geocodeServingAddress, type ServingActionResult } from "@/app/dashboard/servingActions"
 import { isValidTruckMapCoordinates } from "@/lib/location/truck-map-coords"
 import { servingAddressSearchLine, SERVING_REQUIRES_MAP_PIN_ERROR } from "@/lib/serving-location"
@@ -165,6 +166,15 @@ export function ServingLocationForm({
         </div>
       ) : null}
 
+      {promoteGoLivePage ? (
+        <p className="text-sm text-muted-foreground rounded-lg border border-dashed bg-muted/20 px-3 py-2">
+          Prefer the streamlined Go Live screen?{" "}
+          <Link href="/dashboard/live" className="font-medium text-foreground underline-offset-2 hover:underline">
+            Open Go Live Page
+          </Link>
+        </p>
+      ) : null}
+
       <form action={startAction} onSubmit={handleStartFormSubmit} id="vendor-live-pin-form" className="flex flex-col gap-3 rounded-lg border p-4">
         <input type="hidden" name="truckId" value={truck.id} />
         <input type="hidden" name="latitude" value={pinLat != null ? String(pinLat) : ""} />
@@ -205,7 +215,7 @@ export function ServingLocationForm({
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
           <Button type="button" variant="secondary" className="gap-2" disabled={geocoding} onClick={() => void onGeocode()}>
             <Search className="h-4 w-4" />
-            {geocoding ? "Searching…" : "Find on map"}
+            {geocoding ? "Searching…" : "Search & place pin"}
           </Button>
           <span className="text-xs text-muted-foreground">Places or adjusts the pin (you can drag it after).</span>
         </div>

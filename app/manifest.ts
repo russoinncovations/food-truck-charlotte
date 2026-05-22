@@ -4,7 +4,6 @@ import { cachedPwaIconHref } from "@/lib/pwa-icon-cache"
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    id: "/map",
     name: "FoodTruckCLT",
     short_name: "FoodTruckCLT",
     description: "Charlotte food trucks — live map, booking, and community.",

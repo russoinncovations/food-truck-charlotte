@@ -247,18 +247,25 @@ export default async function DashboardPage() {
                   <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/15 text-primary">
                     <MapPin className="h-5 w-5" aria-hidden />
                   </span>
-                  Go Live on the Map
+                  Turn your location on or off
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <p className="text-sm text-muted-foreground">
-                  Turn your live location pin on or off so customers can find you in real time.
+                  Open your Go Live page to set your pin, start or stop serving, and update where you appear for
+                  customers.
                 </p>
                 <Button size="lg" className="w-full sm:w-auto font-semibold" asChild>
                   <Link href="/dashboard/live">Open Go Live Page</Link>
                 </Button>
+                <p className="text-xs text-muted-foreground">
+                  <span className="text-foreground font-medium">Customers see you on the public map.</span>{" "}
+                  <Link href="/map" className="underline-offset-2 hover:underline text-primary">
+                    View public live map
+                  </Link>
+                </p>
                 <p className="text-xs text-muted-foreground leading-relaxed pt-1 border-t border-primary/15">
-                  On your phone, open the Go Live page, then tap Share → Add to Home Screen to save it as a shortcut.
+                  Open the Go Live page on your phone, then tap Share → Add to Home Screen to save it as a shortcut.
                 </p>
               </CardContent>
             </Card>
@@ -371,6 +378,7 @@ export default async function DashboardPage() {
                   {truckData?.id ? (
                     <ServingLocationForm
                       key={`${truckData.id}-${(truckData as { updated_at?: string | null }).updated_at ?? ""}`}
+                      promoteGoLivePage
                       truck={{
                         id: truckData.id,
                         serving_today: truckData.serving_today,
