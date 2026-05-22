@@ -286,7 +286,7 @@ export default async function DashboardPage() {
                 </p>
                 <div>
                   <Button variant="outline" size="sm" asChild className="w-full sm:w-auto bg-background">
-                    <Link href="/dashboard/live">Open Go Live page</Link>
+                    <Link href="/dashboard/live">Open Go Live Page</Link>
                   </Button>
                 </div>
               </CardContent>

@@ -42,12 +42,15 @@ export function ServingLocationForm({
   truck,
   submitLabels,
   showStatusStrip = true,
+  promoteGoLivePage = false,
 }: {
   truck: TruckServingFields
   /** Optional labels (e.g. vendor “Go live” quick page). */
   submitLabels?: { start: string; update: string; busy?: string }
   /** When false, hides the top serving status card (e.g. live page has its own headline). */
   showStatusStrip?: boolean
+  /** On the main `/dashboard`, nudge vendors to `/dashboard/live` for the focused pin screen. */
+  promoteGoLivePage?: boolean
 }) {
   const [locationName, setLocationName] = useState(() => (truck.today_location ?? "").trim() || "")
   const [street, setStreet] = useState(() => (truck.street_address ?? "").trim() || "")
