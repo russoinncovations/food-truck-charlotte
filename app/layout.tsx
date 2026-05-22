@@ -4,6 +4,7 @@ import { Analytics } from '@vercel/analytics/next'
 import './globals.css'
 import { Toaster } from '@/components/ui/toaster'
 import { FTCLT_BRAND_THEME_COLOR } from '@/lib/brand-colors'
+import { cachedPwaIconHref } from '@/lib/pwa-icon-cache'
 
 const dmSans = DM_Sans({ 
   subsets: ["latin"],
@@ -28,11 +29,11 @@ export const metadata: Metadata = {
   generator: 'v0.app',
   icons: {
     icon: [
-      { url: '/icon-192.png', sizes: '192x192', type: 'image/png' },
-      { url: '/icon-512.png', sizes: '512x512', type: 'image/png' },
-      { url: '/favicon.ico', sizes: 'any', type: 'image/x-icon' },
+      { url: cachedPwaIconHref('/icon-192.png'), sizes: '192x192', type: 'image/png' },
+      { url: cachedPwaIconHref('/icon-512.png'), sizes: '512x512', type: 'image/png' },
+      { url: cachedPwaIconHref('/favicon.ico'), sizes: 'any', type: 'image/x-icon' },
     ],
-    apple: [{ url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' }],
+    apple: [{ url: cachedPwaIconHref('/apple-touch-icon.png'), sizes: '180x180', type: 'image/png' }],
   },
   appleWebApp: {
     capable: true,
