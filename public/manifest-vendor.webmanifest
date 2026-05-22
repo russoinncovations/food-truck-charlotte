@@ -1,9 +1,10 @@
 {
+  "id": "/dashboard/live",
   "name": "FoodTruckCLT Vendor",
   "short_name": "FTruck Vendor",
   "description": "Go live on the FoodTruckCLT map and manage vendor requests.",
   "start_url": "/dashboard/live",
-  "scope": "/",
+  "scope": "/dashboard",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#BF3F2F",

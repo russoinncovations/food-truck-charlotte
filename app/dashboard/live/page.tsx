@@ -4,15 +4,12 @@ import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
 import { VendorLiveDashboard } from "@/components/dashboard/vendor-live-dashboard"
 import { countVendorActivePendingBookingOpportunities } from "@/lib/dashboard/vendor-pending-opportunities"
-import { PWA_ICON_CACHE_QUERY } from "@/lib/pwa-icon-cache"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 
 export const metadata: Metadata = {
   title: "Go Live | Vendor | Food Truck CLT",
   description: "Start or update your live map pin from your phone.",
-  /** Overrides default `/manifest.webmanifest` so Add to Home Screen uses vendor start URL. */
-  manifest: `/manifest-vendor.webmanifest${PWA_ICON_CACHE_QUERY}`,
 }
 
 export default async function VendorLivePage() {
