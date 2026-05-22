@@ -1,6 +1,7 @@
 
 import { Metadata } from "next"
 import { revalidatePath } from "next/cache"
+import { headers } from "next/headers"
 import { createClient } from "@/lib/supabase/server"
 import { Header } from "@/components/header"
 import { fetchAdminCommandCenterData } from "@/lib/admin/command-center-data"
@@ -9,6 +10,7 @@ import { AdminCommandCenter } from "@/components/admin/admin-command-center"
 import { AdminVendorEmailEngagement } from "@/components/admin/admin-vendor-email-engagement"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { getRoleSubdomainFromHost } from "@/lib/subdomain-routing"
 import { Smartphone, Truck } from "lucide-react"
 
 export const metadata: Metadata = {
@@ -123,9 +125,37 @@ export default async function AdminDashboardPage({
   const key = (await searchParams)?.key
   const adminKey = process.env.ADMIN_KEY ?? "7985"
   if (key !== adminKey) {
+    const hdrs = await headers()
+    const hostRaw = hdrs.get("x-forwarded-host") ?? hdrs.get("host") ?? ""
+    const onAdminSubdomain = getRoleSubdomainFromHost(hostRaw) === "admin"
+
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p className="text-muted-foreground">Page not found.</p>
+      <div className="min-h-screen flex items-center justify-center bg-muted/30 px-4 py-10">
+        <Card className="w-full max-w-md border-border/80 shadow-sm">
+          <CardHeader>
+            <CardTitle className="text-lg font-display">Restricted</CardTitle>
+            <CardDescription>
+              {onAdminSubdomain ? (
+                <>
+                  You&apos;re on the admin subdomain. Finish the URL from your bookmark: add{" "}
+                  <code className="rounded bg-muted px-1.5 py-0.5 text-xs font-mono">?key=…</code> after{" "}
+                  <span className="font-mono text-xs">/admin</span>.
+                </>
+              ) : (
+                <>
+                  This area isn&apos;t available without an access link. Use the admin bookmark you were given
+                  (including <code className="rounded bg-muted px-1.5 py-0.5 text-xs font-mono">?key=…</code>).
+                </>
+              )}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="text-xs text-muted-foreground space-y-2">
+            <p>
+              Prefer the primary site instead? Visit{" "}
+              <span className="font-medium text-foreground">foodtruckclt.com</span>.
+            </p>
+          </CardContent>
+        </Card>
       </div>
     )
   }
