@@ -1,4 +1,7 @@
-import { VENDOR_EMAIL_GO_LIVE_DASHBOARD_URL } from "@/lib/email/vendor-email-public-links"
+import {
+  PUBLIC_LIVE_MAP_URL,
+  VENDOR_EMAIL_GO_LIVE_DASHBOARD_URL,
+} from "@/lib/email/vendor-email-public-links"
 import {
   VENDOR_EMAIL_CAMPAIGN_SCHEDULE_REMINDER,
   VENDOR_EMAIL_CAMPAIGN_SCHEDULE_REMINDER_TEST,
@@ -13,25 +16,26 @@ function escapeHtml(s: string): string {
     .replace(/"/g, "&quot;")
 }
 
-export const VENDOR_SCHEDULE_REMINDER_SUBJECT = "Serving this week? Add your schedule to FoodTruckCLT"
+export const VENDOR_SCHEDULE_REMINDER_SUBJECT =
+  "Going out this week? Add yourself to the FoodTruckCLT map"
 
-export function buildVendorScheduleReminderHtml(truckName: string, dashboardUrl: string): string {
-  /** Greeting: bulk uses trucks.name (business name); test send uses "Nicole". Empty → "Hi there,". */
-  const name = escapeHtml((truckName ?? "").trim() || "there")
-  /** Raw URL for `href`; display text escaped (same constant today — avoids preview hosts in links). */
-  const dashHref = dashboardUrl.trim()
-  const dashLabel = escapeHtml(dashHref)
+export function buildVendorScheduleReminderHtml(): string {
+  const goLiveHref = VENDOR_EMAIL_GO_LIVE_DASHBOARD_URL
+  const goLiveLabel = escapeHtml(goLiveHref)
+  const mapHref = PUBLIC_LIVE_MAP_URL
+  const mapLabel = escapeHtml(mapHref)
   return `
-<p>Hi ${name},</p>
-<p>If you're serving this week, take a minute to add your locations or mark yourself live on FoodTruckCLT.</p>
-<p>Trucks with current locations are easier for customers, event hosts, breweries, neighborhoods, and offices to find.</p>
-<p>You can log in here:</p>
-<p><a href="${dashHref}">${dashLabel}</a></p>
-<p>When you're parked and serving, use:</p>
-<p><strong>"I'm Serving Now — Add Me to the Map"</strong></p>
-<p>Thanks for helping make FoodTruckCLT a more useful Charlotte food truck guide.</p>
-<p>If you do not want reminder emails, reply and we'll remove you from future reminders.</p>
-<p>— FoodTruckCLT</p>
+<p>Hi everyone,</p>
+<p>We&apos;re starting to push more people to the FoodTruckCLT live map so customers can find trucks in real time.</p>
+<p>If you&apos;re serving this week, add your location or turn your live pin on here:</p>
+<p><a href="${goLiveHref}">${goLiveLabel}</a></p>
+<p>You can also save that page to your phone&apos;s home screen so it&apos;s easy to tap when you&apos;re out serving.</p>
+<p>When you&apos;re done for the day, just turn your live pin off so the map stays accurate.</p>
+<p><strong>Live map:</strong><br />
+<a href="${mapHref}">${mapLabel}</a></p>
+<p>Let&apos;s make it easier for people to find you.</p>
+<p>Thanks,<br />Nicole<br />FoodTruckCLT</p>
+<p>If you do not want reminder emails, reply and we&apos;ll remove you from future reminders.</p>
 `
 }
 
@@ -51,7 +55,7 @@ export async function sendVendorScheduleReminderEmail(opts: {
 }): Promise<VendorReminderSendResult> {
   const key = process.env.RESEND_API_KEY
   const from =
-    process.env.RESEND_FROM_EMAIL?.trim() || "FoodTruck CLT <noreply@foodtruckclt.com>"
+    process.env.RESEND_FROM_EMAIL?.trim() || "Food Truck CLT <noreply@foodtruckclt.com>"
   const to = opts.to.trim()
   if (!key) {
     return { ok: false, error: "RESEND_API_KEY is not configured" }
@@ -60,7 +64,6 @@ export async function sendVendorScheduleReminderEmail(opts: {
     return { ok: false, error: "Missing recipient email" }
   }
 
-  const dashboardUrl = VENDOR_EMAIL_GO_LIVE_DASHBOARD_URL
   const campaign =
     opts.campaign ??
     (opts.truckId
@@ -74,7 +77,7 @@ export async function sendVendorScheduleReminderEmail(opts: {
       from,
       to,
       subject: VENDOR_SCHEDULE_REMINDER_SUBJECT,
-      html: buildVendorScheduleReminderHtml(opts.truckName, dashboardUrl),
+      html: buildVendorScheduleReminderHtml(),
     })
     if (error) {
       return { ok: false, error: error.message ?? String(error) }
