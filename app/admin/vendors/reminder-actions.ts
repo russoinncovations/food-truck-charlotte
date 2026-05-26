@@ -6,6 +6,7 @@ import {
   fetchVendorReminderRecipients,
   fetchVendorProfileReminderRecipients,
   isPlausibleVendorEmail,
+  type VendorReminderRecipient,
 } from "@/lib/trucks/vendor-reminder-recipients"
 import {
   logVendorReminderAttempt,
@@ -16,6 +17,11 @@ import {
   VENDOR_EMAIL_CAMPAIGN_PROFILE_PIN_TEST,
   VENDOR_EMAIL_CAMPAIGN_SCHEDULE_REMINDER_TEST,
 } from "@/lib/email/vendor-email-campaigns"
+import {
+  failuresForReminderRedirectQuery,
+  pauseBetweenVendorReminderSends,
+  type VendorReminderSendFailureReport,
+} from "@/lib/admin/vendor-reminder-send-pacing"
 
 function adminKeyOk(key: string | null | undefined): boolean {
   const expected = process.env.ADMIN_KEY ?? "7985"
@@ -36,9 +42,11 @@ export async function sendVendorScheduleReminders(formData: FormData) {
   const noEmailSkipped = eligibleTruckCount - recipients.length
   let attempted = 0
   let sent = 0
-  const errors: { email: string; message: string }[] = []
+  const errors: VendorReminderSendFailureReport[] = []
 
-  for (const r of recipients) {
+  for (let i = 0; i < recipients.length; i++) {
+    const r = recipients[i]
+    if (i > 0) await pauseBetweenVendorReminderSends()
     attempted++
     const result = await sendVendorScheduleReminderEmail({
       to: r.email,
@@ -54,7 +62,12 @@ export async function sendVendorScheduleReminders(formData: FormData) {
         errorMessage: null,
       })
     } else {
-      errors.push({ email: r.email, message: result.error })
+      errors.push({
+        email: r.email,
+        message: result.error,
+        truckId: r.id,
+        truckName: r.name,
+      })
       logVendorReminderAttempt({
         vendorId: r.id,
         email: r.email,
@@ -66,16 +79,113 @@ export async function sendVendorScheduleReminders(formData: FormData) {
 
   const failed = errors.length
   const skipped = noEmailSkipped
-  const errParam =
-    errors.length > 0
-      ? encodeURIComponent(
-          JSON.stringify(errors.slice(0, 8)).slice(0, 1500)
-        )
-      : ""
+  const { encoded: errsEncoded, truncated: errsTrunc } = failuresForReminderRedirectQuery(errors)
+  const errParam = errors.length > 0 ? `&errs=${errsEncoded}` : ""
+  const truncParam = errsTrunc ? "&reminderErrTrunc=1" : ""
 
   const keyQ = encodeURIComponent(adminKey)
   const base = `/admin/vendors?key=${keyQ}&reminder=1&attempted=${attempted}&sent=${sent}&skipped=${skipped}&failed=${failed}`
-  redirect(errParam ? `${base}&errs=${errParam}` : base)
+  redirect(`${base}${errParam}${truncParam}`)
+}
+
+const MAX_RETRY_RECIPIENTS = 250
+
+/** Re-send schedule reminders only for trucks that failed in a prior paced bulk/retry run. */
+export async function sendVendorScheduleRemindersRetry(formData: FormData) {
+  const rawKey = (formData.get("adminKey") as string | null) ?? ""
+  const adminKey = rawKey.trim()
+
+  if (!adminKeyOk(adminKey)) {
+    redirect("/admin/vendors")
+  }
+
+  const keyQ = encodeURIComponent(adminKey)
+  const rawJson = formData.get("retryRecipients")
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(String(rawJson ?? "[]"))
+  } catch {
+    redirect(`/admin/vendors?key=${keyQ}&retryParseErr=1`)
+  }
+
+  if (!Array.isArray(parsed)) {
+    redirect(`/admin/vendors?key=${keyQ}&retryParseErr=1`)
+  }
+
+  const rows = parsed.slice(0, MAX_RETRY_RECIPIENTS) as {
+    email?: unknown
+    truckId?: unknown
+    truckName?: unknown
+  }[]
+
+  const recipients: VendorReminderRecipient[] = []
+  const seenEmail = new Set<string>()
+
+  for (const row of rows) {
+    const email =
+      typeof row.email === "string" ? row.email.trim() : ""
+    const truckId =
+      typeof row.truckId === "string" ? row.truckId.trim() : ""
+    const truckName =
+      typeof row.truckName === "string"
+        ? row.truckName.trim()
+        : "there"
+    if (!email.includes("@") || !truckId || !isPlausibleVendorEmail(email)) continue
+    const k = email.toLowerCase()
+    if (seenEmail.has(k)) continue
+    seenEmail.add(k)
+    recipients.push({ id: truckId, name: truckName || "there", email })
+  }
+
+  if (recipients.length === 0) {
+    redirect(`/admin/vendors?key=${keyQ}&retryEmpty=1`)
+  }
+
+  let attempted = 0
+  let sent = 0
+  const errors: VendorReminderSendFailureReport[] = []
+
+  for (let i = 0; i < recipients.length; i++) {
+    const r = recipients[i]
+    if (i > 0) await pauseBetweenVendorReminderSends()
+    attempted++
+    const result = await sendVendorScheduleReminderEmail({
+      to: r.email,
+      truckName: r.name,
+      truckId: r.id,
+    })
+    if (result.ok) {
+      sent++
+      logVendorReminderAttempt({
+        vendorId: r.id,
+        email: r.email,
+        status: "sent",
+        errorMessage: null,
+      })
+    } else {
+      errors.push({
+        email: r.email,
+        message: result.error,
+        truckId: r.id,
+        truckName: r.name,
+      })
+      logVendorReminderAttempt({
+        vendorId: r.id,
+        email: r.email,
+        status: "failed",
+        errorMessage: result.error,
+      })
+    }
+  }
+
+  const failed = errors.length
+  const skipped = 0
+  const { encoded: errsEncoded, truncated: errsTrunc } = failuresForReminderRedirectQuery(errors)
+  const errParam = errors.length > 0 ? `&errs=${errsEncoded}` : ""
+  const truncParam = errsTrunc ? "&reminderErrTrunc=1" : ""
+
+  const base = `/admin/vendors?key=${keyQ}&reminderRetry=1&attempted=${attempted}&sent=${sent}&skipped=${skipped}&failed=${failed}`
+  redirect(`${base}${errParam}${truncParam}`)
 }
 
 const TEST_GREETING_NAME = "Nicole"
@@ -163,13 +273,6 @@ export async function sendVendorProfileReminderTestToAdmin(formData: FormData) {
   )
 }
 
-const PROFILE_REMINDER_BATCH_SIZE = 10
-const PROFILE_REMINDER_BATCH_DELAY_MS = 550
-
-function profileReminderBatchDelay(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms))
-}
-
 /**
  * Sends profile + live pin reminder to all eligible directory vendors (deduped). Manual button only.
  */
@@ -186,15 +289,13 @@ export async function sendVendorProfileRemindersBulk(formData: FormData) {
   const { recipients, eligibleTruckCount } = await fetchVendorProfileReminderRecipients(supabase)
 
   const skipped = eligibleTruckCount - recipients.length
-  const errors: { email: string; message: string }[] = []
+  const errors: VendorReminderSendFailureReport[] = []
   let sent = 0
 
   for (let i = 0; i < recipients.length; i++) {
-    if (i > 0 && i % PROFILE_REMINDER_BATCH_SIZE === 0) {
-      await profileReminderBatchDelay(PROFILE_REMINDER_BATCH_DELAY_MS)
-    }
-
     const r = recipients[i]
+    if (i > 0) await pauseBetweenVendorReminderSends()
+
     const result = await sendVendorProfileReminderEmail({ to: r.email, truckId: r.id })
     if (result.ok) {
       sent++
@@ -205,7 +306,12 @@ export async function sendVendorProfileRemindersBulk(formData: FormData) {
         errorMessage: null,
       })
     } else {
-      errors.push({ email: r.email, message: result.error })
+      errors.push({
+        email: r.email,
+        message: result.error,
+        truckId: r.id,
+        truckName: r.name,
+      })
       console.error("[profile-reminder-bulk] failed:", r.email, result.error)
       logVendorReminderAttempt({
         vendorId: r.id,
@@ -218,11 +324,10 @@ export async function sendVendorProfileRemindersBulk(formData: FormData) {
 
   const attempted = recipients.length
   const failed = errors.length
-  const errParam =
-    errors.length > 0
-      ? encodeURIComponent(JSON.stringify(errors.slice(0, 12)).slice(0, 2000))
-      : ""
+  const { encoded: pbErrsEncoded, truncated: pbTrunc } = failuresForReminderRedirectQuery(errors)
+  const errParam = errors.length > 0 ? `&pbErrs=${pbErrsEncoded}` : ""
+  const truncParam = pbTrunc ? "&pbErrTrunc=1" : ""
 
   const base = `/admin/vendors?key=${keyQ}&profileBulk=1&pbAttempted=${attempted}&pbSent=${sent}&pbSkipped=${skipped}&pbFailed=${failed}`
-  redirect(errParam ? `${base}&pbErrs=${errParam}` : base)
+  redirect(`${base}${errParam}${truncParam}`)
 }

@@ -17,6 +17,7 @@ import { VendorScheduleReminderSend } from "@/components/admin/vendor-schedule-r
 import { VendorScheduleReminderTestSend } from "@/components/admin/vendor-schedule-reminder-test-send"
 import { VendorProfileReminderTestSend } from "@/components/admin/vendor-profile-reminder-test-send"
 import { VendorProfileReminderBulkSend } from "@/components/admin/vendor-profile-reminder-bulk-send"
+import { VendorScheduleReminderRetryFailures } from "@/components/admin/vendor-schedule-reminder-retry"
 import { AdminTruckPhotoReplace } from "@/components/admin/admin-truck-photo-replace"
 
 export const metadata: Metadata = {
@@ -207,6 +208,10 @@ export default async function AdminVendorsPage({
     key?: string
     duplicate?: string
     reminder?: string
+    reminderRetry?: string
+    reminderErrTrunc?: string
+    retryParseErr?: string
+    retryEmpty?: string
     attempted?: string
     sent?: string
     skipped?: string
@@ -224,20 +229,36 @@ export default async function AdminVendorsPage({
     pbSkipped?: string
     pbFailed?: string
     pbErrs?: string
+    pbErrTrunc?: string
   }>
 }) {
   const params = await searchParams
   const key = params?.key
   const duplicateNotice = params?.duplicate === "1"
-  const reminderDone = params?.reminder === "1"
+  const reminderDone = params?.reminder === "1" || params?.reminderRetry === "1"
+  const reminderRetryRun = params?.reminderRetry === "1"
+  const reminderErrorsTruncated = params?.reminderErrTrunc === "1"
+  const pbErrorsTruncated = params?.pbErrTrunc === "1"
+  const retryScheduleParseErr = params?.retryParseErr === "1"
+  const retryScheduleEmpty = params?.retryEmpty === "1"
   const attempted = parseInt(params?.attempted ?? "", 10)
   const sent = parseInt(params?.sent ?? "", 10)
   const skipped = parseInt(params?.skipped ?? "", 10)
   const failed = parseInt(params?.failed ?? "", 10)
-  let reminderErrors: { email: string; message: string }[] = []
+  let reminderErrors: {
+    email: string
+    message: string
+    truckId?: string
+    truckName?: string
+  }[] = []
   if (params?.errs) {
     try {
-      reminderErrors = JSON.parse(decodeURIComponent(params.errs)) as { email: string; message: string }[]
+      reminderErrors = JSON.parse(decodeURIComponent(params.errs)) as {
+        email: string
+        message: string
+        truckId?: string
+        truckName?: string
+      }[]
     } catch {
       reminderErrors = []
     }
@@ -253,10 +274,20 @@ export default async function AdminVendorsPage({
   const pbSent = parseInt(params?.pbSent ?? "", 10)
   const pbSkipped = parseInt(params?.pbSkipped ?? "", 10)
   const pbFailed = parseInt(params?.pbFailed ?? "", 10)
-  let profileBulkErrors: { email: string; message: string }[] = []
+  let profileBulkErrors: {
+    email: string
+    message: string
+    truckId?: string
+    truckName?: string
+  }[] = []
   if (params?.pbErrs) {
     try {
-      profileBulkErrors = JSON.parse(decodeURIComponent(params.pbErrs)) as { email: string; message: string }[]
+      profileBulkErrors = JSON.parse(decodeURIComponent(params.pbErrs)) as {
+        email: string
+        message: string
+        truckId?: string
+        truckName?: string
+      }[]
     } catch {
       profileBulkErrors = []
     }
@@ -335,6 +366,18 @@ export default async function AdminVendorsPage({
             </div>
           ) : null}
 
+          {retryScheduleParseErr ? (
+            <div className="mb-6 rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-foreground">
+              Could not parse retry recipient list — no emails were sent. Start from the bulk run banner or try again.
+            </div>
+          ) : null}
+
+          {retryScheduleEmpty ? (
+            <div className="mb-6 rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-foreground">
+              Retry payload had no valid recipient rows — no emails were sent.
+            </div>
+          ) : null}
+
           {testReminderDone ? (
             <div
               className={`mb-6 rounded-lg border px-4 py-3 text-sm ${
@@ -403,7 +446,18 @@ export default async function AdminVendorsPage({
               </ul>
               {profileBulkErrors.length > 0 ? (
                 <div className="pt-2 border-t border-border">
-                  <p className="text-xs font-medium text-destructive mb-1">Errors</p>
+                  <p className="text-xs font-medium text-destructive mb-1">
+                    Errors ({profileBulkErrors.length} shown here
+                    {Number.isFinite(pbFailed) && pbFailed !== profileBulkErrors.length
+                      ? ` of ${pbFailed} failed`
+                      : ""}
+                    )
+                  </p>
+                  {pbErrorsTruncated ? (
+                    <p className="text-xs text-amber-700 dark:text-amber-500/90 mb-2">
+                      List trimmed to fit URL length — check server logs for any missing rows or run another bulk/retry send.
+                    </p>
+                  ) : null}
                   <ul className="text-xs text-muted-foreground space-y-1 break-all">
                     {profileBulkErrors.map((e, i) => (
                       <li key={`${e.email}-pb-${i}`}>
@@ -418,7 +472,9 @@ export default async function AdminVendorsPage({
 
           {reminderDone && Number.isFinite(attempted) ? (
             <div className="mb-6 rounded-lg border border-border bg-card px-4 py-3 text-sm space-y-2">
-              <p className="font-medium text-foreground">Vendor reminder run complete</p>
+              <p className="font-medium text-foreground">
+                {reminderRetryRun ? "Vendor reminder retry complete" : "Vendor reminder bulk send complete"}
+              </p>
               <ul className="list-disc list-inside text-muted-foreground space-y-0.5">
                 <li>
                   Attempted: <span className="text-foreground tabular-nums">{attempted}</span>
@@ -427,7 +483,11 @@ export default async function AdminVendorsPage({
                   Sent: <span className="text-foreground tabular-nums">{sent}</span>
                 </li>
                 <li>
-                  Skipped (no valid / duplicate inbox vs. listing rows):{" "}
+                  Skipped (
+                  {reminderRetryRun
+                    ? "not used on retry batches"
+                    : "no valid / duplicate inbox vs. listing rows"}
+                  ):{" "}
                   <span className="text-foreground tabular-nums">
                     {Number.isFinite(skipped) ? skipped : "—"}
                   </span>
@@ -440,7 +500,16 @@ export default async function AdminVendorsPage({
               </ul>
               {reminderErrors.length > 0 ? (
                 <div className="pt-2 border-t border-border">
-                  <p className="text-xs font-medium text-destructive mb-1">Errors</p>
+                  <p className="text-xs font-medium text-destructive mb-1">
+                    Failed addresses & reasons ({reminderErrors.length} shown here
+                    {Number.isFinite(failed) && failed !== reminderErrors.length ? ` of ${failed} failed` : ""})
+                  </p>
+                  {reminderErrorsTruncated ? (
+                    <p className="text-xs text-amber-700 dark:text-amber-500/90 mb-2">
+                      Error list trimmed to fit URL length; retry below includes only recipients with IDs in this list.
+                      Check logs for omitted rows after very large batches.
+                    </p>
+                  ) : null}
                   <ul className="text-xs text-muted-foreground space-y-1 break-all">
                     {reminderErrors.map((e, i) => (
                       <li key={`${e.email}-${i}`}>
@@ -448,6 +517,7 @@ export default async function AdminVendorsPage({
                       </li>
                     ))}
                   </ul>
+                  {key ? <VendorScheduleReminderRetryFailures adminKey={key} failures={reminderErrors} /> : null}
                 </div>
               ) : null}
             </div>
@@ -459,7 +529,9 @@ export default async function AdminVendorsPage({
               <CardDescription>
                 Manually email active directory vendors to update their weekly schedule or mark themselves live. Uses{" "}
                 <span className="text-foreground font-medium">Resend</span> (same as other site email). One message per
-                unique email; trucks without a valid address are skipped.
+                unique email; trucks without a valid address are skipped. Bulk sends wait ~300ms between each outbound
+                request to reduce Resend <span className="text-foreground">429</span> rate-limit errors (failed rows can be
+                retried without repeating successes).
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
