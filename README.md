@@ -1,87 +1,167 @@
-# Food Truck Charlotte
+# FoodTruck CLT
 
-Food Truck Charlotte is a community-powered local media, discovery, and booking-intent website for the Charlotte food truck scene.
+FoodTruckCLT is a community-powered Charlotte food truck platform with:
+
+- **Live map** — real-time pins and what's happening now
+- **Vendor dashboards** — truck profile, photos, go-live, requests to confirm
+- **Admin command center** — bookings, vendors, events, housekeeping (e.g. missing images), vendor email engagement
+- **Truck listings** — public discovery
+- **Event promotion** — public events surfaced with admin-managed imagery
+- **Booking request routing** — specific vendors, cuisines/categories, and open-market requests where applicable
+- **Phone / home-screen shortcuts** — consumer and vendor manifests (see PWA section)
 
 ## Stack
 
 - Next.js (App Router) + TypeScript
 - Tailwind CSS
-- Local mock data (no database in v1)
-- Ready to deploy on Vercel
+- Supabase (Postgres database + auth)
+- Resend (transactional and vendor-facing email)
+- Google Maps (`@vis.gl/react-google-maps`)
+- Vercel (typical deployment)
+- PWA-style manifests and home-screen icons
 
-## Environment variables (forms & email)
+## Environment variables
 
-Inquiry forms (**Book a Truck**, **For Trucks**, **For Venues**) send email via [Resend](https://resend.com).
+Create `.env.local` for local development (never commit secrets). On Vercel, set **Production** (and **Preview**/`Development` if you use them) then redeploy after changes.
 
-1. Copy the example env file and fill in values:
-   ```bash
-   cp .env.example .env.local
-   ```
-2. Set:
-   - **`RESEND_API_KEY`** — from the Resend dashboard (API Keys).
-   - **`INQUIRY_TO_EMAIL`** — the inbox that should receive submissions.
-   - **`RESEND_FROM_EMAIL`** — sender address. For production, use an address on a domain you verify in Resend. For initial testing, Resend documents using `onboarding@resend.dev` with their test flow.
+**Supabase**
 
-3. Restart `npm run dev` after changing `.env.local`.
+| Variable | Role |
+| --- | --- |
+| `NEXT_PUBLIC_SUPABASE_URL` | Public anon client |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Public anon client |
+| `SUPABASE_SERVICE_ROLE_KEY` | Server-only; bypasses RLS for trusted jobs (service role) |
 
-### Vercel
+Missing Supabase URLs/keys breaks auth, dashboards, and any screens that load live data.
 
-1. Project → **Settings** → **Environment Variables**.
-2. Add the same keys for **Production** (and **Preview** if you want forms to work on preview deploys).
-3. Redeploy so the new variables apply.
+**Email (Resend + forms)**
 
-Without these variables, form submissions show a **configuration error** instead of sending email.
+| Variable | Role |
+| --- | --- |
+| `RESEND_API_KEY` | Send mail via Resend |
+| `RESEND_FROM_EMAIL` | Verified sender |
+| `INQUIRY_TO_EMAIL` | Inbox for public inquiry/booking-intent flows |
+| `RESEND_WEBHOOK_SECRET` | Verifies **`POST /api/resend/webhook`** (Svix signing secret from Resend). If unset, the route returns **503** `{"error":"webhook not configured"}`. |
 
-## Local Development
+Missing Resend/form variables breaks outbound email and form submission paths that depend on them.
 
-1. Install dependencies:
-   ```bash
-   npm install
-   ```
-2. Configure `.env.local` (see [Environment variables](#environment-variables-forms--email) above).
-3. Start the dev server:
-   ```bash
-   npm run dev
-   ```
-4. Open the app:
-   - [http://localhost:3000](http://localhost:3000)
-   - If port 3000 is in use, Next.js will choose another port.
+**Admin**
 
-## Project Structure
+| Variable | Role |
+| --- | --- |
+| `ADMIN_KEY` | Shared secret for admin UI actions (set a strong value in production; do not rely on defaults). |
 
-- `app/` route pages and layout
-- `components/` reusable UI building blocks
-- `data/` mock truck and event datasets
-- `lib/` shared helpers and types
+**Maps**
 
-## Included Launch Basics
+| Variable | Role |
+| --- | --- |
+| `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` | Map tiles / Places as used in the app |
+| `NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID` | Map styling (optional but used where configured) |
 
-- Page-level metadata for SEO
-- Open Graph + Twitter preview image route (`app/opengraph-image.tsx`)
-- Crawl files: `app/sitemap.ts` and `app/robots.ts`
-- Responsive mobile-first layouts and forms
+Optional: `NEXT_PUBLIC_ROOT_DOMAIN` — used for subdomain-aware routing in some helpers (defaults toward production apex if unset).
 
-## Vercel Deployment
+## Core product flows
 
-1. Push this repo to GitHub.
-2. Import the project into [Vercel](https://vercel.com/new).
-3. Use default Next.js settings.
-4. Deploy.
+### Public live map
 
-**Required for working inquiry forms:** `RESEND_API_KEY`, `INQUIRY_TO_EMAIL`, and a verified `RESEND_FROM_EMAIL` (or Resend’s documented test sender for development). See [Environment variables](#environment-variables-forms--email) above.
+Real-time truck pins and events that are “on” now, built on Google Maps.
 
-## Supabase auth (vendor subdomain)
+### Vendor dashboard
 
-In **Supabase Dashboard → Authentication → URL Configuration**:
+Truck profile and photos, go-live / live location, and booking or opportunity requests that need vendor confirmation. Truck ownership is tied to the signed-in user by **matching the session email to `trucks.email`** (see Supabase).
 
-- **`Site URL`** is often `https://www.foodtruckclt.com` (or apex). Vendor magic links must resolve on `vendor.foodtruckclt.com`, so callbacks need to be explicitly allowlisted.
-- Under **Redirect URLs**, include at least:
+### Admin command center
 
-  `https://vendor.foodtruckclt.com/auth/callback*`  
-  `https://www.foodtruckclt.com/auth/callback*`
+Operational views for bookings, vendors, events, gaps (e.g. missing photos/images), and vendor email engagement fed by the Resend webhook.
 
-  Add apex, preview, or staging hosts that sign users in via email links.
+### Booking requests
 
-Magic links append `next=/dashboard/live` (vendor) via `…/auth/callback?next=…`. If full callback URLs with query strings are not allowed, Supabase may fall back to the site URL (`www`), which breaks the vendor-subdomain login flow.
+Flows support routing to a **specific vendor**, **cuisine/category** matching, and **open** requests where the product rules allow it.
 
-For reference on the vendor host, flows use **`/vendor-login`**, **`/dashboard`**, and **`/dashboard/live`** (`https://vendor.foodtruckclt.com/...`).
+### Truck opportunities
+
+Opportunities appear as rows in the vendor dashboard for eligible trucks; they are **not** a blast to every vendor by default.
+
+### Event promotion
+
+Public events UX plus admin tooling for images and listings.
+
+### PWA / home-screen
+
+- Consumer-oriented install uses **`start_url: /map`** (default manifest when not on a role subdomain).
+- Vendor-oriented install uses **`start_url: /dashboard/live`** (vendor role manifest).
+- Admin install uses **`/admin`** when served as the admin role manifest.
+
+## Supabase
+
+- SQL migrations live in **`supabase/migrations/`**.
+- Production (and any shared environment) must have migrations applied—manually in the Supabase SQL editor, or via the [Supabase CLI](https://supabase.com/docs/guides/cli) linked to the project.
+- Auth is **magic link / email OTP** (no password flow in the usual vendor path).
+- Vendor dashboard truck resolution: **logged-in user email ↔ `trucks.email`** until/unless you add explicit user–truck links elsewhere.
+
+### Auth URLs (production)
+
+Primary vendor sign-in for most users today:
+
+`https://www.foodtruckclt.com/vendor-login`
+
+If you serve the app on **`vendor.foodtruckclt.com`** (or other role hosts), add matching callback URLs in **Supabase Dashboard → Authentication → URL Configuration → Redirect URLs**, for example:
+
+- `https://www.foodtruckclt.com/auth/callback*`
+- `https://vendor.foodtruckclt.com/auth/callback*` (only if that host is in use)
+
+Magic links can include `…/auth/callback?next=…`. If the full callback URL is not allowlisted, Supabase may fall back to **Site URL** (often `www`), which breaks subdomain-only flows.
+
+## Resend
+
+- Resend sends admin, vendor, and customer-facing mail as implemented in the codebase.
+- **Webhook:** `POST /api/resend/webhook`
+- **Health check:** `GET /api/resend/webhook` returns JSON (`ok`, `endpoint`, `methods`, `message`) so you can confirm the route is deployed from a browser.
+- Configure events such as **sent**, **delivered**, **opened**, **clicked**, **bounced**, **failed**, **complained** (the handler recognizes those Resend event types and records what it can).
+- **Verification:** Resend signs webhooks with **Svix** (`svix-id`, `svix-timestamp`, `svix-signature`). The app verifies with the **`svix`** package and **`RESEND_WEBHOOK_SECRET`** (signing secret from Resend, often `whsec_…`).
+- **Production:** If **`RESEND_WEBHOOK_SECRET`** is missing, `POST` returns **503** `webhook not configured` (no fake success).
+- **Local:** With `NODE_ENV=development` and **no** `RESEND_WEBHOOK_SECRET`, `POST` accepts **unsigned** JSON for manual testing (body is logged truncated). With the secret set locally, verification behaves like production.
+- **Open** tracking is approximate; **click** tracking tends to be more reliable for engagement.
+
+## PWA / home-screen icons
+
+- Regenerate raster icons after changing the master asset:
+
+  ```bash
+  npm run generate:pwa-icons
+  ```
+
+- Source image: **`scripts/assets/ftclt-app-icon.png`**
+- OSes often **cache** home-screen icons; after updates, users may need to remove and re-add the shortcut to see new artwork.
+
+## Local development
+
+```bash
+npm install
+npm run dev
+```
+
+Optional checks:
+
+```bash
+npm run build
+npm run generate:pwa-icons
+```
+
+Open [http://localhost:3000](http://localhost:3000); if port 3000 is taken, Next.js picks another.
+
+## Project structure (short)
+
+- `app/` — routes, layouts, API routes
+- `components/` — UI
+- `lib/` — shared logic (Supabase clients, email, admin helpers, etc.)
+- `supabase/migrations/` — database migrations
+- `scripts/` — icon generation and assets
+
+## Vercel deployment
+
+1. Connect the repo and use the default Next.js settings.
+2. Add all required environment variables for **Production**.
+3. Deploy / redeploy after env changes.
+
+For inquiry-style forms: `RESEND_API_KEY`, `INQUIRY_TO_EMAIL`, and a verified `RESEND_FROM_EMAIL` (or Resend’s documented test sender in development) must be set; add **`RESEND_WEBHOOK_SECRET`** if you use the Resend webhook in that environment.

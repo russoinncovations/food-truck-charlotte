@@ -14,14 +14,24 @@ export type VendorEmailEventInsert = {
 /**
  * Persists vendor email lifecycle rows. Requires SUPABASE_SERVICE_ROLE_KEY (same as other admin writes).
  */
-export async function insertVendorEmailEvent(row: VendorEmailEventInsert): Promise<void> {
+/** @returns whether the row was persisted (false if skipped or DB error). */
+export async function insertVendorEmailEvent(row: VendorEmailEventInsert): Promise<boolean> {
   const admin = createAdminSupabaseClient()
   if (!admin) {
     console.warn("[vendor_email_events] skip insert (no service role):", row.eventType)
-    return
+    return false
   }
 
   const ts = row.eventTimestamp?.trim() || new Date().toISOString()
+
+  let payload: Record<string, unknown> | null = null
+  if (row.rawPayload !== undefined) {
+    try {
+      payload = JSON.parse(JSON.stringify(row.rawPayload)) as Record<string, unknown>
+    } catch {
+      payload = { _note: "raw_payload_serialisation_failed" }
+    }
+  }
 
   const { error } = await admin.from("vendor_email_events").insert({
     resend_email_id: row.resendEmailId,
@@ -31,12 +41,14 @@ export async function insertVendorEmailEvent(row: VendorEmailEventInsert): Promi
     event_type: row.eventType,
     event_timestamp: ts,
     link_url: row.linkUrl ?? null,
-    raw_payload: row.rawPayload === undefined ? null : (row.rawPayload as Record<string, unknown>),
+    raw_payload: payload,
   })
 
   if (error) {
-    console.error("[vendor_email_events] insert error:", error.message, row.eventType)
+    console.error("[vendor_email_events] insert error:", error.message, row.eventType, row.resendEmailId ?? "")
+    return false
   }
+  return true
 }
 
 /** First dispatch row for this Resend email id (for truck_id / campaign on webhook rows). */
