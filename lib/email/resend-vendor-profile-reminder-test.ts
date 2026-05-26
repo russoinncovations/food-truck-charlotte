@@ -1,5 +1,5 @@
 /**
- * “Profile + live pin” reminder — same HTML/subject for admin test and vendor bulk.
+ * Vendor Shortcut + Live Map reminder — same HTML/subject for admin test send (`INQUIRY_TO_EMAIL`) and vendor bulk send.
  */
 
 import {
@@ -9,7 +9,7 @@ import {
 import { insertVendorEmailEvent } from "@/lib/email/vendor-email-events"
 
 export const VENDOR_PROFILE_REMINDER_SUBJECT =
-  "Quick FoodTruckCLT reminder: update your profile + drop your live pin"
+  "FoodTruckCLT Vendor Shortcut + Live Map Reminder"
 
 function escapeHtml(s: string): string {
   return s
@@ -19,34 +19,38 @@ function escapeHtml(s: string): string {
     .replace(/"/g, "&quot;")
 }
 
-const LOGIN_URL = "https://www.foodtruckclt.com/vendor-login"
+const VENDOR_GO_LIVE_URL = "https://vendor.foodtruckclt.com/dashboard/live"
+const LIVE_MAP_URL = "https://live.foodtruckclt.com/map"
 
-/** Fixed vendor-facing body; preview is sent to admin only. */
+/** Vendor activation / Go Live reminder — shared by admin test send and vendor bulk send. */
 export function buildVendorProfileReminderHtml(): string {
+  const goLive = escapeHtml(VENDOR_GO_LIVE_URL)
+  const liveMap = escapeHtml(LIVE_MAP_URL)
   return `
 <p>Hi everyone,</p>
-<p>FoodTruckCLT now has 67 trucks, carts, and tents listed, and I&apos;m getting ready to start sharing the site and live map more consistently in the Facebook group.</p>
-<p>Before I do that, please take a few minutes to make sure your profile is ready.</p>
-<p><strong>Please check:</strong></p>
+<p>FoodTruckCLT is now set up so vendors can quickly manage their live map location from their phone.</p>
+<p>If you&apos;re serving, please use your vendor dashboard to turn your live pin on so people can find you in real time.</p>
+<p><strong>Vendor Go Live page:</strong><br />
+<a href="${VENDOR_GO_LIVE_URL}">${goLive}</a></p>
+<p>If you are not already logged in, you&apos;ll be asked to enter your email and use the sign-in link. After that, the shortcut should take you directly to your vendor tools.</p>
+<p><strong>A few reminders:</strong></p>
 <ol>
   <li>
-    <strong>Your photo is updated</strong><br />
-    Add a clear truck, cart, tent, logo, or food photo so people can recognize you.
+    <strong>Turn your live pin on when you&apos;re serving</strong><br />
+    This helps customers find you on the live map.
   </li>
   <li>
-    <strong>Your profile information is complete</strong><br />
-    Make sure your cuisine, contact info, social links, and description are accurate.
+    <strong>Turn it off when you&apos;re done</strong><br />
+    This keeps the map accurate and helps people trust it.
   </li>
   <li>
-    <strong>Drop your live location pin when you&apos;re serving</strong><br />
-    This is the biggest one. I&apos;d love to help promote where trucks are each day, but I can&apos;t share your live location if there isn&apos;t a pin on the map.
+    <strong>Update your photo/profile if needed</strong><br />
+    The more complete your profile is, the better it looks when people find your truck.
   </li>
 </ol>
-<p><strong>Vendor login:</strong><br />
-<a href="${LOGIN_URL}">${escapeHtml(LOGIN_URL)}</a></p>
-<p>Please use the same email address this message was sent to when logging in, since your dashboard is connected to that email.</p>
-<p>When you&apos;re out serving, log in and add your live location so people can find you in real time.</p>
-<p>Thank you for helping make this more useful for both vendors and the community.</p>
+<p><strong>Live map:</strong><br />
+<a href="${LIVE_MAP_URL}">${liveMap}</a></p>
+<p>Thank you for helping make this more useful for vendors and the Charlotte food truck community.</p>
 <p>— Nicole<br />FoodTruckCLT</p>
 `.trim()
 }
@@ -103,7 +107,7 @@ export async function sendVendorProfileReminderEmail(opts: {
         campaign,
         eventType: "dispatch.log",
         rawPayload: {
-          template: "vendor_profile_pin_reminder",
+          template: "vendor_shortcut_live_map_reminder",
           subject: VENDOR_PROFILE_REMINDER_SUBJECT,
         },
       })

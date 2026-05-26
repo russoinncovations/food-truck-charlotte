@@ -367,7 +367,7 @@ export default async function AdminVendorsPage({
             >
               {profileReminderTestOk ? (
                 <p>
-                  <span className="font-medium text-foreground">Profile reminder preview sent.</span> Check{" "}
+                  <span className="font-medium text-foreground">Shortcut + live map reminder preview sent.</span> Check{" "}
                   <code className="text-xs">INQUIRY_TO_EMAIL</code>. No vendor inboxes were used.
                 </p>
               ) : (
@@ -381,7 +381,7 @@ export default async function AdminVendorsPage({
 
           {profileBulkDone && Number.isFinite(pbAttempted) ? (
             <div className="mb-6 rounded-lg border border-border bg-card px-4 py-3 text-sm space-y-2">
-              <p className="font-medium text-foreground">Profile reminder bulk send complete</p>
+              <p className="font-medium text-foreground">Vendor shortcut + live map reminder bulk send complete</p>
               <ul className="list-disc list-inside text-muted-foreground space-y-0.5">
                 <li>
                   Attempted: <span className="text-foreground tabular-nums">{pbAttempted}</span>
@@ -501,11 +501,12 @@ export default async function AdminVendorsPage({
 
               <div className="pt-6 border-t border-border space-y-4">
                 <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                  Profile + live pin reminder (preview)
+                  Vendor shortcut + live map reminder (preview)
                 </p>
                 <p className="text-xs text-muted-foreground max-w-2xl">
-                  Review the Nicole “update profile + drop your live pin” draft in your inquiry inbox before any vendor
-                  blast.
+                  Review the Vendor Shortcut + Live Map Reminder draft in your inquiry inbox before bulk send to vendors.
+                  Links use <strong className="text-foreground">vendor.*</strong> (Go Live) and{" "}
+                  <strong className="text-foreground">live.*</strong> (map).
                 </p>
                 {key ? (
                   <VendorProfileReminderTestSend adminKey={key} inquiryEmailConfigured={inquiryEmailConfigured} />

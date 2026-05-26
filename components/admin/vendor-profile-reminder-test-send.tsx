@@ -19,7 +19,7 @@ type Props = {
 }
 
 /**
- * Test send: profile + live pin reminder copy only to INQUIRY_TO_EMAIL. No vendors.
+ * Test send: vendor shortcut + live map reminder only to INQUIRY_TO_EMAIL. No vendors.
  */
 export function VendorProfileReminderTestSend({ adminKey, inquiryEmailConfigured }: Props) {
   return (
@@ -34,8 +34,8 @@ export function VendorProfileReminderTestSend({ adminKey, inquiryEmailConfigured
         </p>
       ) : (
         <p className="text-xs text-muted-foreground max-w-md">
-          Sends the draft “profile + live pin” message to <code className="text-[10px]">INQUIRY_TO_EMAIL</code> only for
-          review. Does not use the vendor list.
+          Sends the “Vendor Shortcut + Live Map Reminder” message to{" "}
+          <code className="text-[10px]">INQUIRY_TO_EMAIL</code> only for review. Does not use the vendor list.
         </p>
       )}
     </div>

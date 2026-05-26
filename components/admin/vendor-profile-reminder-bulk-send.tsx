@@ -54,11 +54,11 @@ export function VendorProfileReminderBulkSend({ adminKey, recipientCount, eligib
           <form action={sendVendorProfileRemindersBulk}>
             <input type="hidden" name="adminKey" value={adminKey} />
             <AlertDialogHeader>
-              <AlertDialogTitle>Send profile reminder to all vendors?</AlertDialogTitle>
+              <AlertDialogTitle>Send vendor shortcut + live map reminder?</AlertDialogTitle>
               <AlertDialogDescription asChild>
                 <div className="space-y-2 text-muted-foreground text-sm">
                   <p>
-                    This will email the approved &quot;profile + live pin&quot; message to{" "}
+                    This will email the approved &quot;Vendor Shortcut + Live Map Reminder&quot; message to{" "}
                     <strong className="text-foreground">{recipientCount}</strong> unique{" "}
                     {recipientCount === 1 ? "address" : "addresses"}.
                   </p>
