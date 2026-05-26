@@ -1,4 +1,4 @@
-import { getPublicSiteBase } from "@/lib/email/public-site-base"
+import { VENDOR_EMAIL_GO_LIVE_DASHBOARD_URL } from "@/lib/email/vendor-email-public-links"
 import {
   VENDOR_EMAIL_CAMPAIGN_SCHEDULE_REMINDER,
   VENDOR_EMAIL_CAMPAIGN_SCHEDULE_REMINDER_TEST,
@@ -18,13 +18,15 @@ export const VENDOR_SCHEDULE_REMINDER_SUBJECT = "Serving this week? Add your sch
 export function buildVendorScheduleReminderHtml(truckName: string, dashboardUrl: string): string {
   /** Greeting: bulk uses trucks.name (business name); test send uses "Nicole". Empty → "Hi there,". */
   const name = escapeHtml((truckName ?? "").trim() || "there")
-  const dash = escapeHtml(dashboardUrl)
+  /** Raw URL for `href`; display text escaped (same constant today — avoids preview hosts in links). */
+  const dashHref = dashboardUrl.trim()
+  const dashLabel = escapeHtml(dashHref)
   return `
 <p>Hi ${name},</p>
 <p>If you're serving this week, take a minute to add your locations or mark yourself live on FoodTruckCLT.</p>
 <p>Trucks with current locations are easier for customers, event hosts, breweries, neighborhoods, and offices to find.</p>
 <p>You can log in here:</p>
-<p><a href="${dash}">${dash}</a></p>
+<p><a href="${dashHref}">${dashLabel}</a></p>
 <p>When you're parked and serving, use:</p>
 <p><strong>"I'm Serving Now — Add Me to the Map"</strong></p>
 <p>Thanks for helping make FoodTruckCLT a more useful Charlotte food truck guide.</p>
@@ -58,7 +60,7 @@ export async function sendVendorScheduleReminderEmail(opts: {
     return { ok: false, error: "Missing recipient email" }
   }
 
-  const dashboardUrl = `${getPublicSiteBase()}/dashboard`
+  const dashboardUrl = VENDOR_EMAIL_GO_LIVE_DASHBOARD_URL
   const campaign =
     opts.campaign ??
     (opts.truckId

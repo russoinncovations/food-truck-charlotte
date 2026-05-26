@@ -58,6 +58,14 @@ Missing Resend/form variables breaks outbound email and form submission paths th
 | `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` | Map tiles / Places as used in the app |
 | `NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID` | Map styling (optional but used where configured) |
 
+**Public site URL (optional)**
+
+| Variable | Role |
+| --- | --- |
+| `NEXT_PUBLIC_APP_URL` (or `NEXT_PUBLIC_SITE_URL` / `PUBLIC_SITE_URL` if you wire them in code) | Canonical **www** base for in-app behavior where referenced (production: **`https://www.foodtruckclt.com`**). |
+
+Vendor **reminder** emails use fixed production links in code (`https://vendor.foodtruckclt.com/dashboard/live`, `https://live.foodtruckclt.com/map`) so **preview `VERCEL_URL` hosts never appear** in those templates.
+
 Optional: `NEXT_PUBLIC_ROOT_DOMAIN` — used for subdomain-aware routing in some helpers (defaults toward production apex if unset).
 
 ## Core product flows

@@ -7,6 +7,10 @@ import {
   VENDOR_EMAIL_CAMPAIGN_PROFILE_PIN_TEST,
 } from "@/lib/email/vendor-email-campaigns"
 import { insertVendorEmailEvent } from "@/lib/email/vendor-email-events"
+import {
+  PUBLIC_LIVE_MAP_URL,
+  VENDOR_EMAIL_GO_LIVE_DASHBOARD_URL,
+} from "@/lib/email/vendor-email-public-links"
 
 export const VENDOR_PROFILE_REMINDER_SUBJECT =
   "FoodTruckCLT Vendor Shortcut + Live Map Reminder"
@@ -19,19 +23,16 @@ function escapeHtml(s: string): string {
     .replace(/"/g, "&quot;")
 }
 
-const VENDOR_GO_LIVE_URL = "https://vendor.foodtruckclt.com/dashboard/live"
-const LIVE_MAP_URL = "https://live.foodtruckclt.com/map"
-
 /** Vendor activation / Go Live reminder — shared by admin test send and vendor bulk send. */
 export function buildVendorProfileReminderHtml(): string {
-  const goLive = escapeHtml(VENDOR_GO_LIVE_URL)
-  const liveMap = escapeHtml(LIVE_MAP_URL)
+  const goLive = escapeHtml(VENDOR_EMAIL_GO_LIVE_DASHBOARD_URL)
+  const liveMap = escapeHtml(PUBLIC_LIVE_MAP_URL)
   return `
 <p>Hi everyone,</p>
 <p>FoodTruckCLT is now set up so vendors can quickly manage their live map location from their phone.</p>
 <p>If you&apos;re serving, please use your vendor dashboard to turn your live pin on so people can find you in real time.</p>
 <p><strong>Vendor Go Live page:</strong><br />
-<a href="${VENDOR_GO_LIVE_URL}">${goLive}</a></p>
+<a href="${VENDOR_EMAIL_GO_LIVE_DASHBOARD_URL}">${goLive}</a></p>
 <p>If you are not already logged in, you&apos;ll be asked to enter your email and use the sign-in link. After that, the shortcut should take you directly to your vendor tools.</p>
 <p><strong>A few reminders:</strong></p>
 <ol>
@@ -49,7 +50,7 @@ export function buildVendorProfileReminderHtml(): string {
   </li>
 </ol>
 <p><strong>Live map:</strong><br />
-<a href="${LIVE_MAP_URL}">${liveMap}</a></p>
+<a href="${PUBLIC_LIVE_MAP_URL}">${liveMap}</a></p>
 <p>Thank you for helping make this more useful for vendors and the Charlotte food truck community.</p>
 <p>— Nicole<br />FoodTruckCLT</p>
 `.trim()
