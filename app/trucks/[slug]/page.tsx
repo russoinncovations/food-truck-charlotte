@@ -15,6 +15,7 @@ import {
   ChevronLeft,
 } from "lucide-react"
 import { createClient } from "@/lib/supabase/server"
+import { PUBLIC_LISTED_TRUCK_EQ } from "@/lib/trucks/public-listed-truck-query"
 import { getTruckDisplayImage } from "@/lib/trucks/truck-display-image"
 
 interface Props {
@@ -36,9 +37,14 @@ function instagramHref(handle: string): string {
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { slug } = await params
+  const { slug: rawSlug } = await params
+  const slug = (rawSlug ?? "").trim()
+  if (!slug) {
+    return { title: "Truck Not Found | FoodTruck CLT" }
+  }
+
   const supabase = await createClient()
-  const { data: truck } = await supabase
+  const { data: truck, error } = await supabase
     .from("trucks")
     .select("name, short_description, description, full_description")
     .eq("slug", slug)
@@ -47,7 +53,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     .eq("status", PUBLIC_LISTED_TRUCK_EQ.status)
     .maybeSingle()
 
-  if (!truck) {
+  if (error || !truck) {
     return { title: "Truck Not Found | FoodTruck CLT" }
   }
 
@@ -57,16 +63,26 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     (truck.full_description as string | null) ??
     ""
 
+  const truckNameMeta =
+    typeof truck.name === "string" && truck.name.trim()
+      ? truck.name.trim()
+      : "Food truck"
+
   return {
-    title: `${truck.name} | FoodTruck CLT`,
-    description: description || `${truck.name} on FoodTruck CLT`,
+    title: `${truckNameMeta} | FoodTruck CLT`,
+    description: description || `${truckNameMeta} on FoodTruck CLT`,
   }
 }
 
 export default async function TruckProfilePage({ params }: Props) {
-  const { slug } = await params
+  const { slug: rawSlug } = await params
+  const slug = (rawSlug ?? "").trim()
+  if (!slug) {
+    notFound()
+  }
+
   const supabase = await createClient()
-  const { data: truck } = await supabase
+  const { data: truck, error } = await supabase
     .from("trucks")
     .select(
       "id, name, slug, short_description, description, full_description, cuisine, website, instagram, phone, booking_phone, serving_today, today_location, price_range, tagline, photo_url"
@@ -77,18 +93,33 @@ export default async function TruckProfilePage({ params }: Props) {
     .eq("status", PUBLIC_LISTED_TRUCK_EQ.status)
     .maybeSingle()
 
-  if (!truck) {
+  if (error || !truck) {
+    if (error) {
+      console.error("[trucks/slug]", slug, error.message)
+    }
     notFound()
   }
 
   const row = truck as Record<string, unknown>
-  const name = String(row.name ?? "")
+  const truckId =
+    typeof row.id === "string" && row.id.trim().length > 0 ? row.id.trim() : String(row.id ?? "")
+  if (!truckId) {
+    notFound()
+  }
+
+  const name =
+    typeof row.name === "string" && row.name.trim()
+      ? row.name.trim()
+      : slug.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
   const cuisineRaw = row.cuisine
-  const cuisineTags: string[] = Array.isArray(cuisineRaw)
-    ? (cuisineRaw as string[]).filter(Boolean)
-    : cuisineRaw
-      ? [String(cuisineRaw)]
-      : []
+  let cuisineTags: string[] = []
+  if (Array.isArray(cuisineRaw)) {
+    cuisineTags = (cuisineRaw as unknown[])
+      .map((c) => (typeof c === "string" ? c.trim() : String(c ?? "").trim()))
+      .filter(Boolean)
+  } else if (cuisineRaw != null && String(cuisineRaw).trim()) {
+    cuisineTags = [String(cuisineRaw).trim()]
+  }
 
   const bio =
     (row.short_description as string | null | undefined) ??
@@ -97,17 +128,16 @@ export default async function TruckProfilePage({ params }: Props) {
 
   const website = row.website as string | null | undefined
   const instagram = row.instagram as string | null | undefined
-  const phone =
-    (row.phone as string | null | undefined) ||
-    (row.booking_phone as string | null | undefined) ||
-    null
+  const rawPhone = typeof row.phone === "string" ? row.phone.trim() : ""
+  const rawBooking = typeof row.booking_phone === "string" ? row.booking_phone.trim() : ""
+  const phone = rawPhone || rawBooking || null
 
   const servingToday = Boolean(row.serving_today)
   const todayLocation = (row.today_location as string | null | undefined) ?? null
   const priceRange = (row.price_range as string | null | undefined) ?? null
   const tagline = (row.tagline as string | null | undefined) ?? null
 
-  const heroSrc = getTruckDisplayImage(String(row.id), row.photo_url as string | null | undefined)
+  const heroSrc = getTruckDisplayImage(truckId, row.photo_url as string | null | undefined)
 
   return (
     <main className="min-h-screen bg-background">
@@ -255,7 +285,7 @@ export default async function TruckProfilePage({ params }: Props) {
                 </p>
                 <Button className="w-full" asChild>
                   <Link
-                    href={`/book-a-truck?truck=${encodeURIComponent(String(row.id))}`}
+                    href={`/book-a-truck?truck=${encodeURIComponent(truckId)}`}
                     className="flex items-center justify-center gap-2"
                   >
                     <ExternalLink className="h-4 w-4" />
