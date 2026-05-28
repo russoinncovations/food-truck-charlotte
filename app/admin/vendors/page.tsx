@@ -355,9 +355,14 @@ export default async function AdminVendorsPage({
                 Approve listings to create directory trucks — no manual copy/paste.
               </p>
             </div>
-            <Button variant="outline" size="sm" asChild>
-              <Link href={`/admin/bookings${keyQ}`}>Booking admin</Link>
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button variant="outline" size="sm" asChild>
+                <Link href={`/admin/vendor-status-audit${keyQ}`}>Visibility audit</Link>
+              </Button>
+              <Button variant="outline" size="sm" asChild>
+                <Link href={`/admin/bookings${keyQ}`}>Booking admin</Link>
+              </Button>
+            </div>
           </div>
 
           {duplicateNotice ? (
