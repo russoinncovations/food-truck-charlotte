@@ -4,7 +4,7 @@ import { Header } from "@/components/header"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { VendorStatusAuditClient } from "@/components/admin/vendor-status-audit-client"
-import { fetchVendorStatusAuditRows } from "@/lib/admin/vendor-status-audit"
+import { fetchVendorStatusAudit } from "@/lib/admin/vendor-status-audit"
 import { ClipboardList, ChevronLeft } from "lucide-react"
 
 export const metadata: Metadata = {
@@ -31,7 +31,7 @@ export default async function AdminVendorStatusAuditPage({
   }
 
   const keyQ = `?key=${encodeURIComponent(key ?? "")}`
-  const { rows, summary } = await fetchVendorStatusAuditRows(`/admin/vendors${keyQ}`)
+  const { groups, summary } = await fetchVendorStatusAudit(`/admin/vendors${keyQ}`)
 
   return (
     <div className="min-h-screen bg-muted/30">
@@ -93,7 +93,7 @@ export default async function AdminVendorStatusAuditPage({
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <VendorStatusAuditClient rows={rows} summary={summary} initialQuery={initialQuery} />
+              <VendorStatusAuditClient groups={groups} summary={summary} initialQuery={initialQuery} />
             </CardContent>
           </Card>
         </div>

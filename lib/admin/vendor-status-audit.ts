@@ -19,9 +19,23 @@ export type VendorStatusIssueFlag =
   | "live_no_valid_coords"
   | "listed_inactive"
   | "blocked_by_rls"
+  | "historical_application_record"
+
+export type VendorAuditRowType =
+  | "active_truck"
+  | "truck_profile"
+  | "application_only"
+  | "historical_application"
+
+export type VendorAuditIssueSeverity = "critical" | "action" | "info"
+
+export type VendorStatusAuditIssue = {
+  flag: VendorStatusIssueFlag
+  severity: VendorAuditIssueSeverity
+}
 
 export type VendorStatusAuditRow = {
-  rowKind: "truck" | "application_only"
+  rowType: VendorAuditRowType
   truckId: string | null
   truckName: string
   slug: string | null
@@ -42,14 +56,33 @@ export type VendorStatusAuditRow = {
   onMapPinNow: boolean
   canAccessGoLiveDashboard: boolean
   lastUpdated: string | null
-  issueFlags: VendorStatusIssueFlag[]
+  issues: VendorStatusAuditIssue[]
   profileUrl: string | null
   adminVendorsUrl: string
   goLiveUrl: string | null
 }
 
+export type VendorStatusAuditGroup = {
+  groupKey: string
+  displayName: string
+  primary: VendorStatusAuditRow
+  linkedApplications: VendorStatusAuditRow[]
+  highestSeverity: "ready" | VendorAuditIssueSeverity
+  criticalCount: number
+  actionCount: number
+  infoCount: number
+  isReadyTruck: boolean
+}
+
 export type VendorStatusAuditSummary = {
   usedServiceRole: boolean
+  totalGroups: number
+  readyTruckProfiles: number
+  criticalBlockers: number
+  needsCleanup: number
+  applicationOnlyRecords: number
+  historicalApplicationRecords: number
+  /** @deprecated use totalGroups */
   totalRows: number
   truckRows: number
   applicationOnlyRows: number
@@ -92,8 +125,57 @@ type ApplicationRow = {
 
 const RECENT_ACTIVITY_MS = 60 * 24 * 60 * 60 * 1000
 
+const FLAG_SEVERITY: Record<VendorStatusIssueFlag, VendorAuditIssueSeverity> = {
+  missing_vendor_email: "critical",
+  not_connected_to_vendor_account: "critical",
+  hidden_from_directory: "critical",
+  not_map_eligible: "critical",
+  live_no_valid_coords: "critical",
+  blocked_by_rls: "critical",
+  no_slug: "action",
+  missing_location: "action",
+  missing_photo: "action",
+  application_not_approved: "action",
+  listed_inactive: "action",
+  duplicate_email: "info",
+  duplicate_truck_name: "info",
+  no_recent_activity: "info",
+  historical_application_record: "info",
+}
+
+export const ISSUE_LABELS: Record<VendorStatusIssueFlag, string> = {
+  application_not_approved: "Application not approved",
+  missing_vendor_email: "Missing vendor email",
+  duplicate_email: "Duplicate email (cross-vendor)",
+  duplicate_truck_name: "Duplicate name (cross-vendor)",
+  no_slug: "No slug",
+  hidden_from_directory: "Hidden / unlisted",
+  missing_location: "Missing location fields",
+  not_connected_to_vendor_account: "No auth account for email",
+  not_map_eligible: "Not map eligible",
+  no_recent_activity: "No recent activity (60d+)",
+  missing_photo: "Missing photo",
+  live_no_valid_coords: "Live but invalid coords",
+  listed_inactive: "Listed flag but inactive status",
+  blocked_by_rls: "Blocked by legacy active flag",
+  historical_application_record: "Historical application on file",
+}
+
 function trimStr(v: unknown): string {
   return typeof v === "string" ? v.trim() : ""
+}
+
+export function normalizeAuditName(name: string): string {
+  return name
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+}
+
+function issue(flag: VendorStatusIssueFlag): VendorStatusAuditIssue {
+  return { flag, severity: FLAG_SEVERITY[flag] }
 }
 
 function isPublicListed(truck: TruckRow): boolean {
@@ -124,6 +206,11 @@ function onMapPinNow(truck: TruckRow): boolean {
   return isRlsPublicVisible(truck) && truck.serving_today === true && hasLiveCoords(truck)
 }
 
+function truckRowType(truck: TruckRow, visible: boolean): VendorAuditRowType {
+  if (visible && truck.serving_today === true) return "active_truck"
+  return "truck_profile"
+}
+
 async function fetchAuthEmailIndex(
   admin: NonNullable<ReturnType<typeof createAdminSupabaseClient>>
 ): Promise<Map<string, string>> {
@@ -150,37 +237,42 @@ async function fetchAuthEmailIndex(
   return byEmail
 }
 
-function countDuplicates(values: (string | null | undefined)[]): Set<string> {
-  const counts = new Map<string, number>()
-  for (const raw of values) {
-    const v = trimStr(raw).toLowerCase()
-    if (!v) continue
-    counts.set(v, (counts.get(v) ?? 0) + 1)
+/** Duplicates among truck rows only (cross-vendor), not application history. */
+function truckDuplicateKeys(trucks: TruckRow[]): {
+  duplicateEmails: Set<string>
+  duplicateNames: Set<string>
+} {
+  const emailCounts = new Map<string, number>()
+  const nameCounts = new Map<string, number>()
+  for (const t of trucks) {
+    const e = trimStr(t.email).toLowerCase()
+    const n = normalizeAuditName(trimStr(t.name))
+    if (e) emailCounts.set(e, (emailCounts.get(e) ?? 0) + 1)
+    if (n) nameCounts.set(n, (nameCounts.get(n) ?? 0) + 1)
   }
-  const dups = new Set<string>()
-  for (const [k, n] of counts) {
-    if (n > 1) dups.add(k)
-  }
-  return dups
+  const duplicateEmails = new Set<string>()
+  const duplicateNames = new Set<string>()
+  for (const [k, n] of emailCounts) if (n > 1) duplicateEmails.add(k)
+  for (const [k, n] of nameCounts) if (n > 1) duplicateNames.add(k)
+  return { duplicateEmails, duplicateNames }
 }
 
-function computeTruckIssueFlags(opts: {
+function computeTruckIssues(opts: {
   truck: TruckRow
-  applicationStatus: string | null
+  primaryApplicationStatus: string | null
   duplicateEmails: Set<string>
   duplicateNames: Set<string>
   authByEmail: Map<string, string>
-}): VendorStatusIssueFlag[] {
-  const { truck, applicationStatus, duplicateEmails, duplicateNames, authByEmail } = opts
+}): VendorStatusAuditIssue[] {
+  const { truck, primaryApplicationStatus, duplicateEmails, duplicateNames, authByEmail } = opts
   const flags: VendorStatusIssueFlag[] = []
   const email = trimStr(truck.email)
-  const name = trimStr(truck.name)
   const emailKey = email.toLowerCase()
-  const nameKey = name.toLowerCase()
+  const nameKey = normalizeAuditName(trimStr(truck.name))
   const listed = isPublicListed(truck)
   const visible = isRlsPublicVisible(truck)
 
-  if (applicationStatus && applicationStatus !== "approved") {
+  if (primaryApplicationStatus && primaryApplicationStatus !== "approved") {
     flags.push("application_not_approved")
   }
 
@@ -217,25 +309,25 @@ function computeTruckIssueFlags(opts: {
     flags.push("no_recent_activity")
   }
 
-  return flags
+  return flags.map(issue)
 }
 
-function computeApplicationOnlyFlags(opts: {
+function computeStandaloneApplicationIssues(opts: {
   app: ApplicationRow
   duplicateEmails: Set<string>
   duplicateNames: Set<string>
   authByEmail: Map<string, string>
-}): VendorStatusIssueFlag[] {
+}): VendorStatusAuditIssue[] {
   const { app, duplicateEmails, duplicateNames, authByEmail } = opts
   const flags: VendorStatusIssueFlag[] = []
   const email = trimStr(app.email)
-  const name = trimStr(app.business_name)
   const emailKey = email.toLowerCase()
-  const nameKey = name.toLowerCase()
+  const nameKey = normalizeAuditName(trimStr(app.business_name))
   const status = trimStr(app.status) || "unknown"
 
   if (status !== "approved") flags.push("application_not_approved")
   if (!isPlausibleVendorEmail(email)) flags.push("missing_vendor_email")
+
   if (emailKey && duplicateEmails.has(emailKey)) flags.push("duplicate_email")
   if (nameKey && duplicateNames.has(nameKey)) flags.push("duplicate_truck_name")
 
@@ -245,16 +337,158 @@ function computeApplicationOnlyFlags(opts: {
     flags.push("not_connected_to_vendor_account")
   }
 
-  return [...new Set(flags)]
+  return [...new Set(flags)].map(issue)
 }
 
-export async function fetchVendorStatusAuditRows(adminVendorsUrl: string): Promise<{
-  rows: VendorStatusAuditRow[]
+function computeHistoricalApplicationIssues(app: ApplicationRow): VendorStatusAuditIssue[] {
+  const flags: VendorStatusIssueFlag[] = ["historical_application_record"]
+  const status = trimStr(app.status) || "unknown"
+  if (status !== "approved" && status !== "rejected") {
+    flags.push("application_not_approved")
+  }
+  return flags.map(issue)
+}
+
+function buildTruckRow(
+  truck: TruckRow,
+  opts: {
+    primaryApplicationStatus: string | null
+    applicationId: string | null
+    duplicateEmails: Set<string>
+    duplicateNames: Set<string>
+    authByEmail: Map<string, string>
+    adminVendorsUrl: string
+  }
+): VendorStatusAuditRow {
+  const email = trimStr(truck.email) || null
+  const emailKey = email?.toLowerCase() ?? ""
+  const slug = trimStr(truck.slug) || null
+  const visible = isRlsPublicVisible(truck)
+
+  return {
+    rowType: truckRowType(truck, visible),
+    truckId: truck.id,
+    truckName: trimStr(truck.name) || "Unnamed truck",
+    slug,
+    vendorEmail: email,
+    applicationId: opts.applicationId,
+    applicationStatus: opts.primaryApplicationStatus,
+    authUserId: emailKey ? opts.authByEmail.get(emailKey) ?? null : null,
+    showInDirectory: truck.show_in_directory,
+    isActive: truck.is_active,
+    listingStatus: truck.status,
+    legacyActive: truck.active,
+    hasPhoto: hasPhoto(truck),
+    hasLocationFields: hasLocationFields(truck),
+    hasCurrentLiveLocation: hasLiveCoords(truck),
+    servingToday: truck.serving_today === true,
+    visibleOnDirectory: visible,
+    eligibleForLiveMap: visible,
+    onMapPinNow: onMapPinNow(truck),
+    canAccessGoLiveDashboard: isPlausibleVendorEmail(email),
+    lastUpdated: truck.updated_at ?? truck.created_at,
+    issues: computeTruckIssues({
+      truck,
+      primaryApplicationStatus: opts.primaryApplicationStatus,
+      duplicateEmails: opts.duplicateEmails,
+      duplicateNames: opts.duplicateNames,
+      authByEmail: opts.authByEmail,
+    }),
+    profileUrl: slug ? `/trucks/${slug}` : null,
+    adminVendorsUrl: opts.adminVendorsUrl,
+    goLiveUrl: isPlausibleVendorEmail(email) ? VENDOR_EMAIL_GO_LIVE_DASHBOARD_URL : null,
+  }
+}
+
+function buildApplicationRow(
+  app: ApplicationRow,
+  rowType: VendorAuditRowType,
+  issues: VendorStatusAuditIssue[],
+  adminVendorsUrl: string,
+  authByEmail: Map<string, string>
+): VendorStatusAuditRow {
+  const email = trimStr(app.email) || null
+  const emailKey = email?.toLowerCase() ?? ""
+
+  return {
+    rowType,
+    truckId: app.approved_truck_id,
+    truckName: trimStr(app.business_name) || "Application (no truck row)",
+    slug: null,
+    vendorEmail: email,
+    applicationId: app.id,
+    applicationStatus: app.status,
+    authUserId: emailKey ? authByEmail.get(emailKey) ?? null : null,
+    showInDirectory: null,
+    isActive: null,
+    listingStatus: null,
+    legacyActive: null,
+    hasPhoto: false,
+    hasLocationFields: false,
+    hasCurrentLiveLocation: false,
+    servingToday: false,
+    visibleOnDirectory: false,
+    eligibleForLiveMap: false,
+    onMapPinNow: false,
+    canAccessGoLiveDashboard: isPlausibleVendorEmail(email),
+    lastUpdated: app.updated_at ?? app.created_at,
+    issues,
+    profileUrl: null,
+    adminVendorsUrl,
+    goLiveUrl: isPlausibleVendorEmail(email) ? VENDOR_EMAIL_GO_LIVE_DASHBOARD_URL : null,
+  }
+}
+
+function countSeverities(rows: VendorStatusAuditRow[]): {
+  critical: number
+  action: number
+  info: number
+  highest: VendorStatusAuditGroup["highestSeverity"]
+} {
+  let critical = 0
+  let action = 0
+  let info = 0
+  for (const row of rows) {
+    for (const i of row.issues) {
+      if (i.severity === "critical") critical += 1
+      else if (i.severity === "action") action += 1
+      else info += 1
+    }
+  }
+  let highest: VendorStatusAuditGroup["highestSeverity"] = "ready"
+  if (critical > 0) highest = "critical"
+  else if (action > 0) highest = "action"
+  else if (info > 0) highest = "info"
+  return { critical, action, info, highest }
+}
+
+function appMatchesTruck(app: ApplicationRow, truck: TruckRow): boolean {
+  const appEmail = trimStr(app.email).toLowerCase()
+  const truckEmail = trimStr(truck.email).toLowerCase()
+  if (appEmail && truckEmail && appEmail === truckEmail) return true
+
+  const appName = normalizeAuditName(trimStr(app.business_name))
+  const truckName = normalizeAuditName(trimStr(truck.name))
+  if (appName && truckName && appName === truckName) return true
+
+  if (truck.source_application_id && truck.source_application_id === app.id) return true
+
+  return false
+}
+
+export async function fetchVendorStatusAudit(adminVendorsUrl: string): Promise<{
+  groups: VendorStatusAuditGroup[]
   summary: VendorStatusAuditSummary
 }> {
   const admin = createAdminSupabaseClient()
   const emptySummary: VendorStatusAuditSummary = {
     usedServiceRole: false,
+    totalGroups: 0,
+    readyTruckProfiles: 0,
+    criticalBlockers: 0,
+    needsCleanup: 0,
+    applicationOnlyRecords: 0,
+    historicalApplicationRecords: 0,
     totalRows: 0,
     truckRows: 0,
     applicationOnlyRows: 0,
@@ -265,7 +499,7 @@ export async function fetchVendorStatusAuditRows(adminVendorsUrl: string): Promi
   }
 
   if (!admin) {
-    return { rows: [], summary: emptySummary }
+    return { groups: [], summary: emptySummary }
   }
 
   const [trucksRes, appsRes, authByEmail] = await Promise.all([
@@ -282,15 +516,13 @@ export async function fetchVendorStatusAuditRows(adminVendorsUrl: string): Promi
     fetchAuthEmailIndex(admin),
   ])
 
-  if (trucksRes.error) {
-    console.error("[vendor-status-audit] trucks:", trucksRes.error.message)
-  }
-  if (appsRes.error) {
-    console.error("[vendor-status-audit] applications:", appsRes.error.message)
-  }
+  if (trucksRes.error) console.error("[vendor-status-audit] trucks:", trucksRes.error.message)
+  if (appsRes.error) console.error("[vendor-status-audit] applications:", appsRes.error.message)
 
   const trucks = (trucksRes.data ?? []) as TruckRow[]
   const applications = (appsRes.data ?? []) as ApplicationRow[]
+
+  const { duplicateEmails, duplicateNames } = truckDuplicateKeys(trucks)
 
   const appByTruckId = new Map<string, ApplicationRow>()
   const appById = new Map<string, ApplicationRow>()
@@ -299,116 +531,156 @@ export async function fetchVendorStatusAuditRows(adminVendorsUrl: string): Promi
     if (app.approved_truck_id) appByTruckId.set(app.approved_truck_id, app)
   }
 
-  const duplicateEmails = countDuplicates([
-    ...trucks.map((t) => t.email),
-    ...applications.map((a) => a.email),
-  ])
-  const duplicateNames = countDuplicates([
-    ...trucks.map((t) => t.name),
-    ...applications.map((a) => a.business_name),
-  ])
-
-  const rows: VendorStatusAuditRow[] = []
+  const truckIds = new Set(trucks.map((t) => t.id))
+  const groupedAppIds = new Set<string>()
+  const groups: VendorStatusAuditGroup[] = []
 
   for (const truck of trucks) {
-    const email = trimStr(truck.email) || null
-    const emailKey = email?.toLowerCase() ?? ""
-    const app =
+    const primaryApp =
       appByTruckId.get(truck.id) ??
       (truck.source_application_id ? appById.get(truck.source_application_id) ?? null : null)
-    const slug = trimStr(truck.slug) || null
-    const visible = isRlsPublicVisible(truck)
-    const issueFlags = computeTruckIssueFlags({
-      truck,
-      applicationStatus: app?.status ?? null,
+    if (primaryApp) groupedAppIds.add(primaryApp.id)
+
+    const linkedApplications: VendorStatusAuditRow[] = []
+    for (const app of applications) {
+      if (app.id === primaryApp?.id) continue
+      if (app.approved_truck_id && app.approved_truck_id !== truck.id) continue
+      if (app.approved_truck_id === truck.id) {
+        groupedAppIds.add(app.id)
+        linkedApplications.push(
+          buildApplicationRow(
+            app,
+            "historical_application",
+            computeHistoricalApplicationIssues(app),
+            adminVendorsUrl,
+            authByEmail
+          )
+        )
+        continue
+      }
+      if (appMatchesTruck(app, truck)) {
+        groupedAppIds.add(app.id)
+        linkedApplications.push(
+          buildApplicationRow(
+            app,
+            "historical_application",
+            computeHistoricalApplicationIssues(app),
+            adminVendorsUrl,
+            authByEmail
+          )
+        )
+      }
+    }
+
+    linkedApplications.sort((a, b) =>
+      (b.lastUpdated ?? "").localeCompare(a.lastUpdated ?? "")
+    )
+
+    const primary = buildTruckRow(truck, {
+      primaryApplicationStatus: primaryApp?.status ?? null,
+      applicationId: primaryApp?.id ?? truck.source_application_id ?? null,
       duplicateEmails,
       duplicateNames,
       authByEmail,
+      adminVendorsUrl,
     })
 
-    rows.push({
-      rowKind: "truck",
-      truckId: truck.id,
-      truckName: trimStr(truck.name) || "Unnamed truck",
-      slug,
-      vendorEmail: email,
-      applicationId: app?.id ?? truck.source_application_id ?? null,
-      applicationStatus: app?.status ?? null,
-      authUserId: emailKey ? authByEmail.get(emailKey) ?? null : null,
-      showInDirectory: truck.show_in_directory,
-      isActive: truck.is_active,
-      listingStatus: truck.status,
-      legacyActive: truck.active,
-      hasPhoto: hasPhoto(truck),
-      hasLocationFields: hasLocationFields(truck),
-      hasCurrentLiveLocation: hasLiveCoords(truck),
-      servingToday: truck.serving_today === true,
-      visibleOnDirectory: visible,
-      eligibleForLiveMap: visible,
-      onMapPinNow: onMapPinNow(truck),
-      canAccessGoLiveDashboard: isPlausibleVendorEmail(email),
-      lastUpdated: truck.updated_at ?? truck.created_at,
-      issueFlags,
-      profileUrl: slug ? `/trucks/${slug}` : null,
-      adminVendorsUrl,
-      goLiveUrl: isPlausibleVendorEmail(email) ? VENDOR_EMAIL_GO_LIVE_DASHBOARD_URL : null,
+    const primarySev = countSeverities([primary])
+    const linkedSev = countSeverities(linkedApplications)
+
+    groups.push({
+      groupKey: `truck-${truck.id}`,
+      displayName: primary.truckName,
+      primary,
+      linkedApplications,
+      highestSeverity: primarySev.highest,
+      criticalCount: primarySev.critical + linkedSev.critical,
+      actionCount: primarySev.action + linkedSev.action,
+      infoCount: primarySev.info + linkedSev.info,
+      isReadyTruck:
+        primary.visibleOnDirectory &&
+        primary.eligibleForLiveMap &&
+        primary.canAccessGoLiveDashboard &&
+        primarySev.critical === 0 &&
+        primarySev.action === 0,
     })
   }
 
-  const truckIds = new Set(trucks.map((t) => t.id))
   for (const app of applications) {
+    if (groupedAppIds.has(app.id)) continue
     if (app.approved_truck_id && truckIds.has(app.approved_truck_id)) continue
 
-    const email = trimStr(app.email) || null
-    const emailKey = email?.toLowerCase() ?? ""
-    const issueFlags = computeApplicationOnlyFlags({
+    const primary = buildApplicationRow(
       app,
-      duplicateEmails,
-      duplicateNames,
-      authByEmail,
-    })
-
-    rows.push({
-      rowKind: "application_only",
-      truckId: app.approved_truck_id,
-      truckName: trimStr(app.business_name) || "Application (no truck row)",
-      slug: null,
-      vendorEmail: email,
-      applicationId: app.id,
-      applicationStatus: app.status,
-      authUserId: emailKey ? authByEmail.get(emailKey) ?? null : null,
-      showInDirectory: null,
-      isActive: null,
-      listingStatus: null,
-      legacyActive: null,
-      hasPhoto: false,
-      hasLocationFields: false,
-      hasCurrentLiveLocation: false,
-      servingToday: false,
-      visibleOnDirectory: false,
-      eligibleForLiveMap: false,
-      onMapPinNow: false,
-      canAccessGoLiveDashboard: isPlausibleVendorEmail(email),
-      lastUpdated: app.updated_at ?? app.created_at,
-      issueFlags,
-      profileUrl: null,
+      "application_only",
+      computeStandaloneApplicationIssues({
+        app,
+        duplicateEmails,
+        duplicateNames,
+        authByEmail,
+      }),
       adminVendorsUrl,
-      goLiveUrl: isPlausibleVendorEmail(email) ? VENDOR_EMAIL_GO_LIVE_DASHBOARD_URL : null,
+      authByEmail
+    )
+
+    const primarySev = countSeverities([primary])
+    groups.push({
+      groupKey: `app-${app.id}`,
+      displayName: primary.truckName,
+      primary,
+      linkedApplications: [],
+      highestSeverity: primarySev.highest,
+      criticalCount: primarySev.critical,
+      actionCount: primarySev.action,
+      infoCount: primarySev.info,
+      isReadyTruck: false,
     })
   }
 
-  rows.sort((a, b) => a.truckName.localeCompare(b.truckName, undefined, { sensitivity: "base" }))
+  const severityRank = (g: VendorStatusAuditGroup): number => {
+    if (g.highestSeverity === "critical") return 0
+    if (g.highestSeverity === "action") return 1
+    if (g.highestSeverity === "info") return 2
+    return 3
+  }
+
+  groups.sort((a, b) => {
+    const sr = severityRank(a) - severityRank(b)
+    if (sr !== 0) return sr
+    return a.displayName.localeCompare(b.displayName, undefined, { sensitivity: "base" })
+  })
+
+  const historicalApplicationRecords = groups.reduce((n, g) => n + g.linkedApplications.length, 0)
+  const applicationOnlyRecords = groups.filter((g) => g.primary.rowType === "application_only").length
 
   const summary: VendorStatusAuditSummary = {
     usedServiceRole: true,
-    totalRows: rows.length,
-    truckRows: rows.filter((r) => r.rowKind === "truck").length,
-    applicationOnlyRows: rows.filter((r) => r.rowKind === "application_only").length,
-    withIssues: rows.filter((r) => r.issueFlags.length > 0).length,
-    notMapEligible: rows.filter((r) => !r.eligibleForLiveMap).length,
-    notConnected: rows.filter((r) => r.issueFlags.includes("not_connected_to_vendor_account")).length,
-    hiddenOrUnlisted: rows.filter((r) => !r.visibleOnDirectory).length,
+    totalGroups: groups.length,
+    readyTruckProfiles: groups.filter((g) => g.isReadyTruck).length,
+    criticalBlockers: groups.filter((g) => countSeverities([g.primary]).critical > 0).length,
+    needsCleanup: groups.filter((g) => {
+      const ps = countSeverities([g.primary])
+      return ps.action > 0 && ps.critical === 0
+    }).length,
+    applicationOnlyRecords,
+    historicalApplicationRecords,
+    totalRows: groups.length + historicalApplicationRecords,
+    truckRows: groups.filter((g) => g.primary.rowType !== "application_only").length,
+    applicationOnlyRows: applicationOnlyRecords,
+    withIssues: groups.filter((g) => g.highestSeverity !== "ready").length,
+    notMapEligible: groups.filter((g) => !g.primary.eligibleForLiveMap && g.primary.rowType !== "application_only").length,
+    notConnected: groups.filter((g) =>
+      g.primary.issues.some((i) => i.flag === "not_connected_to_vendor_account")
+    ).length,
+    hiddenOrUnlisted: groups.filter((g) => !g.primary.visibleOnDirectory && g.primary.rowType !== "application_only").length,
   }
 
-  return { rows, summary }
+  return { groups, summary }
+}
+
+/** @deprecated use fetchVendorStatusAudit */
+export async function fetchVendorStatusAuditRows(adminVendorsUrl: string) {
+  const { groups, summary } = await fetchVendorStatusAudit(adminVendorsUrl)
+  const rows = groups.flatMap((g) => [g.primary, ...g.linkedApplications])
+  return { rows, summary, groups }
 }
