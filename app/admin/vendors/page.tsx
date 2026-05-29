@@ -599,7 +599,7 @@ export default async function AdminVendorsPage({
             </CardContent>
           </Card>
 
-          <Card className="border-border mb-8">
+          <Card className="border-border mb-8" id="directory-listing-photos">
             <CardHeader>
               <CardTitle className="text-lg">Directory listing photos</CardTitle>
               <CardDescription>
@@ -630,7 +630,7 @@ export default async function AdminVendorsPage({
                         const name = t.name ?? "—"
                         const slug = t.slug?.trim() ?? ""
                         return (
-                          <tr key={id} className="border-b border-border/60 align-top last:border-0">
+                          <tr key={id} id={`truck-photo-${id}`} className="border-b border-border/60 align-top last:border-0 scroll-mt-28">
                             <td className="p-3">
                               <p className="font-medium text-foreground">{name}</p>
                               {slug ? (
@@ -664,7 +664,7 @@ export default async function AdminVendorsPage({
             </CardContent>
           </Card>
 
-          <Card className="border-primary/20">
+          <Card className="border-primary/20" id="pending-applications">
             <CardHeader>
               <CardTitle className="text-lg">Pending applications</CardTitle>
               <CardDescription>

@@ -14,14 +14,17 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { VendorStatusAuditResolutionActions } from "@/components/admin/vendor-status-audit-resolution-actions"
 import {
+  groupMatchesQuickFilter,
   ISSUE_LABELS,
+  type VendorAuditQuickFilter,
   type VendorStatusAuditGroup,
   type VendorStatusAuditIssue,
   type VendorStatusAuditRow,
   type VendorStatusAuditSummary,
 } from "@/lib/admin/vendor-status-audit"
-import { ChevronDown, ChevronRight, Copy, ExternalLink } from "lucide-react"
+import { ChevronDown, ChevronRight } from "lucide-react"
 
 const ROW_TYPE_LABELS: Record<VendorStatusAuditRow["rowType"], string> = {
   active_truck: "Active truck",
@@ -29,6 +32,16 @@ const ROW_TYPE_LABELS: Record<VendorStatusAuditRow["rowType"], string> = {
   application_only: "Application only",
   historical_application: "Historical application",
 }
+
+const QUICK_FILTERS: { id: VendorAuditQuickFilter; label: string }[] = [
+  { id: "all", label: "All" },
+  { id: "needs_login", label: "Needs login" },
+  { id: "needs_first_live_location", label: "Needs first live location" },
+  { id: "missing_photo", label: "Missing photo" },
+  { id: "needs_truck_profile", label: "Needs truck profile" },
+  { id: "hidden_inactive", label: "Hidden / inactive" },
+  { id: "ready", label: "Ready" },
+]
 
 function fmtTime(iso: string | null): string {
   if (!iso) return "—"
@@ -103,30 +116,6 @@ function IssueBadges({ issues }: { issues: VendorStatusAuditIssue[] }) {
         </li>
       ))}
     </ul>
-  )
-}
-
-function CopyButton({ text, label }: { text: string; label: string }) {
-  const [copied, setCopied] = useState(false)
-  return (
-    <Button
-      type="button"
-      variant="ghost"
-      size="sm"
-      className="h-7 px-2 text-xs"
-      onClick={async () => {
-        try {
-          await navigator.clipboard.writeText(text)
-          setCopied(true)
-          window.setTimeout(() => setCopied(false), 1500)
-        } catch {
-          /* ignore */
-        }
-      }}
-    >
-      <Copy className="h-3 w-3 mr-1" />
-      {copied ? "Copied" : label}
-    </Button>
   )
 }
 
@@ -218,20 +207,13 @@ function AuditDataRow({
         <IssueBadges issues={row.issues} />
       </TableCell>
       <TableCell className="align-top">
-        <div className="flex flex-col items-start gap-1">
-          {row.profileUrl ? (
-            <Button variant="outline" size="sm" className="h-7 text-xs" asChild>
-              <Link href={row.profileUrl} target="_blank" rel="noopener noreferrer">
-                <ExternalLink className="h-3 w-3 mr-1" />
-                Profile
-              </Link>
-            </Button>
-          ) : null}
-          <Button variant="outline" size="sm" className="h-7 text-xs" asChild>
+        {muted ? (
+          <Button variant="ghost" size="sm" className="h-7 text-xs" asChild>
             <Link href={row.adminVendorsUrl}>Vendors admin</Link>
           </Button>
-          {row.goLiveUrl ? <CopyButton text={row.goLiveUrl} label="Copy Go Live" /> : null}
-        </div>
+        ) : (
+          <VendorStatusAuditResolutionActions row={row} />
+        )}
       </TableCell>
     </TableRow>
   )
@@ -245,6 +227,7 @@ type Props = {
 
 export function VendorStatusAuditClient({ groups, summary, initialQuery = "" }: Props) {
   const [query, setQuery] = useState(initialQuery)
+  const [quickFilter, setQuickFilter] = useState<VendorAuditQuickFilter>("all")
   const [focusBlockers, setFocusBlockers] = useState(true)
   const [showReady, setShowReady] = useState(false)
   const [showHistorical, setShowHistorical] = useState(false)
@@ -253,10 +236,25 @@ export function VendorStatusAuditClient({ groups, summary, initialQuery = "" }: 
 
   const productionGroupCount = groups.length - summary.internalTestRecords
 
+  const quickFilterCounts = useMemo(() => {
+    const visibleGroups = groups.filter(
+      (g) => showInternalTest || g.groupClassification === "production"
+    )
+    return Object.fromEntries(
+      QUICK_FILTERS.map(({ id }) => [
+        id,
+        id === "all"
+          ? visibleGroups.length
+          : visibleGroups.filter((g) => groupMatchesQuickFilter(g, id)).length,
+      ])
+    ) as Record<VendorAuditQuickFilter, number>
+  }, [groups, showInternalTest])
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
     return groups.filter((group) => {
       if (!showInternalTest && group.groupClassification === "internal_test") return false
+      if (!groupMatchesQuickFilter(group, quickFilter)) return false
 
       const primary = group.primary
       const hay = [
@@ -273,7 +271,7 @@ export function VendorStatusAuditClient({ groups, summary, initialQuery = "" }: 
 
       if (q && !hay.includes(q)) return false
 
-      if (!q) {
+      if (quickFilter === "all" && !q) {
         if (focusBlockers) {
           const needsAttention =
             group.highestSeverity === "critical" ||
@@ -287,7 +285,7 @@ export function VendorStatusAuditClient({ groups, summary, initialQuery = "" }: 
 
       return true
     })
-  }, [groups, query, focusBlockers, showReady, showInternalTest])
+  }, [groups, query, focusBlockers, showReady, showInternalTest, quickFilter])
 
   return (
     <div className="space-y-6">
@@ -329,6 +327,25 @@ export function VendorStatusAuditClient({ groups, summary, initialQuery = "" }: 
       ) : null}
 
       <div className="flex flex-col gap-4 rounded-lg border bg-card p-4">
+        <div>
+          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground mb-2">Quick filters</p>
+          <div className="flex flex-wrap gap-2">
+            {QUICK_FILTERS.map(({ id, label }) => (
+              <Button
+                key={id}
+                type="button"
+                size="sm"
+                variant={quickFilter === id ? "default" : "outline"}
+                className="h-8 text-xs"
+                onClick={() => setQuickFilter(id)}
+              >
+                {label}
+                <span className="ml-1.5 tabular-nums opacity-80">({quickFilterCounts[id] ?? 0})</span>
+              </Button>
+            ))}
+          </div>
+        </div>
+
         <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
           <Input
             placeholder="Search truck name, email, slug…"
@@ -345,11 +362,19 @@ export function VendorStatusAuditClient({ groups, summary, initialQuery = "" }: 
         </div>
         <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm">
           <label className="flex items-center gap-2 cursor-pointer">
-            <Checkbox checked={focusBlockers} onCheckedChange={(v) => setFocusBlockers(v === true)} />
+            <Checkbox
+              checked={focusBlockers}
+              onCheckedChange={(v) => setFocusBlockers(v === true)}
+              disabled={quickFilter !== "all"}
+            />
             Focus on blockers (critical + action)
           </label>
           <label className="flex items-center gap-2 cursor-pointer">
-            <Checkbox checked={showReady} onCheckedChange={(v) => setShowReady(v === true)} />
+            <Checkbox
+              checked={showReady}
+              onCheckedChange={(v) => setShowReady(v === true)}
+              disabled={quickFilter !== "all"}
+            />
             Include ready profiles
           </label>
           <label className="flex items-center gap-2 cursor-pointer">
@@ -362,8 +387,8 @@ export function VendorStatusAuditClient({ groups, summary, initialQuery = "" }: 
           </label>
         </div>
         <p className="text-xs text-muted-foreground">
-          Operational counts exclude internal demo/test groups. Matching application rows are grouped under their truck.
-          Historical rows use info-level flags only — they do not affect the truck&apos;s directory or map eligibility.
+          Use <span className="text-foreground">Next steps</span> to copy vendor links or jump to admin photo / application
+          review. Operational counts exclude internal demo/test groups.
         </p>
       </div>
 
@@ -377,14 +402,14 @@ export function VendorStatusAuditClient({ groups, summary, initialQuery = "" }: 
               <TableHead>Listing</TableHead>
               <TableHead>Live / map</TableHead>
               <TableHead>Issues</TableHead>
-              <TableHead className="min-w-[140px]">Actions</TableHead>
+              <TableHead className="min-w-[180px]">Next steps</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {filtered.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={7} className="text-center text-muted-foreground py-10">
-                  No groups match your filters. Try clearing search or enabling ready profiles.
+                  No groups match your filters. Try another quick filter or clearing search.
                 </TableCell>
               </TableRow>
             ) : (

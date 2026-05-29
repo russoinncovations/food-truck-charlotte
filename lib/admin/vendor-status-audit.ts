@@ -3,7 +3,7 @@ import { isValidTruckMapCoordinates } from "@/lib/location/truck-map-coords"
 import { PUBLIC_LISTED_TRUCK_EQ } from "@/lib/trucks/public-listed-truck-query"
 import { isInternalDemoVendorTruck } from "@/lib/trucks/internal-demo-vendor"
 import { isPlausibleVendorEmail } from "@/lib/trucks/vendor-reminder-recipients"
-import { VENDOR_EMAIL_GO_LIVE_DASHBOARD_URL } from "@/lib/email/vendor-email-public-links"
+import { VENDOR_EMAIL_GO_LIVE_DASHBOARD_URL, VENDOR_EMAIL_VENDOR_LOGIN_URL } from "@/lib/email/vendor-email-public-links"
 
 export type VendorStatusIssueFlag =
   | "application_not_approved"
@@ -60,7 +60,10 @@ export type VendorStatusAuditRow = {
   issues: VendorStatusAuditIssue[]
   profileUrl: string | null
   adminVendorsUrl: string
+  adminPhotosUrl: string | null
+  adminPendingApplicationsUrl: string
   goLiveUrl: string | null
+  vendorLoginUrl: string | null
 }
 
 export type VendorAuditGroupClassification = "production" | "internal_test"
@@ -210,6 +213,51 @@ export function classifyVendorAuditGroup(primary: VendorStatusAuditRow): VendorA
 
 function isProductionGroup(group: VendorStatusAuditGroup): boolean {
   return group.groupClassification === "production"
+}
+
+export type VendorAuditQuickFilter =
+  | "all"
+  | "needs_login"
+  | "needs_first_live_location"
+  | "missing_photo"
+  | "needs_truck_profile"
+  | "ready"
+  | "hidden_inactive"
+
+export function rowHasIssueFlag(row: VendorStatusAuditRow, flag: VendorStatusIssueFlag): boolean {
+  return row.issues.some((i) => i.flag === flag)
+}
+
+export function groupMatchesQuickFilter(
+  group: VendorStatusAuditGroup,
+  filter: VendorAuditQuickFilter
+): boolean {
+  const primary = group.primary
+  if (filter === "all") return true
+  if (filter === "ready") return group.isReadyTruck && group.groupClassification === "production"
+  if (filter === "needs_login") return rowHasIssueFlag(primary, "not_connected_to_vendor_account")
+  if (filter === "needs_first_live_location") {
+    return rowHasIssueFlag(primary, "missing_location") || rowHasIssueFlag(primary, "live_no_valid_coords")
+  }
+  if (filter === "missing_photo") return rowHasIssueFlag(primary, "missing_photo")
+  if (filter === "needs_truck_profile") return primary.rowType === "application_only"
+  if (filter === "hidden_inactive") {
+    return (
+      rowHasIssueFlag(primary, "hidden_from_directory") ||
+      rowHasIssueFlag(primary, "listed_inactive") ||
+      rowHasIssueFlag(primary, "blocked_by_rls")
+    )
+  }
+  return true
+}
+
+function adminPhotosUrl(adminVendorsUrl: string, truckId: string | null): string | null {
+  if (!truckId) return null
+  return `${adminVendorsUrl}#truck-photo-${truckId}`
+}
+
+function adminPendingApplicationsUrl(adminVendorsUrl: string): string {
+  return `${adminVendorsUrl}#pending-applications`
 }
 
 type IssueContext = {
@@ -477,7 +525,10 @@ function buildTruckRow(
     }),
     profileUrl: slug ? `/trucks/${slug}` : null,
     adminVendorsUrl: opts.adminVendorsUrl,
+    adminPhotosUrl: adminPhotosUrl(opts.adminVendorsUrl, truck.id),
+    adminPendingApplicationsUrl: adminPendingApplicationsUrl(opts.adminVendorsUrl),
     goLiveUrl: isPlausibleVendorEmail(email) ? VENDOR_EMAIL_GO_LIVE_DASHBOARD_URL : null,
+    vendorLoginUrl: isPlausibleVendorEmail(email) ? VENDOR_EMAIL_VENDOR_LOGIN_URL : null,
   }
 }
 
@@ -516,7 +567,10 @@ function buildApplicationRow(
     issues,
     profileUrl: null,
     adminVendorsUrl,
+    adminPhotosUrl: adminPhotosUrl(adminVendorsUrl, app.approved_truck_id),
+    adminPendingApplicationsUrl: adminPendingApplicationsUrl(adminVendorsUrl),
     goLiveUrl: isPlausibleVendorEmail(email) ? VENDOR_EMAIL_GO_LIVE_DASHBOARD_URL : null,
+    vendorLoginUrl: isPlausibleVendorEmail(email) ? VENDOR_EMAIL_VENDOR_LOGIN_URL : null,
   }
 }
 
