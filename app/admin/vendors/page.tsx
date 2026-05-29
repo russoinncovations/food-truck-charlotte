@@ -18,7 +18,7 @@ import { VendorScheduleReminderTestSend } from "@/components/admin/vendor-schedu
 import { VendorProfileReminderTestSend } from "@/components/admin/vendor-profile-reminder-test-send"
 import { VendorProfileReminderBulkSend } from "@/components/admin/vendor-profile-reminder-bulk-send"
 import { VendorScheduleReminderRetryFailures } from "@/components/admin/vendor-schedule-reminder-retry"
-import { AdminTruckPhotoReplace } from "@/components/admin/admin-truck-photo-replace"
+import { AdminTruckPhotosPanel } from "@/components/admin/admin-truck-photos-panel"
 
 export const metadata: Metadata = {
   title: "Vendor Applications | Admin | Food Truck CLT",
@@ -324,17 +324,40 @@ export default async function AdminVendorsPage({
 
   const { data: directoryTrucks } = await supabase
     .from("trucks")
-    .select("id, name, slug, photo_url")
+    .select("id, name, slug, photo_url, hero_photo_url")
     .eq("show_in_directory", true)
     .eq("status", "active")
     .eq("is_active", true)
     .order("name", { ascending: true })
+
+  const truckIds = (directoryTrucks ?? []).map((t) => String(t.id))
+  const { data: allGalleryPhotos } =
+    truckIds.length > 0
+      ? await supabase
+          .from("truck_photos")
+          .select("id, truck_id, photo_url, alt_text, sort_order")
+          .in("truck_id", truckIds)
+          .order("sort_order", { ascending: true })
+      : { data: [] as { id: string; truck_id: string; photo_url: string; alt_text: string | null; sort_order: number }[] }
+
+  const galleryByTruck = new Map<string, { id: string; photo_url: string; alt_text: string | null }[]>()
+  for (const photo of allGalleryPhotos ?? []) {
+    const truckId = String(photo.truck_id)
+    const list = galleryByTruck.get(truckId) ?? []
+    list.push({
+      id: String(photo.id),
+      photo_url: String(photo.photo_url),
+      alt_text: (photo.alt_text as string | null) ?? null,
+    })
+    galleryByTruck.set(truckId, list)
+  }
 
   const trucksList = (directoryTrucks ?? []) as {
     id: string
     name: string | null
     slug: string | null
     photo_url: string | null
+    hero_photo_url: string | null
   }[]
 
   const list = (applications ?? []) as Record<string, unknown>[]
@@ -603,8 +626,9 @@ export default async function AdminVendorsPage({
             <CardHeader>
               <CardTitle className="text-lg">Directory listing photos</CardTitle>
               <CardDescription>
-                Add or replace hero images for live directory trucks. This updates public{" "}
-                <code className="text-xs">photo_url</code> only; vendor accounts and dashboards are unchanged.
+                Upload listing, hero, and gallery photos for live directory trucks. Stored URLs update{" "}
+                <code className="text-xs">photo_url</code>, <code className="text-xs">hero_photo_url</code>, and{" "}
+                <code className="text-xs">truck_photos</code> — vendors can manage the same fields from their dashboard.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -621,7 +645,7 @@ export default async function AdminVendorsPage({
                     <thead className="border-b bg-muted/50">
                       <tr>
                         <th className="p-3 font-medium">Listing</th>
-                        <th className="p-3 font-medium min-w-[280px]">Photo</th>
+                        <th className="p-3 font-medium min-w-[320px]">Photos</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -646,10 +670,12 @@ export default async function AdminVendorsPage({
                             </td>
                             <td className="p-3">
                               {key ? (
-                                <AdminTruckPhotoReplace
+                                <AdminTruckPhotosPanel
                                   adminKey={key}
                                   truckId={id}
-                                  initialPhotoUrl={t.photo_url}
+                                  photoUrl={t.photo_url}
+                                  heroPhotoUrl={t.hero_photo_url}
+                                  galleryPhotos={galleryByTruck.get(id) ?? []}
                                   uploadsEnabled={hasServiceRole}
                                 />
                               ) : null}

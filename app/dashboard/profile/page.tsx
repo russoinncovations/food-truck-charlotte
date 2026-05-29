@@ -8,7 +8,8 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { TruckPhotoUpload } from "@/components/dashboard/truck-photo-upload"
+import { TruckPhotoUploadField } from "@/components/trucks/truck-photo-upload-field"
+import { TruckGalleryManager } from "@/components/trucks/truck-gallery-manager"
 import { createClient } from "@/lib/supabase/server"
 
 const CUISINE_OPTIONS = [
@@ -97,9 +98,17 @@ export default async function DashboardProfilePage() {
 
   const { data: truck } = await supabase
     .from("trucks")
-    .select("id, name, cuisine_types, description, website, instagram, facebook, photo_url, phone, tagline, service_areas, today_specials")
+    .select("id, name, cuisine_types, description, website, instagram, facebook, photo_url, hero_photo_url, phone, tagline, service_areas, today_specials")
     .eq("email", user.email)
     .single()
+
+  const { data: galleryPhotos } = truck
+    ? await supabase
+        .from("truck_photos")
+        .select("id, photo_url, alt_text")
+        .eq("truck_id", truck.id)
+        .order("sort_order", { ascending: true })
+    : { data: null }
 
   return (
     <main className="min-h-screen bg-muted/30">
@@ -243,7 +252,37 @@ export default async function DashboardProfilePage() {
                     />
                   </div>
 
-                  <TruckPhotoUpload truckId={truck.id} initialPhotoUrl={truck.photo_url ?? null} />
+                  <div className="space-y-6 rounded-lg border border-border bg-muted/20 p-4">
+                    <div>
+                      <h3 className="text-sm font-medium text-foreground">Photos</h3>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Upload images for your public profile. No need to paste image URLs — we store the link for you.
+                      </p>
+                    </div>
+
+                    <TruckPhotoUploadField
+                      truckId={truck.id}
+                      photoTarget="listing"
+                      initialPhotoUrl={truck.photo_url ?? null}
+                      description="Main photo used in the directory and cards when no hero image is set."
+                    />
+
+                    <TruckPhotoUploadField
+                      truckId={truck.id}
+                      photoTarget="hero"
+                      initialPhotoUrl={truck.hero_photo_url ?? null}
+                      description="Large banner on your public truck page. Shown first when set."
+                    />
+
+                    <TruckGalleryManager
+                      truckId={truck.id}
+                      initialPhotos={(galleryPhotos ?? []).map((p) => ({
+                        id: String(p.id),
+                        photo_url: String(p.photo_url),
+                        alt_text: (p.alt_text as string | null) ?? null,
+                      }))}
+                    />
+                  </div>
 
                   <div className="space-y-2">
                     <Label htmlFor="phone">Phone</Label>
