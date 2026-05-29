@@ -136,21 +136,28 @@ function AuditDataRow({
   historicalCount,
   expandControl,
   muted,
+  internalTest,
 }: {
   row: VendorStatusAuditRow
   severity?: VendorStatusAuditGroup["highestSeverity"]
   historicalCount?: number
   expandControl?: ReactNode
   muted?: boolean
+  internalTest?: boolean
 }) {
   return (
-    <TableRow className={muted ? "bg-muted/25" : undefined}>
+    <TableRow className={muted ? "bg-muted/25" : internalTest ? "bg-violet-500/5" : undefined}>
       <TableCell className="align-top w-10">{expandControl ?? null}</TableCell>
       <TableCell className="align-top min-w-[160px]">
         <div className="space-y-1">
           {severity ? (
             <div className="flex flex-wrap items-center gap-2 mb-1">
               <SeverityBadge severity={severity} />
+              {internalTest ? (
+                <Badge variant="outline" className="text-[10px] border-violet-500/40 text-violet-800 dark:text-violet-300">
+                  Internal / test
+                </Badge>
+              ) : null}
               {historicalCount ? (
                 <span className="text-[10px] text-muted-foreground">+{historicalCount} historical</span>
               ) : null}
@@ -241,11 +248,16 @@ export function VendorStatusAuditClient({ groups, summary, initialQuery = "" }: 
   const [focusBlockers, setFocusBlockers] = useState(true)
   const [showReady, setShowReady] = useState(false)
   const [showHistorical, setShowHistorical] = useState(false)
+  const [showInternalTest, setShowInternalTest] = useState(false)
   const [expanded, setExpanded] = useState<Record<string, boolean>>({})
+
+  const productionGroupCount = groups.length - summary.internalTestRecords
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
     return groups.filter((group) => {
+      if (!showInternalTest && group.groupClassification === "internal_test") return false
+
       const primary = group.primary
       const hay = [
         group.displayName,
@@ -275,11 +287,11 @@ export function VendorStatusAuditClient({ groups, summary, initialQuery = "" }: 
 
       return true
     })
-  }, [groups, query, focusBlockers, showReady])
+  }, [groups, query, focusBlockers, showReady, showInternalTest])
 
   return (
     <div className="space-y-6">
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5 text-sm">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 text-sm">
         <div className="rounded-lg border bg-card px-3 py-2">
           <p className="text-xs text-muted-foreground">Ready truck profiles</p>
           <p className="text-lg font-semibold tabular-nums text-green-700 dark:text-green-400">
@@ -293,6 +305,12 @@ export function VendorStatusAuditClient({ groups, summary, initialQuery = "" }: 
         <div className="rounded-lg border bg-card px-3 py-2">
           <p className="text-xs text-muted-foreground">Needs cleanup (action)</p>
           <p className="text-lg font-semibold tabular-nums text-amber-700 dark:text-amber-400">{summary.needsCleanup}</p>
+        </div>
+        <div className="rounded-lg border bg-card px-3 py-2">
+          <p className="text-xs text-muted-foreground">Internal / test records</p>
+          <p className="text-lg font-semibold tabular-nums text-violet-700 dark:text-violet-400">
+            {summary.internalTestRecords}
+          </p>
         </div>
         <div className="rounded-lg border bg-card px-3 py-2">
           <p className="text-xs text-muted-foreground">Application-only records</p>
@@ -319,7 +337,10 @@ export function VendorStatusAuditClient({ groups, summary, initialQuery = "" }: 
             className="max-w-md"
           />
           <p className="text-xs text-muted-foreground tabular-nums">
-            Showing {filtered.length} of {groups.length} vendor groups
+            Showing {filtered.length} of {showInternalTest ? groups.length : productionGroupCount} vendor groups
+            {summary.internalTestRecords > 0 && !showInternalTest
+              ? ` (${summary.internalTestRecords} internal/test hidden)`
+              : null}
           </p>
         </div>
         <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm">
@@ -332,13 +353,17 @@ export function VendorStatusAuditClient({ groups, summary, initialQuery = "" }: 
             Include ready profiles
           </label>
           <label className="flex items-center gap-2 cursor-pointer">
+            <Checkbox checked={showInternalTest} onCheckedChange={(v) => setShowInternalTest(v === true)} />
+            Show internal / test records
+          </label>
+          <label className="flex items-center gap-2 cursor-pointer">
             <Checkbox checked={showHistorical} onCheckedChange={(v) => setShowHistorical(v === true)} />
             Expand all historical applications
           </label>
         </div>
         <p className="text-xs text-muted-foreground">
-          Matching application rows are grouped under their truck. Historical rows use info-level flags only — they do
-          not affect the truck&apos;s directory or map eligibility.
+          Operational counts exclude internal demo/test groups. Matching application rows are grouped under their truck.
+          Historical rows use info-level flags only — they do not affect the truck&apos;s directory or map eligibility.
         </p>
       </div>
 
@@ -387,6 +412,7 @@ export function VendorStatusAuditClient({ groups, summary, initialQuery = "" }: 
                       severity={group.highestSeverity}
                       historicalCount={hasHistorical ? group.linkedApplications.length : 0}
                       expandControl={expandBtn}
+                      internalTest={group.groupClassification === "internal_test"}
                     />
                     {hasHistorical && isOpen
                       ? group.linkedApplications.map((appRow) => (

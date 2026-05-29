@@ -1,6 +1,7 @@
 import { createAdminSupabaseClient } from "@/lib/supabase/admin"
 import { isValidTruckMapCoordinates } from "@/lib/location/truck-map-coords"
 import { PUBLIC_LISTED_TRUCK_EQ } from "@/lib/trucks/public-listed-truck-query"
+import { isInternalDemoVendorTruck } from "@/lib/trucks/internal-demo-vendor"
 import { isPlausibleVendorEmail } from "@/lib/trucks/vendor-reminder-recipients"
 import { VENDOR_EMAIL_GO_LIVE_DASHBOARD_URL } from "@/lib/email/vendor-email-public-links"
 
@@ -62,9 +63,12 @@ export type VendorStatusAuditRow = {
   goLiveUrl: string | null
 }
 
+export type VendorAuditGroupClassification = "production" | "internal_test"
+
 export type VendorStatusAuditGroup = {
   groupKey: string
   displayName: string
+  groupClassification: VendorAuditGroupClassification
   primary: VendorStatusAuditRow
   linkedApplications: VendorStatusAuditRow[]
   highestSeverity: "ready" | VendorAuditIssueSeverity
@@ -80,6 +84,7 @@ export type VendorStatusAuditSummary = {
   readyTruckProfiles: number
   criticalBlockers: number
   needsCleanup: number
+  internalTestRecords: number
   applicationOnlyRecords: number
   historicalApplicationRecords: number
   /** @deprecated use totalGroups */
@@ -172,6 +177,39 @@ export function normalizeAuditName(name: string): string {
     .replace(/[^a-z0-9\s]/g, " ")
     .replace(/\s+/g, " ")
     .trim()
+}
+
+/** Obvious internal/demo/test naming — word boundaries avoid false positives like “Contesto”. */
+export function hasObviousInternalTestName(name: string | null | undefined): boolean {
+  return /\b(demo|test|testing)\b/i.test(String(name ?? "").trim())
+}
+
+function isKnownInternalTestEmail(email: string | null | undefined): boolean {
+  const key = trimStr(email).toLowerCase()
+  if (!key) return false
+  return isInternalDemoVendorTruck({ email: key })
+}
+
+export function classifyVendorAuditGroup(primary: VendorStatusAuditRow): VendorAuditGroupClassification {
+  if (isInternalDemoVendorTruck({ name: primary.truckName, email: primary.vendorEmail })) {
+    return "internal_test"
+  }
+  if (hasObviousInternalTestName(primary.truckName)) return "internal_test"
+  if (isKnownInternalTestEmail(primary.vendorEmail)) return "internal_test"
+
+  if (primary.rowType === "application_only") {
+    const status = trimStr(primary.applicationStatus)
+    if (status === "rejected") {
+      if (hasObviousInternalTestName(primary.truckName)) return "internal_test"
+      if (isKnownInternalTestEmail(primary.vendorEmail)) return "internal_test"
+    }
+  }
+
+  return "production"
+}
+
+function isProductionGroup(group: VendorStatusAuditGroup): boolean {
+  return group.groupClassification === "production"
 }
 
 type IssueContext = {
@@ -530,6 +568,7 @@ export async function fetchVendorStatusAudit(adminVendorsUrl: string): Promise<{
     readyTruckProfiles: 0,
     criticalBlockers: 0,
     needsCleanup: 0,
+    internalTestRecords: 0,
     applicationOnlyRecords: 0,
     historicalApplicationRecords: 0,
     totalRows: 0,
@@ -634,6 +673,7 @@ export async function fetchVendorStatusAudit(adminVendorsUrl: string): Promise<{
     groups.push({
       groupKey: `truck-${truck.id}`,
       displayName: primary.truckName,
+      groupClassification: classifyVendorAuditGroup(primary),
       primary,
       linkedApplications,
       highestSeverity: primarySev.highest,
@@ -670,6 +710,7 @@ export async function fetchVendorStatusAudit(adminVendorsUrl: string): Promise<{
     groups.push({
       groupKey: `app-${app.id}`,
       displayName: primary.truckName,
+      groupClassification: classifyVendorAuditGroup(primary),
       primary,
       linkedApplications: [],
       highestSeverity: primarySev.highest,
@@ -695,16 +736,19 @@ export async function fetchVendorStatusAudit(adminVendorsUrl: string): Promise<{
 
   const historicalApplicationRecords = groups.reduce((n, g) => n + g.linkedApplications.length, 0)
   const applicationOnlyRecords = groups.filter((g) => g.primary.rowType === "application_only").length
+  const productionGroups = groups.filter(isProductionGroup)
+  const internalTestRecords = groups.length - productionGroups.length
 
   const summary: VendorStatusAuditSummary = {
     usedServiceRole: true,
     totalGroups: groups.length,
-    readyTruckProfiles: groups.filter((g) => g.isReadyTruck).length,
-    criticalBlockers: groups.filter((g) => countSeverities([g.primary]).critical > 0).length,
-    needsCleanup: groups.filter((g) => {
+    readyTruckProfiles: productionGroups.filter((g) => g.isReadyTruck).length,
+    criticalBlockers: productionGroups.filter((g) => countSeverities([g.primary]).critical > 0).length,
+    needsCleanup: productionGroups.filter((g) => {
       const ps = countSeverities([g.primary])
       return ps.critical === 0 && !g.isReadyTruck && (ps.action > 0 || g.primary.rowType === "application_only")
     }).length,
+    internalTestRecords,
     applicationOnlyRecords,
     historicalApplicationRecords,
     totalRows: groups.length + historicalApplicationRecords,
