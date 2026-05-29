@@ -33,8 +33,44 @@ async function revalidateTruckPaths(slug: string | null | undefined) {
   }
 }
 
+type DbClient = ReturnType<typeof createAdminSupabaseClient> | Awaited<ReturnType<typeof createClient>>
+
+type OwnedTruckRow = {
+  id: string
+  slug: string | null
+}
+
+/** Gallery writes bypass RLS only after server-side ownership verification. */
+function galleryWriteClient(sessionClient: DbClient): DbClient {
+  const admin = createAdminSupabaseClient()
+  return admin ?? sessionClient
+}
+
+async function verifyVendorOwnsTruck(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  truckId: string,
+  userEmail: string,
+): Promise<{ truck: OwnedTruckRow } | { error: NextResponse }> {
+  const { data: row, error: rowError } = await supabase
+    .from("trucks")
+    .select("id, slug")
+    .eq("id", truckId)
+    .eq("email", userEmail)
+    .maybeSingle()
+
+  if (rowError) {
+    console.error("[upload-truck-photo] trucks lookup error:", rowError)
+    return { error: jsonError(403, rowError.message || "Could not update this truck.") }
+  }
+  if (!row) {
+    return { error: jsonError(403, "Could not update this truck.") }
+  }
+
+  return { truck: { id: String(row.id), slug: (row.slug as string | null) ?? null } }
+}
+
 async function uploadToStorage(
-  client: ReturnType<typeof createAdminSupabaseClient> | Awaited<ReturnType<typeof createClient>>,
+  client: DbClient,
   truckId: string,
   file: File,
 ): Promise<{ publicUrl: string } | { error: string }> {
@@ -55,10 +91,7 @@ async function uploadToStorage(
   return { publicUrl }
 }
 
-async function nextGallerySortOrder(
-  client: ReturnType<typeof createAdminSupabaseClient> | Awaited<ReturnType<typeof createClient>>,
-  truckId: string,
-): Promise<number> {
+async function nextGallerySortOrder(client: DbClient, truckId: string): Promise<number> {
   const { data } = await client
     .from("truck_photos")
     .select("sort_order")
@@ -71,7 +104,7 @@ async function nextGallerySortOrder(
 }
 
 async function persistPhotoTarget(
-  client: ReturnType<typeof createAdminSupabaseClient> | Awaited<ReturnType<typeof createClient>>,
+  client: DbClient,
   truckId: string,
   photoTarget: TruckPhotoTarget,
   publicUrl: string,
@@ -114,12 +147,7 @@ async function persistPhotoTarget(
   return { galleryPhotoId: String(data.id) }
 }
 
-async function handleDelete(
-  client: ReturnType<typeof createAdminSupabaseClient> | Awaited<ReturnType<typeof createClient>>,
-  truckId: string,
-  photoId: string,
-  slug: string | null | undefined,
-) {
+async function handleDelete(client: DbClient, truckId: string, photoId: string, slug: string | null | undefined) {
   const { data: row, error: lookupError } = await client
     .from("truck_photos")
     .select("id")
@@ -225,25 +253,19 @@ export async function POST(request: Request) {
       return jsonError(401, "You must be signed in.")
     }
 
-    const { data: row, error: rowError } = await supabase
-      .from("trucks")
-      .select("id, slug")
-      .eq("id", truckId)
-      .eq("email", user.email)
-      .maybeSingle()
+    const ownership = await verifyVendorOwnsTruck(supabase, truckId, user.email)
+    if ("error" in ownership) {
+      return ownership.error
+    }
+    const { truck: row } = ownership
 
-    if (rowError) {
-      console.error("[upload-truck-photo] trucks lookup error:", rowError)
-      return jsonError(403, rowError.message || "Could not update this truck.")
-    }
-    if (!row) {
-      return jsonError(403, "Could not update this truck.")
-    }
+    const touchesGallery = action === "delete" || photoTarget === "gallery"
+    const dbClient: DbClient = touchesGallery ? galleryWriteClient(supabase) : supabase
 
     if (action === "delete") {
       const photoId = (formData.get("photoId") as string | null)?.trim()
       if (!photoId) return jsonError(400, "Missing gallery photo.")
-      return handleDelete(supabase, truckId, photoId, row.slug)
+      return handleDelete(dbClient, truckId, photoId, row.slug)
     }
 
     const file = formData.get("file")
@@ -262,7 +284,8 @@ export async function POST(request: Request) {
       return jsonError(500, uploaded.error)
     }
 
-    const saved = await persistPhotoTarget(supabase, truckId, photoTarget, uploaded.publicUrl)
+    const writeClient = photoTarget === "gallery" ? dbClient : supabase
+    const saved = await persistPhotoTarget(writeClient, truckId, photoTarget, uploaded.publicUrl)
     if ("error" in saved) {
       return jsonError(500, saved.error)
     }
