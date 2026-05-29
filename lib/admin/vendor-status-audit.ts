@@ -127,7 +127,7 @@ const RECENT_ACTIVITY_MS = 60 * 24 * 60 * 60 * 1000
 
 const FLAG_SEVERITY: Record<VendorStatusIssueFlag, VendorAuditIssueSeverity> = {
   missing_vendor_email: "critical",
-  not_connected_to_vendor_account: "critical",
+  not_connected_to_vendor_account: "action",
   hidden_from_directory: "critical",
   not_map_eligible: "critical",
   live_no_valid_coords: "critical",
@@ -150,12 +150,12 @@ export const ISSUE_LABELS: Record<VendorStatusIssueFlag, string> = {
   duplicate_truck_name: "Duplicate name (cross-vendor)",
   no_slug: "No slug",
   hidden_from_directory: "Hidden / unlisted",
-  missing_location: "Missing location fields",
-  not_connected_to_vendor_account: "No auth account for email",
+  missing_location: "Needs first live location",
+  not_connected_to_vendor_account: "Vendor has not logged in yet",
   not_map_eligible: "Not map eligible",
   no_recent_activity: "No recent activity (60d+)",
   missing_photo: "Missing photo",
-  live_no_valid_coords: "Live but invalid coords",
+  live_no_valid_coords: "Live but missing valid coordinates",
   listed_inactive: "Listed flag but inactive status",
   blocked_by_rls: "Blocked by legacy active flag",
   historical_application_record: "Historical application on file",
@@ -174,8 +174,29 @@ export function normalizeAuditName(name: string): string {
     .trim()
 }
 
-function issue(flag: VendorStatusIssueFlag): VendorStatusAuditIssue {
-  return { flag, severity: FLAG_SEVERITY[flag] }
+type IssueContext = {
+  servingToday: boolean
+  hasPlausibleEmail: boolean
+  rowType: VendorAuditRowType
+}
+
+function resolveIssueSeverity(flag: VendorStatusIssueFlag, ctx: IssueContext): VendorAuditIssueSeverity {
+  if (flag === "not_connected_to_vendor_account") {
+    if (ctx.hasPlausibleEmail && ctx.rowType !== "application_only") return "action"
+    return FLAG_SEVERITY[flag]
+  }
+
+  if (flag === "missing_location") {
+    if (ctx.rowType === "application_only") return "critical"
+    if (!ctx.servingToday) return "info"
+    return "critical"
+  }
+
+  return FLAG_SEVERITY[flag]
+}
+
+function issue(flag: VendorStatusIssueFlag, ctx: IssueContext): VendorStatusAuditIssue {
+  return { flag, severity: resolveIssueSeverity(flag, ctx) }
 }
 
 function isPublicListed(truck: TruckRow): boolean {
@@ -285,7 +306,13 @@ function computeTruckIssues(opts: {
   if (truck.show_in_directory === true && !listed) flags.push("listed_inactive")
   if (truck.show_in_directory === true && truck.active === false) flags.push("blocked_by_rls")
 
-  if (!hasLocationFields(truck) && !hasLiveCoords(truck)) flags.push("missing_location")
+  const servingToday = truck.serving_today === true
+
+  if (servingToday && !hasLiveCoords(truck)) {
+    flags.push("live_no_valid_coords")
+  } else if (!servingToday && !hasLocationFields(truck) && !hasLiveCoords(truck)) {
+    flags.push("missing_location")
+  }
 
   if (isPlausibleVendorEmail(email) && authByEmail.size > 0 && !authByEmail.has(emailKey)) {
     flags.push("not_connected_to_vendor_account")
@@ -293,8 +320,6 @@ function computeTruckIssues(opts: {
 
   if (!visible) {
     flags.push("not_map_eligible")
-  } else if (truck.serving_today === true && !hasLiveCoords(truck)) {
-    flags.push("live_no_valid_coords")
   }
 
   if (visible && !hasPhoto(truck)) flags.push("missing_photo")
@@ -302,14 +327,20 @@ function computeTruckIssues(opts: {
   const last = truck.updated_at ?? truck.created_at
   if (
     visible &&
-    truck.serving_today !== true &&
+    !servingToday &&
     last &&
     Date.now() - new Date(last).getTime() > RECENT_ACTIVITY_MS
   ) {
     flags.push("no_recent_activity")
   }
 
-  return flags.map(issue)
+  const ctx: IssueContext = {
+    servingToday,
+    hasPlausibleEmail: isPlausibleVendorEmail(email),
+    rowType: "truck_profile",
+  }
+
+  return flags.map((flag) => issue(flag, ctx))
 }
 
 function computeStandaloneApplicationIssues(opts: {
@@ -337,7 +368,13 @@ function computeStandaloneApplicationIssues(opts: {
     flags.push("not_connected_to_vendor_account")
   }
 
-  return [...new Set(flags)].map(issue)
+  const ctx: IssueContext = {
+    servingToday: false,
+    hasPlausibleEmail: isPlausibleVendorEmail(email),
+    rowType: "application_only",
+  }
+
+  return [...new Set(flags)].map((flag) => issue(flag, ctx))
 }
 
 function computeHistoricalApplicationIssues(app: ApplicationRow): VendorStatusAuditIssue[] {
@@ -346,7 +383,13 @@ function computeHistoricalApplicationIssues(app: ApplicationRow): VendorStatusAu
   if (status !== "approved" && status !== "rejected") {
     flags.push("application_not_approved")
   }
-  return flags.map(issue)
+  const ctx: IssueContext = {
+    servingToday: false,
+    hasPlausibleEmail: isPlausibleVendorEmail(trimStr(app.email)),
+    rowType: "historical_application",
+  }
+
+  return flags.map((flag) => issue(flag, ctx))
 }
 
 function buildTruckRow(
@@ -660,7 +703,7 @@ export async function fetchVendorStatusAudit(adminVendorsUrl: string): Promise<{
     criticalBlockers: groups.filter((g) => countSeverities([g.primary]).critical > 0).length,
     needsCleanup: groups.filter((g) => {
       const ps = countSeverities([g.primary])
-      return ps.action > 0 && ps.critical === 0
+      return ps.critical === 0 && !g.isReadyTruck && (ps.action > 0 || g.primary.rowType === "application_only")
     }).length,
     applicationOnlyRecords,
     historicalApplicationRecords,
