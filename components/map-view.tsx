@@ -15,6 +15,8 @@ const ORANGE_EVENT = "#f97316"
 const ORANGE_EVENT_BORDER = "#c2410c"
 const TRUCK_LIVE = "#16a34a"
 const TRUCK_LIVE_BORDER = "#15803d"
+const TRUCK_SCHEDULED = "#2563eb"
+const TRUCK_SCHEDULED_BORDER = "#1d4ed8"
 
 interface MapViewProps {
   trucks: FoodTruck[]
@@ -29,22 +31,26 @@ interface MapViewProps {
   filtersInactive?: boolean
 }
 
-function LiveTruckMarkerVisual({ truck }: { truck: FoodTruck }) {
+function TruckMarkerVisual({ truck }: { truck: FoodTruck }) {
+  const isLive = truck.mapPinStatus === "live" || truck.mapDisplaySource === "live"
+  const pinBg = isLive ? TRUCK_LIVE : TRUCK_SCHEDULED
+  const pinBorder = isLive ? TRUCK_LIVE_BORDER : TRUCK_SCHEDULED_BORDER
+  const ringClass = isLive ? "ring-green-600" : "ring-blue-600"
+  const dotClass = isLive ? "bg-green-500" : "bg-blue-500"
   const src = truck.markerPhotoUrl?.trim()
   if (!src) {
-    return <Pin background={TRUCK_LIVE} borderColor={TRUCK_LIVE_BORDER} glyphColor="#ffffff" />
+    return <Pin background={pinBg} borderColor={pinBorder} glyphColor="#ffffff" />
   }
   return (
     <div className="relative flex h-11 w-11 items-center justify-center touch-manipulation [-webkit-tap-highlight-color:transparent]">
       <div
-        className="relative h-10 w-10 overflow-hidden rounded-full bg-muted shadow-md ring-[3px] ring-green-600 ring-offset-[3px] ring-offset-background"
+        className={`relative h-10 w-10 overflow-hidden rounded-full bg-muted shadow-md ring-[3px] ${ringClass} ring-offset-[3px] ring-offset-background`}
         aria-hidden
       >
-        {/* External truck URLs (Supabase storage, etc.) — avoid next/image domain config */}
         <img src={src} alt="" className="h-full w-full object-cover" decoding="async" />
       </div>
       <span
-        className="pointer-events-none absolute bottom-0 right-0 z-[1] h-3 w-3 rounded-full border-2 border-background bg-green-500 shadow-sm"
+        className={`pointer-events-none absolute bottom-0 right-0 z-[1] h-3 w-3 rounded-full border-2 border-background ${dotClass} shadow-sm`}
         aria-hidden
       />
     </div>
@@ -59,6 +65,14 @@ function truckServingUntilLabel(truck: FoodTruck): string | null {
 
 function truckPinIsLive(truck: FoodTruck): boolean {
   return truck.mapPinStatus === "live" || truck.mapDisplaySource === "live"
+}
+
+function truckPinIsOnMap(truck: FoodTruck): boolean {
+  return truckPinIsLive(truck) || truck.mapPinStatus === "scheduled" || truck.mapDisplaySource === "scheduled"
+}
+
+function truckMapMarkerKey(truck: FoodTruck): string {
+  return truck.id
 }
 
 function hasMapLocation(truck: FoodTruck): truck is FoodTruck & {
@@ -79,7 +93,7 @@ function MapPanToSelected({
   const map = useMap()
   useEffect(() => {
     if (!map) return
-    if (selectedTruck && truckPinIsLive(selectedTruck) && hasMapLocation(selectedTruck)) {
+    if (selectedTruck && truckPinIsOnMap(selectedTruck) && hasMapLocation(selectedTruck)) {
       const { lat, lng } = selectedTruck.location
       map.panTo({ lat, lng })
       const z = map.getZoom()
@@ -108,7 +122,7 @@ export default function MapView({
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? ""
   const mapId = process.env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID
 
-  const mappable = trucks.filter((t) => truckPinIsLive(t) && hasMapLocation(t))
+  const mappable = trucks.filter((t) => truckPinIsOnMap(t) && hasMapLocation(t))
   const [infoTruckId, setInfoTruckId] = useState<string | null>(null)
   const [infoEventId, setInfoEventId] = useState<string | null>(null)
   const markerById = useRef(new globalThis.Map<string, google.maps.marker.AdvancedMarkerElement | null>())
@@ -125,11 +139,11 @@ export default function MapView({
       setInfoTruckId(null)
       return
     }
-    const onMapLive =
-      truckPinIsLive(selectedTruck) &&
+    const onMap =
+      truckPinIsOnMap(selectedTruck) &&
       hasMapLocation(selectedTruck) &&
       trucks.some((t) => t.id === selectedTruck.id)
-    if (onMapLive) {
+    if (onMap) {
       setInfoTruckId(selectedTruck.id)
       setInfoEventId(null)
     } else {
@@ -176,8 +190,9 @@ export default function MapView({
     }
   }, [infoEventId, mapEvents.length])
 
-  const infoTruck = infoTruckId != null ? mappable.find((t) => t.id === infoTruckId) : undefined
+  const infoTruck = infoTruckId != null ? mappable.find((t) => truckMapMarkerKey(t) === infoTruckId) : undefined
   const infoTruckServingUntil = infoTruck ? truckServingUntilLabel(infoTruck) : null
+  const infoTruckIsLive = infoTruck ? truckPinIsLive(infoTruck) : false
   const infoEvent =
     infoEventId == null
       ? undefined
@@ -209,22 +224,23 @@ export default function MapView({
 
           {mappable.map((truck) => (
             <AdvancedMarker
-              key={`t-${truck.id}`}
+              key={`t-${truckMapMarkerKey(truck)}`}
               anchorPoint={AdvancedMarkerAnchorPoint.BOTTOM}
               ref={(el) => {
-                if (el) markerById.current.set(truck.id, el)
-                else markerById.current.delete(truck.id)
+                const key = truckMapMarkerKey(truck)
+                if (el) markerById.current.set(key, el)
+                else markerById.current.delete(key)
               }}
               position={{ lat: truck.location.lat, lng: truck.location.lng }}
               title={truck.name}
               onClick={() => {
                 onSelectTruck(truck)
                 onSelectEvent(null)
-                setInfoTruckId(truck.id)
+                setInfoTruckId(truckMapMarkerKey(truck))
                 setInfoEventId(null)
               }}
             >
-              <LiveTruckMarkerVisual truck={truck} />
+              <TruckMarkerVisual truck={truck} />
             </AdvancedMarker>
           ))}
 
@@ -267,7 +283,9 @@ export default function MapView({
                 <p className="text-xs text-muted-foreground mb-2">
                   {infoTruck.cuisine.length > 0 ? infoTruck.cuisine.join(", ") : "Cuisine TBD"}
                 </p>
-                <p className="text-[11px] font-medium text-green-700 mb-2">Open now — vendor check-in</p>
+                <p className="text-[11px] font-medium text-green-700 mb-2">
+                  {infoTruckIsLive ? "Open now — vendor check-in" : "Scheduled stop — on the map"}
+                </p>
                 <div className="mb-3">
                   <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Location</p>
                   <p className="text-xs leading-snug">
@@ -348,19 +366,7 @@ export default function MapView({
                 <>
                   <p className="font-medium text-foreground">Nothing live on the map right now</p>
                   <p className="text-xs leading-snug">
-                    Green markers show trucks serving now (photo when available). Orange pins show events happening now.
-                    For what&apos;s coming up, see{" "}
-                    <Link href="/events" className="font-semibold text-primary hover:underline">
-                      the events page
-                    </Link>
-                    .
-                  </p>
-                  <p className="text-xs leading-snug">
-                    Explore trucks in the sidebar or on{" "}
-                    <Link href="/trucks" className="font-semibold text-primary hover:underline">
-                      the trucks page
-                    </Link>
-                    — directory trucks stay off the map until they check in as open.
+                    Green markers = live check-in. Blue markers = scheduled stops. Orange = events happening now.
                   </p>
                   <Link
                     href="/map"

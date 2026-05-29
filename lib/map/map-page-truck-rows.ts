@@ -1,13 +1,21 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 import { MAP_DISPLAY_TRUCK_SELECT, getPublicMapLiveTruckRows } from "@/lib/map/load-map-display-trucks"
+import {
+  loadPublicScheduledStopPinRows,
+  mergeLiveAndScheduledMapPins,
+} from "@/lib/schedule/scheduled-stop-map"
 import { PUBLIC_LISTED_TRUCK_EQ } from "@/lib/trucks/public-listed-truck-query"
 import type { ServingTruckRow } from "@/lib/map/serving-row-to-food-truck"
 
 /**
- * Public map truck pins: live `serving_today` check-ins only (no directory fallback pins).
+ * Public map truck pins: manual Go Live + scheduled stops (Go Live overrides schedule per truck).
  */
 export async function getMapPageTruckPinRows(supabase: SupabaseClient): Promise<ServingTruckRow[]> {
-  return getPublicMapLiveTruckRows(supabase)
+  const [liveRows, scheduledRows] = await Promise.all([
+    getPublicMapLiveTruckRows(supabase),
+    loadPublicScheduledStopPinRows(supabase),
+  ])
+  return mergeLiveAndScheduledMapPins(liveRows, scheduledRows)
 }
 
 /**

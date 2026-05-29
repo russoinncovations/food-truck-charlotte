@@ -142,6 +142,9 @@ export function AdminCommandCenter({ keyQ, data }: Props) {
             <Link href={`/admin/events${keyQ}`}>Manage events</Link>
           </Button>
           <Button variant="outline" size="sm" asChild>
+            <Link href={`/admin/scheduled-stops${keyQ}`}>Scheduled stops</Link>
+          </Button>
+          <Button variant="outline" size="sm" asChild>
             <Link href={`/admin/vendor-status-audit${keyQ}`}>Vendor visibility audit</Link>
           </Button>
           <Button variant="outline" size="sm" asChild>

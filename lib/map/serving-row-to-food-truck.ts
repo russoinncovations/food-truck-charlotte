@@ -18,9 +18,13 @@ export type ServingTruckRow = {
   photo_url?: string | null
   hero_photo_url?: string | null
   logo_url?: string | null
-  mapDisplaySource?: "live" | "upcoming" | "listed"
+  mapDisplaySource?: "live" | "scheduled" | "upcoming" | "listed"
   scheduledStartTime?: string | null
   scheduledEndTime?: string | null
+  scheduledStopId?: string | null
+  scheduledStopDate?: string | null
+  scheduledMenuNote?: string | null
+  scheduledIsPublic?: boolean | null
 }
 
 function buildScheduleFromRow(truck: ServingTruckRow): FoodTruck["schedule"] {
@@ -29,16 +33,19 @@ function buildScheduleFromRow(truck: ServingTruckRow): FoodTruck["schedule"] {
   const lng = Number(truck.longitude)
   const start = String(truck.scheduledStartTime).slice(0, 5)
   const end = truck.scheduledEndTime ? String(truck.scheduledEndTime).slice(0, 5) : ""
+  const date = truck.scheduledStopDate ?? easternDateStringToday()
   return [
     {
-      id: `map-slot-${truck.id}`,
-      date: easternDateStringToday(),
+      id: truck.scheduledStopId ?? `map-slot-${truck.id}`,
+      date,
       startTime: start,
       endTime: end,
       location: truck.today_location ?? "",
       address: truck.street_address ?? "",
       lat: Number.isFinite(lat) ? lat : 0,
       lng: Number.isFinite(lng) ? lng : 0,
+      menuNote: truck.scheduledMenuNote ?? undefined,
+      isPublic: truck.scheduledIsPublic ?? true,
     },
   ]
 }
@@ -67,17 +74,22 @@ export function mapRowsToMapTrucks(rows: ServingTruckRow[]): FoodTruck[] {
     const slug =
       truck.slug && String(truck.slug).trim() !== "" ? String(truck.slug).trim() : fallbackSlug
 
-    const displaySource: "live" | "upcoming" | "listed" =
+    const displaySource: "live" | "scheduled" | "upcoming" | "listed" =
       truck.mapDisplaySource ?? (truck.serving_today ? "live" : "upcoming")
     const isOpen = displaySource === "live"
-    const mapPinStatus: FoodTruck["mapPinStatus"] = displaySource === "live" ? "live" : "listed"
+    const mapPinStatus: FoodTruck["mapPinStatus"] =
+      displaySource === "live"
+        ? "live"
+        : displaySource === "scheduled"
+          ? "scheduled"
+          : "listed"
 
     const addressParts = [truck.today_location, truck.street_address].filter(Boolean).join(" · ") || ""
     const directoryLocationHint =
       displaySource === "listed" && !hasMapPin && addressParts.trim() !== "" ? addressParts : undefined
 
     return {
-      id: truck.id,
+      id: truck.scheduledStopId ? `${truck.id}__${truck.scheduledStopId}` : truck.id,
       name: truck.name,
       slug,
       cuisine,
@@ -91,6 +103,9 @@ export function mapRowsToMapTrucks(rows: ServingTruckRow[]): FoodTruck[] {
       isFeatured: false,
       mapDisplaySource: displaySource,
       mapPinStatus,
+      scheduledStopDate: truck.scheduledStopDate ?? undefined,
+      scheduledStartTime: truck.scheduledStartTime ?? undefined,
+      scheduledEndTime: truck.scheduledEndTime ?? undefined,
       location: hasMapPin
         ? {
             lat,

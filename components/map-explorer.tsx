@@ -35,11 +35,38 @@ import {
 import { cuisineCategories, type FoodTruck } from "@/lib/data"
 import { mapRowsToMapTrucks, type ServingTruckRow } from "@/lib/map/serving-row-to-food-truck"
 import { type MapEventMarker, formatMapEventDateTime } from "@/lib/events/map-event-markers"
+import { stopMatchesMapTimeFilter, type MapTimeFilter } from "@/lib/schedule/scheduled-stops"
 import { MapAddToHomePrompt } from "@/components/pwa/map-add-to-home-prompt"
 
 export type { ServingTruckRow }
 
-// Dynamically import map to avoid SSR issues
+const MAP_TIME_FILTERS: { id: MapTimeFilter; label: string }[] = [
+  { id: "now", label: "Now" },
+  { id: "today", label: "Today" },
+  { id: "tomorrow", label: "Tomorrow" },
+  { id: "week", label: "This Week" },
+]
+
+function truckProfileId(truck: FoodTruck): string {
+  const i = truck.id.indexOf("__")
+  return i === -1 ? truck.id : truck.id.slice(0, i)
+}
+
+function truckMatchesMapTimeFilter(truck: FoodTruck, filter: MapTimeFilter): boolean {
+  if (truck.mapDisplaySource === "live") {
+    return filter === "now" || filter === "today"
+  }
+  if (truck.mapDisplaySource !== "scheduled") return false
+  const date = truck.scheduledStopDate ?? truck.schedule[0]?.date
+  const start = truck.scheduledStartTime ?? truck.schedule[0]?.startTime
+  const end = truck.scheduledEndTime ?? truck.schedule[0]?.endTime
+  if (!date) return false
+  return stopMatchesMapTimeFilter(date, start, end, filter)
+}
+
+function truckIsOnMapPin(truck: FoodTruck): boolean {
+  return truck.mapPinStatus === "live" || truck.mapPinStatus === "scheduled"
+}
 const MapView = dynamic(() => import("@/components/map-view"), {
   ssr: false,
   loading: () => (
@@ -53,10 +80,10 @@ const MapView = dynamic(() => import("@/components/map-view"), {
 })
 
 function truckIsLiveOnMap(t: FoodTruck): boolean {
-  return t.mapPinStatus === "live" || t.mapDisplaySource === "live"
+  return truckIsOnMapPin(t)
 }
 
-/** Location/cuisine text used for sidebar search only (open + listed lists). */
+// Dynamically import map to avoid SSR issues
 function truckMatchesSidebarFilters(
   truck: FoodTruck,
   q: string,
@@ -91,6 +118,7 @@ export function MapExplorer({
   const isLg = useMinWidthLg()
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedCuisine, setSelectedCuisine] = useState("all")
+  const [mapTimeFilter, setMapTimeFilter] = useState<MapTimeFilter>("now")
   const [showOpenOnly, setShowOpenOnly] = useState(false)
   const [selectedTruck, setSelectedTruck] = useState<FoodTruck | null>(null)
   const [selectedEvent, setSelectedEvent] = useState<MapEventMarker | null>(null)
@@ -100,36 +128,48 @@ export function MapExplorer({
   const liveMapTrucks = useMemo(() => mapRowsToMapTrucks(liveTruckRows), [liveTruckRows])
   const allListedMapTrucks = useMemo(() => mapRowsToMapTrucks(allListedTruckRows), [allListedTruckRows])
 
-  const liveCount = useMemo(() => liveMapTrucks.filter(truckIsLiveOnMap).length, [liveMapTrucks])
-  const anyLiveReporting = liveCount > 0
+  const timeFilteredMapTrucks = useMemo(
+    () => liveMapTrucks.filter((t) => truckMatchesMapTimeFilter(t, mapTimeFilter)),
+    [liveMapTrucks, mapTimeFilter]
+  )
+
+  const liveCount = useMemo(
+    () => timeFilteredMapTrucks.filter((t) => t.mapPinStatus === "live").length,
+    [timeFilteredMapTrucks]
+  )
+  const scheduledCount = useMemo(
+    () => timeFilteredMapTrucks.filter((t) => t.mapPinStatus === "scheduled").length,
+    [timeFilteredMapTrucks]
+  )
+  const anyLiveReporting = liveCount > 0 || scheduledCount > 0
 
   const filteredLiveTrucks = useMemo(() => {
     const q = searchQuery.toLowerCase()
-    return liveMapTrucks.filter((truck) => {
+    return timeFilteredMapTrucks.filter((truck) => {
       const { matchesSearch, matchesCuisine } = truckMatchesSidebarFilters(truck, q, selectedCuisine)
-      const matchesOpen = !showOpenOnly || truck.isOpen
+      const matchesOpen = !showOpenOnly || truck.mapPinStatus === "live"
       return matchesSearch && matchesCuisine && matchesOpen
     })
-  }, [liveMapTrucks, searchQuery, selectedCuisine, showOpenOnly])
+  }, [timeFilteredMapTrucks, searchQuery, selectedCuisine, showOpenOnly])
 
   const openNowTruckIdSet = useMemo(
-    () => new Set(filteredLiveTrucks.map((t) => t.id)),
-    [filteredLiveTrucks],
+    () => new Set(filteredLiveTrucks.map((t) => truckProfileId(t))),
+    [filteredLiveTrucks]
   )
 
   const filteredAllListedTrucks = useMemo(() => {
     const q = searchQuery.toLowerCase()
     return allListedMapTrucks.filter((truck) => {
       const { matchesSearch, matchesCuisine } = truckMatchesSidebarFilters(truck, q, selectedCuisine)
-      const matchesOpen = !showOpenOnly || openNowTruckIdSet.has(truck.id)
+      const matchesOpen = !showOpenOnly || openNowTruckIdSet.has(truckProfileId(truck))
       return matchesSearch && matchesCuisine && matchesOpen
     })
   }, [allListedMapTrucks, searchQuery, selectedCuisine, showOpenOnly, openNowTruckIdSet])
 
   /** Directory rows not in the Open now list (Open now is the source of truth). */
   const listedOnlySidebarTrucks = useMemo(
-    () => filteredAllListedTrucks.filter((t) => !openNowTruckIdSet.has(t.id)),
-    [filteredAllListedTrucks, openNowTruckIdSet],
+    () => filteredAllListedTrucks.filter((t) => !openNowTruckIdSet.has(truckProfileId(t))),
+    [filteredAllListedTrucks, openNowTruckIdSet]
   )
 
   const filteredMapPinEvents = useMemo(() => {
@@ -188,7 +228,9 @@ export function MapExplorer({
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-500 opacity-75" />
                 <span className="relative inline-flex h-2 w-2 rounded-full bg-green-500" />
               </span>
-              {liveCount} {liveCount === 1 ? "truck" : "trucks"} open now
+              {liveCount > 0 ? `${liveCount} live` : null}
+              {liveCount > 0 && scheduledCount > 0 ? " · " : null}
+              {scheduledCount > 0 ? `${scheduledCount} scheduled` : null}
             </Badge>
           ) : (
             <Badge variant="secondary" className="max-w-[18rem] text-left font-normal leading-snug text-muted-foreground">
@@ -208,7 +250,7 @@ export function MapExplorer({
       <MapAddToHomePrompt />
 
       <p className="shrink-0 border-b border-border/80 bg-muted/30 px-4 py-2 text-center text-xs text-muted-foreground leading-snug">
-        Green pins are trucks serving now. Orange pins are events happening now.
+        Green pins = live check-in (overrides schedule). Blue pins = scheduled stops. Orange = events now.
       </p>
 
       <div className="flex min-h-0 flex-1 overflow-hidden">
@@ -225,6 +267,8 @@ export function MapExplorer({
             setSelectedCuisine={setSelectedCuisine}
             showOpenOnly={showOpenOnly}
             setShowOpenOnly={setShowOpenOnly}
+            mapTimeFilter={mapTimeFilter}
+            setMapTimeFilter={setMapTimeFilter}
             filteredLiveTrucks={filteredLiveTrucks}
             listedOnlySidebarTrucks={listedOnlySidebarTrucks}
             filteredMapPinEvents={filteredMapPinEvents}
@@ -257,7 +301,9 @@ export function MapExplorer({
               setSelectedCuisine={setSelectedCuisine}
               showOpenOnly={showOpenOnly}
               setShowOpenOnly={setShowOpenOnly}
-              filteredLiveTrucks={filteredLiveTrucks}
+              mapTimeFilter={mapTimeFilter}
+            setMapTimeFilter={setMapTimeFilter}
+            filteredLiveTrucks={filteredLiveTrucks}
               listedOnlySidebarTrucks={listedOnlySidebarTrucks}
               filteredMapPinEvents={filteredMapPinEvents}
               listedInSidebarCount={filteredAllListedTrucks.length}
@@ -282,7 +328,7 @@ export function MapExplorer({
               onSelectTruck={setSelectedTruckAndClearEvent}
               onSelectEvent={setSelectedEventAndClearTruck}
               filtersInactive={
-                searchQuery.trim() === "" && selectedCuisine === "all" && !showOpenOnly
+                searchQuery.trim() === "" && selectedCuisine === "all" && !showOpenOnly && mapTimeFilter === "now"
               }
             />
           ) : (
@@ -337,6 +383,10 @@ function MapPinLegend({ className }: { className?: string }) {
           <span>Open now · truck photo or pin</span>
         </div>
         <div className="flex items-center gap-1.5">
+          <span className="h-2.5 w-2.5 rounded-full bg-blue-600 shrink-0" />
+          <span>Scheduled stop</span>
+        </div>
+        <div className="flex items-center gap-1.5">
           <span className="h-2.5 w-2.5 rounded-full bg-orange-500 shrink-0" />
           <span>Happening Now</span>
         </div>
@@ -352,6 +402,8 @@ function SidebarContent({
   setSelectedCuisine,
   showOpenOnly,
   setShowOpenOnly,
+  mapTimeFilter,
+  setMapTimeFilter,
   filteredLiveTrucks,
   listedOnlySidebarTrucks,
   filteredMapPinEvents,
@@ -369,6 +421,8 @@ function SidebarContent({
   setSelectedCuisine: (v: string) => void
   showOpenOnly: boolean
   setShowOpenOnly: (v: boolean) => void
+  mapTimeFilter: MapTimeFilter
+  setMapTimeFilter: (v: MapTimeFilter) => void
   filteredLiveTrucks: FoodTruck[]
   listedOnlySidebarTrucks: FoodTruck[]
   filteredMapPinEvents: MapEventMarker[]
@@ -381,7 +435,7 @@ function SidebarContent({
   hasAnyTrucksInDb: boolean
 }) {
   const filtersActive =
-    searchQuery.trim() !== "" || selectedCuisine !== "all" || showOpenOnly
+    searchQuery.trim() !== "" || selectedCuisine !== "all" || showOpenOnly || mapTimeFilter !== "now"
   const listTotallyEmpty =
     filteredLiveTrucks.length === 0 &&
     filteredMapPinEvents.length === 0 &&
@@ -403,6 +457,21 @@ function SidebarContent({
         </div>
 
         <MapPinLegend className="pb-3 border-b" />
+
+        <div className="flex flex-wrap gap-2">
+          {MAP_TIME_FILTERS.map(({ id, label }) => (
+            <Button
+              key={id}
+              type="button"
+              size="sm"
+              variant={mapTimeFilter === id ? "default" : "outline"}
+              className="h-8 text-xs"
+              onClick={() => setMapTimeFilter(id)}
+            >
+              {label}
+            </Button>
+          ))}
+        </div>
 
         <div className="flex gap-2">
           <Select value={selectedCuisine} onValueChange={setSelectedCuisine}>
@@ -435,7 +504,10 @@ function SidebarContent({
       <div className="shrink-0 px-4 py-3 border-b bg-muted/50 space-y-1">
         <p className="text-sm text-muted-foreground">
           <span className="font-medium text-foreground">{filteredLiveTrucks.length}</span> truck
-          {filteredLiveTrucks.length === 1 ? "" : "s"} open now on the map
+          {filteredLiveTrucks.length === 1 ? "" : "s"} on the map for{" "}
+          <span className="font-medium text-foreground">
+            {MAP_TIME_FILTERS.find((f) => f.id === mapTimeFilter)?.label ?? mapTimeFilter}
+          </span>
           {filteredMapPinEvents.length > 0 ? (
             <>
               {" "}

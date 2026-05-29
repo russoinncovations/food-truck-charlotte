@@ -14,9 +14,9 @@ export interface FoodTruck {
   isOpen: boolean
   isFeatured: boolean
   /** Map page: live reporting vs scheduled upcoming pin styling */
-  mapDisplaySource?: "live" | "upcoming" | "listed"
-  /** Map pins: vendor live check-in vs directory fallback (`upcoming` rows treated like listed for pin UI). */
-  mapPinStatus?: "live" | "listed"
+  mapDisplaySource?: "live" | "scheduled" | "upcoming" | "listed"
+  /** Map pins: vendor live check-in vs scheduled stop vs directory fallback. */
+  mapPinStatus?: "live" | "scheduled" | "listed"
   location?: {
     lat: number
     lng: number
@@ -34,6 +34,10 @@ export interface FoodTruck {
   }
   /** Uploaded photo / hero / logo URL for live map marker only (omit → green pin). */
   markerPhotoUrl?: string | null
+  /** Scheduled stop metadata for map time filters */
+  scheduledStopDate?: string
+  scheduledStartTime?: string
+  scheduledEndTime?: string
 }
 
 export interface ScheduleItem {
@@ -46,6 +50,8 @@ export interface ScheduleItem {
   lat: number
   lng: number
   eventName?: string
+  menuNote?: string
+  isPublic?: boolean
 }
 
 export interface MenuItem {

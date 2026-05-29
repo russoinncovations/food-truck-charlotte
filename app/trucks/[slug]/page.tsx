@@ -13,10 +13,13 @@ import {
   Globe,
   ExternalLink,
   ChevronLeft,
+  Calendar,
 } from "lucide-react"
 import { createClient } from "@/lib/supabase/server"
 import { PUBLIC_LISTED_TRUCK_EQ } from "@/lib/trucks/public-listed-truck-query"
 import { getTruckDisplayImage } from "@/lib/trucks/truck-display-image"
+import { fetchUpcomingPublicStopsForTruck } from "@/lib/schedule/scheduled-stop-map"
+import { formatStopDate, formatStopTime } from "@/lib/schedule/scheduled-stops"
 
 interface Props {
   params: Promise<{ slug: string }>
@@ -139,6 +142,8 @@ export default async function TruckProfilePage({ params }: Props) {
 
   const heroSrc = getTruckDisplayImage(truckId, row.photo_url as string | null | undefined)
 
+  const upcomingStops = await fetchUpcomingPublicStopsForTruck(supabase, truckId, 6)
+
   return (
     <main className="min-h-screen bg-background">
       <Header />
@@ -216,6 +221,36 @@ export default async function TruckProfilePage({ params }: Props) {
                   <p className="mt-6 text-muted-foreground leading-relaxed whitespace-pre-wrap">
                     {bio}
                   </p>
+                ) : null}
+
+                {upcomingStops.length > 0 ? (
+                  <div className="mt-6 pt-6 border-t space-y-3">
+                    <h2 className="font-display text-lg font-semibold flex items-center gap-2">
+                      <Calendar className="h-5 w-5 text-primary" />
+                      Upcoming stops
+                    </h2>
+                    <ul className="space-y-3">
+                      {upcomingStops.map((stop) => (
+                        <li key={stop.id} className="rounded-lg border bg-muted/20 px-4 py-3 text-sm">
+                          <p className="font-medium text-foreground">
+                            {formatStopDate(stop.stop_date)} · {formatStopTime(stop.start_time)} –{" "}
+                            {formatStopTime(stop.end_time)}
+                          </p>
+                          <p className="text-muted-foreground mt-1">{stop.location_name}</p>
+                          {stop.is_public && stop.address ? (
+                            <p className="text-muted-foreground">{stop.address}</p>
+                          ) : (
+                            <p className="text-muted-foreground italic">Private event</p>
+                          )}
+                          {stop.menu_note ? (
+                            <p className="mt-2 text-foreground">
+                              <span className="font-medium">Today&apos;s menu:</span> {stop.menu_note}
+                            </p>
+                          ) : null}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
                 ) : null}
 
                 {(website || instagram || phone) && (
