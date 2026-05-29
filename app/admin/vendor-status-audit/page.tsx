@@ -39,6 +39,33 @@ export default async function AdminVendorStatusAuditPage({
 
       <main className="pt-24 pb-16">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div
+            className="mb-6 rounded-lg border border-primary/30 bg-primary/5 px-4 py-3 text-sm"
+            data-audit-deploy-marker="grouped-audit-v2"
+          >
+            <p className="font-semibold tracking-wide text-foreground">GROUPED AUDIT V2 ACTIVE</p>
+            <dl className="mt-2 grid gap-x-6 gap-y-1 text-xs text-muted-foreground sm:grid-cols-2 lg:grid-cols-4">
+              <div>
+                <dt className="inline">Total groups: </dt>
+                <dd className="inline font-medium tabular-nums text-foreground">{summary.totalGroups}</dd>
+              </div>
+              <div>
+                <dt className="inline">Primary truck groups: </dt>
+                <dd className="inline font-medium tabular-nums text-foreground">{summary.truckRows}</dd>
+              </div>
+              <div>
+                <dt className="inline">Application-only groups: </dt>
+                <dd className="inline font-medium tabular-nums text-foreground">{summary.applicationOnlyRecords}</dd>
+              </div>
+              <div>
+                <dt className="inline">Historical linked applications: </dt>
+                <dd className="inline font-medium tabular-nums text-foreground">
+                  {summary.historicalApplicationRecords}
+                </dd>
+              </div>
+            </dl>
+          </div>
+
           <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
