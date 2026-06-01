@@ -137,7 +137,7 @@ export function VendorCTA({ directoryTruckCount }: { directoryTruckCount: number
               {/* CTA */}
               <div className="flex flex-col sm:flex-row gap-3">
                 <Button asChild className="flex-1 bg-accent text-accent-foreground hover:bg-accent/90">
-                  <Link href="/book-trucks" className="flex items-center justify-center gap-2">
+                  <Link href="/book-a-truck" className="flex items-center justify-center gap-2">
                     Book Trucks for Event
                     <ArrowRight className="h-4 w-4" />
                   </Link>

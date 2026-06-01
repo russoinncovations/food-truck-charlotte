@@ -196,7 +196,7 @@ export function BookingForm({ directoryTrucks }: { directoryTrucks: { id: string
       const result = await submitBookingRequest(formData)
       
       if (result.success) {
-        router.push(`/book-trucks/success?id=${result.bookingId}`)
+        router.push(`/book-a-truck/success?id=${result.bookingId}`)
       } else {
         setErrors({ submit: result.error || "Failed to submit booking" })
       }
