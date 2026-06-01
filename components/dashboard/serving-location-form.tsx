@@ -4,6 +4,7 @@ import { useActionState, useEffect, useMemo, useState, type FormEvent } from "re
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { startServingWithPin, stopServingAction, geocodeServingAddress, type ServingActionResult } from "@/app/dashboard/servingActions"
+import { isFreshManualLivePin, isStaleManualLivePin } from "@/lib/serving/manual-live-pin"
 import { isValidTruckMapCoordinates } from "@/lib/location/truck-map-coords"
 import { servingAddressSearchLine, SERVING_REQUIRES_MAP_PIN_ERROR } from "@/lib/serving-location"
 import { Button } from "@/components/ui/button"
@@ -20,6 +21,7 @@ export type TruckServingFields = {
   longitude: number | string | null
   /** Present when form is fed from the dashboard truck query; optional elsewhere */
   updated_at?: string | null
+  serving_started_at?: string | null
 }
 
 const initial: ServingActionResult | null = null
@@ -140,8 +142,16 @@ export function ServingLocationForm({
     }
   }
 
+  const livePinExpired = isStaleManualLivePin(truck)
+  const isFreshLive = isFreshManualLivePin(truck)
+
   return (
     <div className="space-y-4">
+      {livePinExpired ? (
+        <p className="text-sm text-amber-900 dark:text-amber-100 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2">
+          Your live pin may have expired. Turn it on again if you&apos;re still serving.
+        </p>
+      ) : null}
       {showStatusStrip ? (
         <div className="flex items-center justify-between gap-4 rounded-lg border p-4">
           <div className="flex items-center gap-3 min-w-0">
@@ -151,20 +161,24 @@ export function ServingLocationForm({
             <div>
               <p className="text-sm font-medium text-foreground">Serving status</p>
               <p className="text-xs text-muted-foreground">
-                {truck.serving_today
-                  ? "You’re on the map with a saved pin. Update your spot below."
-                  : "Set your location and pin, then start serving to appear on the map."}
+                {isFreshLive
+                  ? "You're on the map with a saved pin. Update your spot below."
+                  : livePinExpired
+                    ? "Your live pin expired on the public map. Save your location below to go live again."
+                    : "Set your location and pin, then start serving to appear on the map."}
               </p>
             </div>
           </div>
           <div
             className={
-              truck.serving_today
+              isFreshLive
                 ? "shrink-0 rounded-full bg-green-500 px-2.5 py-1 text-xs font-medium text-white"
-                : "shrink-0 rounded-full border border-muted-foreground/30 px-2.5 py-1 text-xs"
+                : livePinExpired
+                  ? "shrink-0 rounded-full bg-amber-500 px-2.5 py-1 text-xs font-medium text-white"
+                  : "shrink-0 rounded-full border border-muted-foreground/30 px-2.5 py-1 text-xs"
             }
           >
-            {truck.serving_today ? "Serving" : "Not serving"}
+            {isFreshLive ? "Serving" : livePinExpired ? "Expired" : "Not serving"}
           </div>
         </div>
       ) : null}
@@ -258,13 +272,13 @@ export function ServingLocationForm({
         <Button type="submit" className="w-full sm:w-auto" disabled={!canSave || startPending}>
           {startPending
             ? submitLabels?.busy ?? "Saving…"
-            : truck.serving_today
+            : isFreshLive
               ? submitLabels?.update ?? "Save location"
               : submitLabels?.start ?? "Start serving"}
         </Button>
       </form>
 
-      {truck.serving_today && (
+      {(truck.serving_today || livePinExpired) && (
         <form action={stopAction} id="vendor-stop-serving" className="rounded-lg border border-dashed p-4">
           <input type="hidden" name="truckId" value={truck.id} />
           <p className="text-sm text-muted-foreground mb-2">Stop showing as open and remove your map pin for today.</p>

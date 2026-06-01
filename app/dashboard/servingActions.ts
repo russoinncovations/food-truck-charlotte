@@ -44,6 +44,7 @@ export async function stopServing(truckId: string): Promise<ServingActionResult>
       serving_today: false,
       latitude: null,
       longitude: null,
+      serving_started_at: null,
     })
     .eq("id", truckId)
 
@@ -97,6 +98,7 @@ export async function startServingWithPin(
       street_address: streetAddress || null,
       latitude: lat,
       longitude: lng,
+      serving_started_at: new Date().toISOString(),
     })
     .eq("id", truckId)
 

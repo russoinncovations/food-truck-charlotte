@@ -23,7 +23,7 @@ export default async function VendorLivePage() {
 
   const { data: truckData } = await supabase
     .from("trucks")
-    .select("id, name, serving_today, today_location, street_address, latitude, longitude, updated_at")
+    .select("id, name, serving_today, serving_started_at, today_location, street_address, latitude, longitude, updated_at")
     .eq("email", user.email)
     .single()
 
@@ -55,6 +55,7 @@ export default async function VendorLivePage() {
       truck={{
         id: truckData.id,
         serving_today: truckData.serving_today,
+        serving_started_at: truckData.serving_started_at,
         today_location: truckData.today_location,
         street_address: truckData.street_address,
         latitude: truckData.latitude,

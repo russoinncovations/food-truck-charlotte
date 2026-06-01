@@ -1,5 +1,6 @@
 import { createAdminSupabaseClient } from "@/lib/supabase/admin"
 import { isValidTruckMapCoordinates } from "@/lib/location/truck-map-coords"
+import { isFreshManualLivePin, isStaleManualLivePin } from "@/lib/serving/manual-live-pin"
 import { PUBLIC_LISTED_TRUCK_EQ } from "@/lib/trucks/public-listed-truck-query"
 import { isInternalDemoVendorTruck } from "@/lib/trucks/internal-demo-vendor"
 import { isPlausibleVendorEmail } from "@/lib/trucks/vendor-reminder-recipients"
@@ -18,6 +19,7 @@ export type VendorStatusIssueFlag =
   | "no_recent_activity"
   | "missing_photo"
   | "live_no_valid_coords"
+  | "stale_live_pin"
   | "listed_inactive"
   | "blocked_by_rls"
   | "historical_application_record"
@@ -112,6 +114,7 @@ type TruckRow = {
   photo_url: string | null
   hero_photo_url: string | null
   serving_today: boolean | null
+  serving_started_at: string | null
   latitude: number | null
   longitude: number | null
   today_location: string | null
@@ -139,6 +142,7 @@ const FLAG_SEVERITY: Record<VendorStatusIssueFlag, VendorAuditIssueSeverity> = {
   hidden_from_directory: "critical",
   not_map_eligible: "critical",
   live_no_valid_coords: "critical",
+  stale_live_pin: "action",
   blocked_by_rls: "critical",
   no_slug: "action",
   missing_location: "action",
@@ -164,6 +168,7 @@ export const ISSUE_LABELS: Record<VendorStatusIssueFlag, string> = {
   no_recent_activity: "No recent activity (60d+)",
   missing_photo: "Missing photo",
   live_no_valid_coords: "Live but missing valid coordinates",
+  stale_live_pin: "Stale live pin (serving flag still on)",
   listed_inactive: "Listed flag but inactive status",
   blocked_by_rls: "Blocked by legacy active flag",
   historical_application_record: "Historical application on file",
@@ -310,7 +315,7 @@ function hasLiveCoords(truck: TruckRow): boolean {
 }
 
 function onMapPinNow(truck: TruckRow): boolean {
-  return isRlsPublicVisible(truck) && truck.serving_today === true && hasLiveCoords(truck)
+  return isRlsPublicVisible(truck) && isFreshManualLivePin(truck) && hasLiveCoords(truck)
 }
 
 function truckRowType(truck: TruckRow, visible: boolean): VendorAuditRowType {
@@ -396,6 +401,8 @@ function computeTruckIssues(opts: {
 
   if (servingToday && !hasLiveCoords(truck)) {
     flags.push("live_no_valid_coords")
+  } else if (isStaleManualLivePin(truck)) {
+    flags.push("stale_live_pin")
   } else if (!servingToday && !hasLocationFields(truck) && !hasLiveCoords(truck)) {
     flags.push("missing_location")
   }
@@ -642,7 +649,7 @@ export async function fetchVendorStatusAudit(adminVendorsUrl: string): Promise<{
     admin
       .from("trucks")
       .select(
-        "id, name, slug, email, show_in_directory, is_active, status, active, photo_url, hero_photo_url, serving_today, latitude, longitude, today_location, street_address, source_application_id, updated_at, created_at"
+        "id, name, slug, email, show_in_directory, is_active, status, active, photo_url, hero_photo_url, serving_today, serving_started_at, latitude, longitude, today_location, street_address, source_application_id, updated_at, created_at"
       )
       .order("name", { ascending: true }),
     admin

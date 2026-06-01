@@ -4,6 +4,7 @@ import {
   loadPublicScheduledStopPinRows,
   mergeLiveAndScheduledMapPins,
 } from "@/lib/schedule/scheduled-stop-map"
+import { isFreshManualLivePin } from "@/lib/serving/manual-live-pin"
 import { PUBLIC_LISTED_TRUCK_EQ } from "@/lib/trucks/public-listed-truck-query"
 import type { ServingTruckRow } from "@/lib/map/serving-row-to-food-truck"
 
@@ -38,12 +39,11 @@ export async function getMapSidebarAllListedTruckRows(supabase: SupabaseClient):
   return ((data ?? []) as ServingTruckRow[])
     .map((t) => ({
       ...t,
-      // Strict boolean — avoid accidental "live" from truthy non-booleans in row data.
-      mapDisplaySource: (t.serving_today === true ? "live" : "listed") as "live" | "listed",
+      mapDisplaySource: (isFreshManualLivePin(t) ? "live" : "listed") as "live" | "listed",
     }))
     .sort((a, b) => {
-      const sa = a.serving_today ? 0 : 1
-      const sb = b.serving_today ? 0 : 1
+      const sa = isFreshManualLivePin(a) ? 0 : 1
+      const sb = isFreshManualLivePin(b) ? 0 : 1
       if (sa !== sb) return sa - sb
       return (a.name ?? "").localeCompare(b.name ?? "", undefined, { sensitivity: "base" })
     })

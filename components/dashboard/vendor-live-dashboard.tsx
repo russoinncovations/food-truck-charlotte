@@ -15,6 +15,7 @@ import {
   readServingReminderUntilIso,
   setServingReminderHoursFromNow,
 } from "@/lib/pwa/vendor-serving-reminder-storage"
+import { isFreshManualLivePin, isStaleManualLivePin } from "@/lib/serving/manual-live-pin"
 import { MapPin, Radio, Inbox } from "lucide-react"
 
 function formatUntil(iso: string | null): string {
@@ -77,7 +78,8 @@ export function VendorLiveDashboard({
     [(truck.today_location ?? "").trim(), (truck.street_address ?? "").trim()].filter(Boolean).join(" · ") ||
     "—"
 
-  const isLive = truck.serving_today === true
+  const isLive = isFreshManualLivePin(truck)
+  const livePinExpired = isStaleManualLivePin(truck)
 
   return (
     <div className="min-h-screen bg-muted/30">
@@ -120,6 +122,25 @@ export function VendorLiveDashboard({
                 <Button variant="default" size="sm" asChild>
                   <Link href="/dashboard#vendor-requests-to-confirm">Review booking leads</Link>
                 </Button>
+              </CardContent>
+            </Card>
+          ) : null}
+
+          {livePinExpired ? (
+            <Card className="border-amber-500/40 bg-amber-500/10">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg text-amber-950 dark:text-amber-100">
+                  Live pin may have expired
+                </CardTitle>
+                <CardDescription className="text-amber-900/80 dark:text-amber-100/80">
+                  Your live pin may have expired. Turn it on again if you&apos;re still serving.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="text-sm text-amber-950/90 dark:text-amber-50/90">
+                <p>
+                  The public map hides manual live pins after about 6 hours. Save your location below to go live
+                  again, or stop serving if you&apos;re done for the day.
+                </p>
               </CardContent>
             </Card>
           ) : null}

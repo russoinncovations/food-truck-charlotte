@@ -113,7 +113,7 @@ export default async function DashboardPage() {
 
   const { data: truckData } = await supabase
     .from("trucks")
-    .select("id, name, slug, cuisine, cuisine_types, serving_today, today_location, street_address, latitude, longitude, updated_at")
+    .select("id, name, slug, cuisine, cuisine_types, serving_today, serving_started_at, today_location, street_address, latitude, longitude, updated_at")
     .eq("email", user.email)
     .single()
 
@@ -382,6 +382,7 @@ export default async function DashboardPage() {
                       truck={{
                         id: truckData.id,
                         serving_today: truckData.serving_today,
+                        serving_started_at: (truckData as { serving_started_at?: string | null }).serving_started_at ?? null,
                         today_location: truckData.today_location,
                         street_address: (truckData as { street_address?: string | null }).street_address ?? null,
                         latitude: (truckData as { latitude?: number | string | null }).latitude ?? null,

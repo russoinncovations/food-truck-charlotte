@@ -1,6 +1,7 @@
 import { type FoodTruck } from "@/lib/data"
 import { easternDateStringToday } from "@/lib/events/public-events"
 import { isValidTruckMapCoordinates } from "@/lib/location/truck-map-coords"
+import { isFreshManualLivePin } from "@/lib/serving/manual-live-pin"
 import { getTruckDisplayImage, pickTruckMarkerImageUrl } from "@/lib/trucks/truck-display-image"
 
 export type ServingTruckRow = {
@@ -12,6 +13,7 @@ export type ServingTruckRow = {
   latitude: number | string | null
   longitude: number | string | null
   serving_today: boolean | null
+  serving_started_at?: string | null
   today_location: string | null
   street_address: string | null
   today_specials: string | null
@@ -75,7 +77,7 @@ export function mapRowsToMapTrucks(rows: ServingTruckRow[]): FoodTruck[] {
       truck.slug && String(truck.slug).trim() !== "" ? String(truck.slug).trim() : fallbackSlug
 
     const displaySource: "live" | "scheduled" | "upcoming" | "listed" =
-      truck.mapDisplaySource ?? (truck.serving_today ? "live" : "upcoming")
+      truck.mapDisplaySource ?? (isFreshManualLivePin(truck) ? "live" : "upcoming")
     const isOpen = displaySource === "live"
     const mapPinStatus: FoodTruck["mapPinStatus"] =
       displaySource === "live"

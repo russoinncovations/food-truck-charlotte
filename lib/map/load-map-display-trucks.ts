@@ -1,11 +1,16 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 import { getDisplayTrucks, parseTimeToMinutes } from "@/lib/map/get-display-trucks"
+import { isFreshManualLivePin } from "@/lib/serving/manual-live-pin"
 import { PUBLIC_LISTED_TRUCK_EQ } from "@/lib/trucks/public-listed-truck-query"
 import type { ServingTruckRow } from "@/lib/map/serving-row-to-food-truck"
 
 /** Columns needed for map display rows (live / schedule / directory). */
 export const MAP_DISPLAY_TRUCK_SELECT =
-  "id, name, slug, cuisine, cuisine_types, latitude, longitude, serving_today, today_location, street_address, today_specials, photo_url, hero_photo_url, logo_url"
+  "id, name, slug, cuisine, cuisine_types, latitude, longitude, serving_today, serving_started_at, today_location, street_address, today_specials, photo_url, hero_photo_url, logo_url"
+
+function freshManualLiveRows(rows: ServingTruckRow[]): ServingTruckRow[] {
+  return rows.filter((row) => isFreshManualLivePin(row))
+}
 
 function easternNowMinutesAndDow(): { dow: string; nowM: number } {
   const s = new Date().toLocaleString("en-US", { timeZone: "America/New_York" })
@@ -110,7 +115,7 @@ export async function getMapTruckDisplayLayers(supabase: SupabaseClient): Promis
     .eq("show_in_directory", PUBLIC_LISTED_TRUCK_EQ.show_in_directory)
     .eq("is_active", PUBLIC_LISTED_TRUCK_EQ.is_active)
     .eq("status", PUBLIC_LISTED_TRUCK_EQ.status)
-  const liveTrucks = (liveData ?? []) as ServingTruckRow[]
+  const liveTrucks = freshManualLiveRows((liveData ?? []) as ServingTruckRow[])
 
   const upcomingTrucks = liveTrucks.length === 0 ? await buildUpcomingFromSchedule(supabase) : []
 
@@ -136,7 +141,7 @@ export async function getPublicMapLiveTruckRows(supabase: SupabaseClient): Promi
     .eq("show_in_directory", PUBLIC_LISTED_TRUCK_EQ.show_in_directory)
     .eq("is_active", PUBLIC_LISTED_TRUCK_EQ.is_active)
     .eq("status", PUBLIC_LISTED_TRUCK_EQ.status)
-  return ((liveData ?? []) as ServingTruckRow[]).map((t) => ({
+  return freshManualLiveRows((liveData ?? []) as ServingTruckRow[]).map((t) => ({
     ...t,
     mapDisplaySource: "live" as const,
   }))
