@@ -17,6 +17,7 @@ import {
   ChevronLeft,
 } from "lucide-react"
 import { createClient } from "@/lib/supabase/server"
+import { fetchPublicEventBySlug } from "@/lib/events/public-events"
 
 const HERO_IMAGE_FALLBACK =
   "https://images.unsplash.com/photo-1687351977296-e909232009b4?w=400&h=300&fit=crop"
@@ -49,13 +50,7 @@ function isEventTypeKey(x: string): x is EventTypeKey {
 
 async function fetchEventBySlug(slug: string) {
   const supabase = await createClient()
-  const { data } = await supabase
-    .from("events")
-    .select("*")
-    .eq("slug", slug)
-    .eq("active", true)
-    .single()
-  return data
+  return fetchPublicEventBySlug(supabase, slug, "*")
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {

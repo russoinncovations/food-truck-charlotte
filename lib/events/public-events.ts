@@ -44,6 +44,31 @@ export async function countUpcomingPublicEvents(supabase: SupabaseClient): Promi
   return count ?? 0
 }
 
+/**
+ * Public event detail — same rules as `/events` list:
+ * `active = true`, `date` not before today (Eastern), slug match,
+ * and `listing_status` is null or `approved`.
+ */
+export async function fetchPublicEventBySlug<T extends string = "*">(
+  supabase: SupabaseClient,
+  slug: string,
+  selectColumns: T = "*" as T
+): Promise<Record<string, unknown> | null> {
+  const trimmed = slug.trim()
+  if (!trimmed) return null
+
+  const { data, error } = await publicUpcomingEventsBase(supabase, selectColumns)
+    .eq("slug", trimmed)
+    .maybeSingle()
+
+  if (error) {
+    console.error("[public-events] fetchPublicEventBySlug:", error)
+    return null
+  }
+
+  return (data as Record<string, unknown> | null) ?? null
+}
+
 /** Row shape for vendor dashboard “public events” (same filters as `/events`). */
 export type VendorDashboardPublicEventRow = {
   id: string
