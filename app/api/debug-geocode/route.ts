@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server"
+import { isAdminKeyConfigured, verifyAdminKey } from "@/lib/admin/verify-admin-key"
 
 /**
- * Temporary diagnostic: verify Google Geocoding from the server (e.g. Vercel).
- * Remove or protect this route when done — do not add auth secrets to responses.
+ * Admin-only diagnostic: verify Google Geocoding from the server (e.g. Vercel).
+ * GET /api/debug-geocode?key=ADMIN_KEY — do not add auth secrets to responses.
  */
 export const dynamic = "force-dynamic"
 
@@ -32,7 +33,12 @@ type GeocodeJson = {
   }>
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  const adminKey = new URL(request.url).searchParams.get("key")
+  if (!isAdminKeyConfigured() || !verifyAdminKey(adminKey)) {
+    return new NextResponse(null, { status: 404 })
+  }
+
   const hasGoogleGeocodingKey = hasEnvKey("GOOGLE_GEOCODING_API_KEY")
   const hasGoogleMapsKey = hasEnvKey("GOOGLE_MAPS_API_KEY")
 

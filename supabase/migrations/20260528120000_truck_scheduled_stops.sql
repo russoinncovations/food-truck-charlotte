@@ -1,5 +1,6 @@
 -- Date-based scheduled stops (Phase 1 discovery engine).
 -- Distinct from recurring truck_schedule (day_of_week).
+-- Apply in production if map logs: Could not find the table 'public.truck_scheduled_stops'.
 
 create table if not exists public.truck_scheduled_stops (
   id uuid primary key default gen_random_uuid(),
@@ -26,6 +27,12 @@ create index if not exists idx_truck_scheduled_stops_truck_date
 create index if not exists idx_truck_scheduled_stops_date_status
   on public.truck_scheduled_stops (stop_date, status);
 
+drop trigger if exists trg_truck_scheduled_stops_updated_at on public.truck_scheduled_stops;
+create trigger trg_truck_scheduled_stops_updated_at
+  before update on public.truck_scheduled_stops
+  for each row
+  execute function public.set_updated_at();
+
 alter table public.truck_scheduled_stops enable row level security;
 
 -- Public read: public + scheduled stops on listed trucks only.
@@ -47,7 +54,7 @@ create policy "Public read public scheduled stops"
     )
   );
 
--- Vendors manage stops for trucks tied to their login email.
+-- Vendor dashboard: read own stops (including private / canceled).
 drop policy if exists "Vendor select own scheduled stops" on public.truck_scheduled_stops;
 create policy "Vendor select own scheduled stops"
   on public.truck_scheduled_stops
@@ -58,7 +65,7 @@ create policy "Vendor select own scheduled stops"
       select 1
       from public.trucks t
       where t.id = truck_scheduled_stops.truck_id
-        and lower(trim(t.email)) = lower(trim(auth.jwt() ->> 'email'))
+        and lower(trim(coalesce(t.email, ''))) = lower(trim(coalesce(auth.jwt() ->> 'email', '')))
     )
   );
 
@@ -72,7 +79,7 @@ create policy "Vendor insert own scheduled stops"
       select 1
       from public.trucks t
       where t.id = truck_scheduled_stops.truck_id
-        and lower(trim(t.email)) = lower(trim(auth.jwt() ->> 'email'))
+        and lower(trim(coalesce(t.email, ''))) = lower(trim(coalesce(auth.jwt() ->> 'email', '')))
     )
   );
 
@@ -86,7 +93,7 @@ create policy "Vendor update own scheduled stops"
       select 1
       from public.trucks t
       where t.id = truck_scheduled_stops.truck_id
-        and lower(trim(t.email)) = lower(trim(auth.jwt() ->> 'email'))
+        and lower(trim(coalesce(t.email, ''))) = lower(trim(coalesce(auth.jwt() ->> 'email', '')))
     )
   )
   with check (
@@ -94,7 +101,7 @@ create policy "Vendor update own scheduled stops"
       select 1
       from public.trucks t
       where t.id = truck_scheduled_stops.truck_id
-        and lower(trim(t.email)) = lower(trim(auth.jwt() ->> 'email'))
+        and lower(trim(coalesce(t.email, ''))) = lower(trim(coalesce(auth.jwt() ->> 'email', '')))
     )
   );
 
@@ -108,6 +115,9 @@ create policy "Vendor delete own scheduled stops"
       select 1
       from public.trucks t
       where t.id = truck_scheduled_stops.truck_id
-        and lower(trim(t.email)) = lower(trim(auth.jwt() ->> 'email'))
+        and lower(trim(coalesce(t.email, ''))) = lower(trim(coalesce(auth.jwt() ->> 'email', '')))
     )
   );
+
+-- Admin reads/writes use service role (bypasses RLS) after ADMIN_KEY gate in app code.
+
