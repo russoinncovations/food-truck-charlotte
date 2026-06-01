@@ -11,6 +11,7 @@ import { AdminVendorEmailEngagement } from "@/components/admin/admin-vendor-emai
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { getRoleSubdomainFromHost } from "@/lib/subdomain-routing"
+import { checkAdminPageAccess, verifyAdminKey } from "@/lib/admin/verify-admin-key"
 import { Smartphone, Truck } from "lucide-react"
 
 export const metadata: Metadata = {
@@ -55,6 +56,8 @@ function vendorDescription(app: Record<string, unknown>): string {
 
 async function approveTruckApplication(formData: FormData) {
   "use server"
+  if (!verifyAdminKey(formData.get("adminKey") as string | null)) return
+
   const applicationId = formData.get("applicationId") as string | null
   if (!applicationId) return
 
@@ -101,6 +104,8 @@ async function approveTruckApplication(formData: FormData) {
 
 async function rejectTruckApplication(formData: FormData) {
   "use server"
+  if (!verifyAdminKey(formData.get("adminKey") as string | null)) return
+
   const applicationId = formData.get("applicationId") as string | null
   if (!applicationId) return
 
@@ -123,8 +128,8 @@ export default async function AdminDashboardPage({
   searchParams: Promise<{ key?: string }>
 }) {
   const key = (await searchParams)?.key
-  const adminKey = process.env.ADMIN_KEY ?? "7985"
-  if (key !== adminKey) {
+  const access = checkAdminPageAccess(key)
+  if (!access.allowed) {
     const hdrs = await headers()
     const hostRaw = hdrs.get("x-forwarded-host") ?? hdrs.get("host") ?? ""
     const onAdminSubdomain = getRoleSubdomainFromHost(hostRaw) === "admin"
@@ -133,9 +138,13 @@ export default async function AdminDashboardPage({
       <div className="min-h-screen flex items-center justify-center bg-muted/30 px-4 py-10">
         <Card className="w-full max-w-md border-border/80 shadow-sm">
           <CardHeader>
-            <CardTitle className="text-lg font-display">Restricted</CardTitle>
+            <CardTitle className="text-lg font-display">
+              {access.reason === "not_configured" ? "Admin not configured" : "Restricted"}
+            </CardTitle>
             <CardDescription>
-              {onAdminSubdomain ? (
+              {access.reason === "not_configured" ? (
+                <>Admin access requires <code className="rounded bg-muted px-1.5 py-0.5 text-xs font-mono">ADMIN_KEY</code> to be set on the server.</>
+              ) : onAdminSubdomain ? (
                 <>
                   You&apos;re on the admin subdomain. Finish the URL from your bookmark: add{" "}
                   <code className="rounded bg-muted px-1.5 py-0.5 text-xs font-mono">?key=…</code> after{" "}
@@ -257,6 +266,7 @@ export default async function AdminDashboardPage({
                             <td className="p-3">
                               <div className="flex flex-wrap justify-end gap-2">
                                 <form action={approveTruckApplication}>
+                                  <input type="hidden" name="adminKey" value={key ?? ""} />
                                   <input type="hidden" name="applicationId" value={id} />
                                   <input type="hidden" name="appBusinessName" value={nameStr} />
                                   <input type="hidden" name="appTruckName" value={nameStr} />
@@ -275,6 +285,7 @@ export default async function AdminDashboardPage({
                                   </Button>
                                 </form>
                                 <form action={rejectTruckApplication}>
+                                  <input type="hidden" name="adminKey" value={key ?? ""} />
                                   <input type="hidden" name="applicationId" value={id} />
                                   <Button type="submit" size="sm" variant="destructive">
                                     Reject

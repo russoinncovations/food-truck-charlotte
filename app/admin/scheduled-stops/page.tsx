@@ -16,6 +16,7 @@ import { createAdminSupabaseClient } from "@/lib/supabase/admin"
 import { isValidTruckMapCoordinates } from "@/lib/location/truck-map-coords"
 import { fetchAllUpcomingStopsForAdmin } from "@/lib/schedule/scheduled-stop-map"
 import { formatStopDate, formatStopTime } from "@/lib/schedule/scheduled-stops"
+import { checkAdminPageAccess } from "@/lib/admin/verify-admin-key"
 import { ChevronLeft } from "lucide-react"
 
 export const metadata: Metadata = {
@@ -30,12 +31,13 @@ export default async function AdminScheduledStopsPage({
 }) {
   const params = await searchParams
   const key = params?.key
-  const adminKey = process.env.ADMIN_KEY ?? "7985"
-
-  if (key !== adminKey) {
+  const access = checkAdminPageAccess(key)
+  if (!access.allowed) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <p className="text-muted-foreground">Page not found.</p>
+        <p className="text-muted-foreground">
+          {access.reason === "not_configured" ? "Admin access is not configured." : "Page not found."}
+        </p>
       </div>
     )
   }

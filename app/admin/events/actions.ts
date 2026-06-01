@@ -1,19 +1,11 @@
 "use server"
 
 import { revalidatePath } from "next/cache"
+import { verifyAdminKey } from "@/lib/admin/verify-admin-key"
 import { createAdminSupabaseClient } from "@/lib/supabase/admin"
 import { buildGeocodableLineFromParts } from "@/lib/events/event-address"
 import { coordsAreValidForMap, geocodeEventAddressForStorage } from "@/lib/events/event-geocode"
 import { nextUniqueEventSlug } from "@/lib/events/slug"
-
-function expectedAdminKey(): string {
-  return process.env.ADMIN_KEY ?? "7985"
-}
-
-function verifyAdminKey(raw: string | null | undefined): boolean {
-  const k = (raw ?? "").trim()
-  return k === expectedAdminKey()
-}
 
 export type QuickAddEventResult = { success: true } | { success: false; error: string }
 

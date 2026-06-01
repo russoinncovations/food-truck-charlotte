@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { revalidatePath } from "next/cache"
 import { createAdminSupabaseClient } from "@/lib/supabase/admin"
 import { createClient } from "@/lib/supabase/server"
+import { verifyAdminKey } from "@/lib/admin/verify-admin-key"
 import {
   TRUCK_PHOTOS_BUCKET,
   TRUCK_PHOTO_MAX_BYTES,
@@ -12,10 +13,6 @@ import {
 
 function jsonError(status: number, error: string) {
   return NextResponse.json({ success: false as const, error }, { status })
-}
-
-function expectedAdminKey(): string {
-  return process.env.ADMIN_KEY ?? "7985"
 }
 
 function parsePhotoTarget(raw: string | null): TruckPhotoTarget {
@@ -187,7 +184,7 @@ export async function POST(request: Request) {
 
     /** Admin path (service role) — upload or delete without vendor session. */
     if (adminKeyRaw) {
-      if (adminKeyRaw !== expectedAdminKey()) {
+      if (!verifyAdminKey(adminKeyRaw)) {
         return jsonError(403, "Unauthorized.")
       }
       const admin = createAdminSupabaseClient()

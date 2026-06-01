@@ -26,6 +26,7 @@ import { fetchVendorRoutingForBookingRequest } from "@/lib/admin/fetch-booking-v
 import { AdminBookingEmailCustomer } from "@/components/admin/admin-booking-email-customer"
 import { AdminBookingFollowUpAction } from "@/components/admin/admin-booking-follow-up-action"
 import { AdminBookingLifecycleActions } from "@/components/admin/admin-booking-lifecycle-actions"
+import { checkAdminPageAccess } from "@/lib/admin/verify-admin-key"
 
 export const metadata: Metadata = {
   title: "Booking Details | Admin | Food Truck CLT",
@@ -96,11 +97,13 @@ export default async function BookingDetailPage({
 }) {
   const { id } = await params
   const key = (await searchParams)?.key
-  const adminKey = process.env.ADMIN_KEY ?? "7985"
-  if (key !== adminKey) {
+  const access = checkAdminPageAccess(key)
+  if (!access.allowed) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <p className="text-muted-foreground">Page not found.</p>
+        <p className="text-muted-foreground">
+          {access.reason === "not_configured" ? "Admin access is not configured." : "Page not found."}
+        </p>
       </div>
     )
   }

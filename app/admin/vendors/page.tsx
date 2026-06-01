@@ -19,6 +19,7 @@ import { VendorProfileReminderTestSend } from "@/components/admin/vendor-profile
 import { VendorProfileReminderBulkSend } from "@/components/admin/vendor-profile-reminder-bulk-send"
 import { VendorScheduleReminderRetryFailures } from "@/components/admin/vendor-schedule-reminder-retry"
 import { AdminTruckPhotosPanel } from "@/components/admin/admin-truck-photos-panel"
+import { checkAdminPageAccess, verifyAdminKey } from "@/lib/admin/verify-admin-key"
 
 export const metadata: Metadata = {
   title: "Vendor Applications | Admin | Food Truck CLT",
@@ -47,8 +48,10 @@ function escapeHtml(s: string): string {
 
 async function approveVendor(formData: FormData) {
   "use server"
-  const applicationId = formData.get("applicationId") as string | null
   const adminKey = ((formData.get("adminKey") as string | null) ?? "").trim()
+  if (!verifyAdminKey(adminKey)) return
+
+  const applicationId = formData.get("applicationId") as string | null
   if (!applicationId) return
 
   const businessName = ((formData.get("appBusinessName") as string | null) ?? "").trim()
@@ -169,6 +172,8 @@ async function approveVendor(formData: FormData) {
 
 async function rejectVendor(formData: FormData) {
   "use server"
+  if (!verifyAdminKey(formData.get("adminKey") as string | null)) return
+
   const applicationId = formData.get("applicationId") as string | null
   if (!applicationId) return
 
@@ -234,6 +239,16 @@ export default async function AdminVendorsPage({
 }) {
   const params = await searchParams
   const key = params?.key
+  const access = checkAdminPageAccess(key)
+  if (!access.allowed) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-muted-foreground">
+          {access.reason === "not_configured" ? "Admin access is not configured." : "Page not found."}
+        </p>
+      </div>
+    )
+  }
   const duplicateNotice = params?.duplicate === "1"
   const reminderDone = params?.reminder === "1" || params?.reminderRetry === "1"
   const reminderRetryRun = params?.reminderRetry === "1"
@@ -291,15 +306,6 @@ export default async function AdminVendorsPage({
     } catch {
       profileBulkErrors = []
     }
-  }
-
-  const adminKey = process.env.ADMIN_KEY ?? "7985"
-  if (key !== adminKey) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p className="text-muted-foreground">Page not found.</p>
-      </div>
-    )
   }
 
   const hasServiceRole = Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY)
@@ -773,6 +779,7 @@ export default async function AdminVendorsPage({
                                   </Button>
                                 </form>
                                 <form action={rejectVendor}>
+                                  <input type="hidden" name="adminKey" value={key ?? ""} />
                                   <input type="hidden" name="applicationId" value={id} />
                                   <Button type="submit" size="sm" variant="destructive">
                                     Reject

@@ -1,13 +1,9 @@
 "use server"
 
 import { revalidatePath } from "next/cache"
+import { verifyAdminKey } from "@/lib/admin/verify-admin-key"
 import { createAdminSupabaseClient } from "@/lib/supabase/admin"
 import { createClient } from "@/lib/supabase/server"
-
-function verifyAdminKey(key: string | null | undefined): boolean {
-  const expected = process.env.ADMIN_KEY ?? "7985"
-  return (key ?? "").trim() === expected
-}
 
 export type BookingLifecycleResult = { ok: true } | { ok: false; error: string }
 

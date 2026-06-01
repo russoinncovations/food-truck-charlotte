@@ -3,6 +3,7 @@ import Link from "next/link"
 import { Header } from "@/components/header"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { QuickAddEventForm } from "@/components/admin/quick-add-event-form"
+import { checkAdminPageAccess } from "@/lib/admin/verify-admin-key"
 
 export const metadata: Metadata = {
   title: "Quick Add Event | Admin | FoodTruck CLT",
@@ -15,11 +16,13 @@ export default async function AdminQuickAddEventPage({
   searchParams: Promise<{ key?: string }>
 }) {
   const key = (await searchParams)?.key
-  const adminKey = process.env.ADMIN_KEY ?? "7985"
-  if (key !== adminKey) {
+  const access = checkAdminPageAccess(key)
+  if (!access.allowed) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <p className="text-muted-foreground">Page not found.</p>
+        <p className="text-muted-foreground">
+          {access.reason === "not_configured" ? "Admin access is not configured." : "Page not found."}
+        </p>
       </div>
     )
   }

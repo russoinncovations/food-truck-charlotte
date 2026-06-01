@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { VendorStatusAuditClient } from "@/components/admin/vendor-status-audit-client"
 import { fetchVendorStatusAudit } from "@/lib/admin/vendor-status-audit"
+import { checkAdminPageAccess } from "@/lib/admin/verify-admin-key"
 import { ClipboardList, ChevronLeft } from "lucide-react"
 
 export const metadata: Metadata = {
@@ -20,12 +21,13 @@ export default async function AdminVendorStatusAuditPage({
   const params = await searchParams
   const key = params?.key
   const initialQuery = params?.q?.trim() ?? ""
-  const adminKey = process.env.ADMIN_KEY ?? "7985"
-
-  if (key !== adminKey) {
+  const access = checkAdminPageAccess(key)
+  if (!access.allowed) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <p className="text-muted-foreground">Page not found.</p>
+        <p className="text-muted-foreground">
+          {access.reason === "not_configured" ? "Admin access is not configured." : "Page not found."}
+        </p>
       </div>
     )
   }

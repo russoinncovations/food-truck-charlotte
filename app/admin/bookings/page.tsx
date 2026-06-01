@@ -1,6 +1,7 @@
 import { Metadata } from "next"
 import Link from "next/link"
 import { revalidatePath } from "next/cache"
+import { createAdminSupabaseClient } from "@/lib/supabase/admin"
 import { createClient } from "@/lib/supabase/server"
 import { Header } from "@/components/header"
 import { BookingsTable } from "@/components/admin/bookings-table"
@@ -17,22 +18,29 @@ import type { BookingRequest } from "@/lib/booking-types"
 import { normalizeBookingRowForAdmin } from "@/lib/admin/normalize-booking-row"
 import { easternDateStringToday } from "@/lib/events/public-events"
 import { sendVendorApprovalWelcomeEmail } from "@/lib/email/resend-vendor-welcome"
+import { checkAdminPageAccess, verifyAdminKey } from "@/lib/admin/verify-admin-key"
 
 export const metadata: Metadata = {
   title: "Booking Requests | Admin | Food Truck CLT",
   description: "Manage food truck booking requests",
 }
 
+/** Service-role reads after page key gate; matches command center / booking detail. */
+async function adminBookingsDbClient() {
+  const admin = createAdminSupabaseClient()
+  return admin ?? (await createClient())
+}
+
 async function getBookings(): Promise<BookingRequest[]> {
-  const supabase = await createClient()
-  
+  const supabase = await adminBookingsDbClient()
+
   const { data, error } = await supabase
     .from("booking_requests")
     .select("*")
     .order("created_at", { ascending: false })
 
   if (error) {
-    console.error("[v0] Error fetching bookings:", error)
+    console.error("[admin/bookings] Error fetching bookings:", error)
     return []
   }
 
@@ -62,7 +70,7 @@ type AdminEventRow = {
 }
 
 async function getRecentEventsForAdmin(): Promise<AdminEventRow[]> {
-  const supabase = await createClient()
+  const supabase = await adminBookingsDbClient()
   const { data, error } = await supabase
     .from("events")
     .select("id, title, slug, date, location_name, address, active, listing_status, created_at, updated_at")
@@ -113,6 +121,8 @@ function vendorDescription(app: Record<string, unknown>): string {
 
 async function approveVendorApplicationBooking(formData: FormData) {
   "use server"
+  if (!verifyAdminKey(formData.get("adminKey") as string | null)) return
+
   const applicationId = formData.get("applicationId") as string | null
   if (!applicationId) return
 
@@ -166,6 +176,8 @@ async function approveVendorApplicationBooking(formData: FormData) {
 
 async function rejectVendorApplicationBooking(formData: FormData) {
   "use server"
+  if (!verifyAdminKey(formData.get("adminKey") as string | null)) return
+
   const applicationId = formData.get("applicationId") as string | null
   if (!applicationId) return
 
@@ -184,7 +196,7 @@ function formatVendorAppliedAt(createdAt: unknown): string {
 }
 
 async function getPendingVendorApplications(): Promise<Record<string, unknown>[]> {
-  const supabase = await createClient()
+  const supabase = await adminBookingsDbClient()
   const { data, error } = await supabase
     .from("vendor_applications")
     .select("*")
@@ -205,11 +217,13 @@ export default async function AdminBookingsPage({
 }) {
   const sp = await searchParams
   const key = sp?.key
-  const adminKey = process.env.ADMIN_KEY ?? "7985"
-  if (key !== adminKey) {
+  const access = checkAdminPageAccess(key)
+  if (!access.allowed) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <p className="text-muted-foreground">Page not found.</p>
+        <p className="text-muted-foreground">
+          {access.reason === "not_configured" ? "Admin access is not configured." : "Page not found."}
+        </p>
       </div>
     )
   }
@@ -303,6 +317,7 @@ export default async function AdminBookingsPage({
                             <td className="p-3">
                               <div className="flex flex-wrap justify-end gap-2">
                                 <form action={approveVendorApplicationBooking}>
+                                  <input type="hidden" name="adminKey" value={key ?? ""} />
                                   <input type="hidden" name="applicationId" value={id} />
                                   <input type="hidden" name="appBusinessName" value={nameStr} />
                                   <input type="hidden" name="appTruckName" value={nameStr} />
@@ -321,6 +336,7 @@ export default async function AdminBookingsPage({
                                   </Button>
                                 </form>
                                 <form action={rejectVendorApplicationBooking}>
+                                  <input type="hidden" name="adminKey" value={key ?? ""} />
                                   <input type="hidden" name="applicationId" value={id} />
                                   <Button type="submit" size="sm" variant="destructive">
                                     Reject

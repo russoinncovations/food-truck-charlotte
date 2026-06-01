@@ -22,17 +22,13 @@ import {
   pauseBetweenVendorReminderSends,
   type VendorReminderSendFailureReport,
 } from "@/lib/admin/vendor-reminder-send-pacing"
-
-function adminKeyOk(key: string | null | undefined): boolean {
-  const expected = process.env.ADMIN_KEY ?? "7985"
-  return (key ?? "").trim() === expected
-}
+import { verifyAdminKey } from "@/lib/admin/verify-admin-key"
 
 export async function sendVendorScheduleReminders(formData: FormData) {
   const rawKey = (formData.get("adminKey") as string | null) ?? ""
   const adminKey = rawKey.trim()
 
-  if (!adminKeyOk(adminKey)) {
+  if (!verifyAdminKey(adminKey)) {
     redirect("/admin/vendors")
   }
 
@@ -95,7 +91,7 @@ export async function sendVendorScheduleRemindersRetry(formData: FormData) {
   const rawKey = (formData.get("adminKey") as string | null) ?? ""
   const adminKey = rawKey.trim()
 
-  if (!adminKeyOk(adminKey)) {
+  if (!verifyAdminKey(adminKey)) {
     redirect("/admin/vendors")
   }
 
@@ -197,7 +193,7 @@ export async function sendVendorScheduleReminderTest(formData: FormData) {
   const rawKey = (formData.get("adminKey") as string | null) ?? ""
   const adminKey = rawKey.trim()
 
-  if (!adminKeyOk(adminKey)) {
+  if (!verifyAdminKey(adminKey)) {
     redirect("/admin/vendors")
   }
 
@@ -244,7 +240,7 @@ export async function sendVendorProfileReminderTestToAdmin(formData: FormData) {
   const rawKey = (formData.get("adminKey") as string | null) ?? ""
   const adminKey = rawKey.trim()
 
-  if (!adminKeyOk(adminKey)) {
+  if (!verifyAdminKey(adminKey)) {
     redirect("/admin/vendors")
   }
 
@@ -280,7 +276,7 @@ export async function sendVendorProfileRemindersBulk(formData: FormData) {
   const rawKey = (formData.get("adminKey") as string | null) ?? ""
   const adminKey = rawKey.trim()
 
-  if (!adminKeyOk(adminKey)) {
+  if (!verifyAdminKey(adminKey)) {
     redirect("/admin/vendors")
   }
 

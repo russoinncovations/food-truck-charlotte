@@ -1,5 +1,6 @@
 "use server"
 
+import { verifyAdminKey } from "@/lib/admin/verify-admin-key"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminSupabaseClient } from "@/lib/supabase/admin"
 
@@ -7,8 +8,7 @@ export async function deleteBookingRequest(
   bookingId: string,
   adminKey: string
 ): Promise<{ ok: boolean; error?: string }> {
-  const expected = process.env.ADMIN_KEY ?? "7985"
-  if (adminKey !== expected) {
+  if (!verifyAdminKey(adminKey)) {
     return { ok: false, error: "Unauthorized" }
   }
 

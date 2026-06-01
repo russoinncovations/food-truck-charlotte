@@ -2,15 +2,12 @@ import { NextResponse } from "next/server"
 import { revalidatePath } from "next/cache"
 import { createAdminSupabaseClient } from "@/lib/supabase/admin"
 import { createClient } from "@/lib/supabase/server"
+import { verifyAdminKey } from "@/lib/admin/verify-admin-key"
 import {
   EVENT_IMAGES_BUCKET,
   buildEventImageObjectPath,
   validateEventImageFileMeta,
 } from "@/lib/storage/event-images"
-
-function expectedAdminKey(): string {
-  return process.env.ADMIN_KEY ?? "7985"
-}
 
 function jsonError(status: number, error: string) {
   return NextResponse.json({ success: false as const, error }, { status })
@@ -45,7 +42,7 @@ export async function POST(request: Request) {
     let adminEventIdForUpdate: string | null = null
 
     if (adminKeyRaw) {
-      if (adminKeyRaw !== expectedAdminKey()) {
+      if (!verifyAdminKey(adminKeyRaw)) {
         return jsonError(403, "Unauthorized.")
       }
       if (eventIdRaw) {
