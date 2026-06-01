@@ -4,6 +4,7 @@ import {
   type BookingRequestTypeValue,
 } from "@/lib/booking/booking-request-constants"
 import { fetchEligibleTruckIdsForBroadcast } from "@/lib/booking/eligible-trucks-for-opportunities"
+import { createAdminSupabaseClient } from "@/lib/supabase/admin"
 
 export { BOOKING_REQUEST_TYPE }
 export type { BookingRequestTypeValue }
@@ -72,15 +73,24 @@ export async function completeBookingRequest(
     row.request_type === BOOKING_REQUEST_TYPE.OPEN_REQUEST ||
     row.request_type === BOOKING_REQUEST_TYPE.CUISINE_MATCH
 
-  if (isSpecific) {
-    await supabase.from("truck_opportunities").insert({
+  /** Opportunity fan-out is server-only; bypass anon INSERT policy (RLS Phase 2). */
+  const oppDb = createAdminSupabaseClient()
+  if (!oppDb && (isSpecific || isBroadcast)) {
+    console.error("[booking] truck_opportunities: SUPABASE_SERVICE_ROLE_KEY required for opportunity fan-out")
+  }
+
+  if (isSpecific && oppDb) {
+    const { error: oppErr } = await oppDb.from("truck_opportunities").insert({
       booking_request_id: id,
       truck_id: row.truck_id,
       status: "pending",
     })
+    if (oppErr) {
+      console.error("[booking] truck_opportunities specific insert:", oppErr)
+    }
   }
 
-  if (isBroadcast) {
+  if (isBroadcast && oppDb) {
     const requestType =
       row.request_type === BOOKING_REQUEST_TYPE.CUISINE_MATCH ? "cuisine_match" : "open_request"
     const truckIds = await fetchEligibleTruckIdsForBroadcast(supabase, {
@@ -96,7 +106,7 @@ export async function completeBookingRequest(
     }))
 
     if (rows.length > 0) {
-      const { error: oppErr } = await supabase.from("truck_opportunities").insert(rows)
+      const { error: oppErr } = await oppDb.from("truck_opportunities").insert(rows)
       if (oppErr) {
         console.error("[booking] truck_opportunities broadcast insert:", oppErr)
       }

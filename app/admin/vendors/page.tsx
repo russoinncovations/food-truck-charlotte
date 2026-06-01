@@ -3,6 +3,7 @@ import { Metadata } from "next"
 import Link from "next/link"
 import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
+import { createAdminSupabaseClient } from "@/lib/supabase/admin"
 import { createClient } from "@/lib/supabase/server"
 import { Header } from "@/components/header"
 import { Button } from "@/components/ui/button"
@@ -67,17 +68,18 @@ async function approveVendor(formData: FormData) {
       ? cuisineTypes.join(", ")
       : ((formData.get("appCuisineFallback") as string | null) ?? "General")
 
-  const supabase = await createClient()
+  const adminDb = createAdminSupabaseClient()
+  if (!adminDb) return
 
   if (email.length > 0) {
-    const { data: dupByEmail } = await supabase.from("trucks").select("id").ilike("email", email).maybeSingle()
+    const { data: dupByEmail } = await adminDb.from("trucks").select("id").ilike("email", email).maybeSingle()
     if (dupByEmail) {
       redirect(`/admin/vendors?key=${encodeURIComponent(adminKey)}&duplicate=1`)
     }
   }
 
   if (businessName.length > 0) {
-    const { data: dupByName } = await supabase.from("trucks").select("id").ilike("name", businessName).maybeSingle()
+    const { data: dupByName } = await adminDb.from("trucks").select("id").ilike("name", businessName).maybeSingle()
     if (dupByName) {
       redirect(`/admin/vendors?key=${encodeURIComponent(adminKey)}&duplicate=1`)
     }
@@ -85,7 +87,7 @@ async function approveVendor(formData: FormData) {
 
   let slug = slugFromBusinessName(businessName || undefined)
 
-  const { data: existingSlug } = await supabase.from("trucks").select("id").eq("slug", slug).maybeSingle()
+  const { data: existingSlug } = await adminDb.from("trucks").select("id").eq("slug", slug).maybeSingle()
   if (existingSlug) {
     slug = `${slug}-${applicationId.slice(0, 8)}`
   }
@@ -107,7 +109,7 @@ async function approveVendor(formData: FormData) {
     source_application_id: applicationId,
   }
 
-  const { data: inserted, error: insertError } = await supabase
+  const { data: inserted, error: insertError } = await adminDb
     .from("trucks")
     .insert(insertPayload)
     .select("id")
@@ -117,7 +119,7 @@ async function approveVendor(formData: FormData) {
     return
   }
 
-  await supabase
+  await adminDb
     .from("vendor_applications")
     .update({
       status: "approved",
@@ -177,8 +179,9 @@ async function rejectVendor(formData: FormData) {
   const applicationId = formData.get("applicationId") as string | null
   if (!applicationId) return
 
-  const supabase = await createClient()
-  await supabase.from("vendor_applications").update({ status: "rejected" }).eq("id", applicationId)
+  const adminDb = createAdminSupabaseClient()
+  if (!adminDb) return
+  await adminDb.from("vendor_applications").update({ status: "rejected" }).eq("id", applicationId)
 
   revalidatePath("/admin/vendors")
   revalidatePath("/admin/bookings")

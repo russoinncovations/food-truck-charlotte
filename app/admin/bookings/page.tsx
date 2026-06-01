@@ -136,15 +136,17 @@ async function approveVendorApplicationBooking(formData: FormData) {
   const vendorDescriptionVal = ((formData.get("appDescription") as string | null) ?? "").trim()
   const cuisine = ((formData.get("appCuisine") as string | null) ?? "").trim() || "General"
 
-  const supabase = await createClient()
+  const adminDb = createAdminSupabaseClient()
+  if (!adminDb) return
+
   let slug = slugFromBusinessName(businessName || undefined)
 
-  const { data: existing } = await supabase.from("trucks").select("id").eq("slug", slug).maybeSingle()
+  const { data: existing } = await adminDb.from("trucks").select("id").eq("slug", slug).maybeSingle()
   if (existing) {
     slug = `${slug}-${applicationId.slice(0, 8)}`
   }
 
-  const { error: insertError } = await supabase.from("trucks").insert({
+  const { error: insertError } = await adminDb.from("trucks").insert({
     name: businessName || "Unnamed",
     slug,
     email: email || null,
@@ -161,7 +163,7 @@ async function approveVendorApplicationBooking(formData: FormData) {
 
   if (insertError) return
 
-  await supabase.from("vendor_applications").update({ status: "approved" }).eq("id", applicationId)
+  await adminDb.from("vendor_applications").update({ status: "approved" }).eq("id", applicationId)
 
   const truckDisplayName = businessName || "Unnamed"
   await sendVendorApprovalWelcomeEmail({
@@ -181,8 +183,9 @@ async function rejectVendorApplicationBooking(formData: FormData) {
   const applicationId = formData.get("applicationId") as string | null
   if (!applicationId) return
 
-  const supabase = await createClient()
-  await supabase.from("vendor_applications").update({ status: "rejected" }).eq("id", applicationId)
+  const adminDb = createAdminSupabaseClient()
+  if (!adminDb) return
+  await adminDb.from("vendor_applications").update({ status: "rejected" }).eq("id", applicationId)
 
   revalidatePath("/admin/bookings")
   revalidatePath("/admin")

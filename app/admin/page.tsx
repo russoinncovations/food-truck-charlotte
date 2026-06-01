@@ -2,6 +2,7 @@
 import { Metadata } from "next"
 import { revalidatePath } from "next/cache"
 import { headers } from "next/headers"
+import { createAdminSupabaseClient } from "@/lib/supabase/admin"
 import { createClient } from "@/lib/supabase/server"
 import { Header } from "@/components/header"
 import { fetchAdminCommandCenterData } from "@/lib/admin/command-center-data"
@@ -71,15 +72,17 @@ async function approveTruckApplication(formData: FormData) {
   const vendorDescriptionVal = ((formData.get("appDescription") as string | null) ?? "").trim()
   const cuisine = ((formData.get("appCuisine") as string | null) ?? "").trim() || "General"
 
-  const supabase = await createClient()
+  const adminDb = createAdminSupabaseClient()
+  if (!adminDb) return
+
   let slug = slugFromBusinessName(businessName || undefined)
 
-  const { data: existing } = await supabase.from("trucks").select("id").eq("slug", slug).maybeSingle()
+  const { data: existing } = await adminDb.from("trucks").select("id").eq("slug", slug).maybeSingle()
   if (existing) {
     slug = `${slug}-${applicationId.slice(0, 8)}`
   }
 
-  const { error: insertError } = await supabase.from("trucks").insert({
+  const { error: insertError } = await adminDb.from("trucks").insert({
     name: businessName || "Unnamed",
     slug,
     email: email || null,
@@ -96,7 +99,7 @@ async function approveTruckApplication(formData: FormData) {
 
   if (insertError) return
 
-  await supabase.from("vendor_applications").update({ status: "approved" }).eq("id", applicationId)
+  await adminDb.from("vendor_applications").update({ status: "approved" }).eq("id", applicationId)
 
   revalidatePath("/admin")
   revalidatePath("/trucks")
@@ -109,8 +112,9 @@ async function rejectTruckApplication(formData: FormData) {
   const applicationId = formData.get("applicationId") as string | null
   if (!applicationId) return
 
-  const supabase = await createClient()
-  await supabase.from("vendor_applications").update({ status: "rejected" }).eq("id", applicationId)
+  const adminDb = createAdminSupabaseClient()
+  if (!adminDb) return
+  await adminDb.from("vendor_applications").update({ status: "rejected" }).eq("id", applicationId)
 
   revalidatePath("/admin")
 }
