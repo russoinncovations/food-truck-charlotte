@@ -16,6 +16,10 @@ import {
 } from "@/components/ui/table"
 import { VendorStatusAuditResolutionActions } from "@/components/admin/vendor-status-audit-resolution-actions"
 import {
+  VENDOR_EMAIL_GO_LIVE_DASHBOARD_URL,
+  VENDOR_EMAIL_VENDOR_LOGIN_URL,
+} from "@/lib/email/vendor-email-public-links"
+import {
   groupMatchesQuickFilter,
   ISSUE_LABELS,
   type VendorAuditQuickFilter,
@@ -24,7 +28,7 @@ import {
   type VendorStatusAuditRow,
   type VendorStatusAuditSummary,
 } from "@/lib/admin/vendor-status-audit"
-import { ChevronDown, ChevronRight } from "lucide-react"
+import { ChevronDown, ChevronRight, Copy } from "lucide-react"
 
 const ROW_TYPE_LABELS: Record<VendorStatusAuditRow["rowType"], string> = {
   active_truck: "Active truck",
@@ -126,6 +130,7 @@ function AuditDataRow({
   expandControl,
   muted,
   internalTest,
+  outreachSelect,
 }: {
   row: VendorStatusAuditRow
   severity?: VendorStatusAuditGroup["highestSeverity"]
@@ -133,9 +138,11 @@ function AuditDataRow({
   expandControl?: ReactNode
   muted?: boolean
   internalTest?: boolean
+  outreachSelect?: ReactNode
 }) {
   return (
     <TableRow className={muted ? "bg-muted/25" : internalTest ? "bg-violet-500/5" : undefined}>
+      <TableCell className="align-top w-10">{outreachSelect ?? null}</TableCell>
       <TableCell className="align-top w-10">{expandControl ?? null}</TableCell>
       <TableCell className="align-top min-w-[160px]">
         <div className="space-y-1">
@@ -219,6 +226,40 @@ function AuditDataRow({
   )
 }
 
+type OutreachRow = {
+  truckName: string
+  email: string | null
+  loginUrl: string
+  goLiveUrl: string
+}
+
+function buildOutreachRows(
+  groups: VendorStatusAuditGroup[],
+  selectedKeys: Set<string>
+): OutreachRow[] {
+  return groups
+    .filter((g) => selectedKeys.has(g.groupKey))
+    .map((g) => ({
+      truckName: g.primary.truckName,
+      email: g.primary.vendorEmail,
+      loginUrl: g.primary.vendorLoginUrl ?? VENDOR_EMAIL_VENDOR_LOGIN_URL,
+      goLiveUrl: g.primary.goLiveUrl ?? VENDOR_EMAIL_GO_LIVE_DASHBOARD_URL,
+    }))
+}
+
+function formatOutreachListText(rows: OutreachRow[]): string {
+  return rows
+    .map((row) =>
+      [
+        row.truckName,
+        `Email: ${row.email ?? "—"}`,
+        `Login: ${row.loginUrl}`,
+        `Go Live: ${row.goLiveUrl}`,
+      ].join("\n")
+    )
+    .join("\n\n")
+}
+
 type Props = {
   groups: VendorStatusAuditGroup[]
   summary: VendorStatusAuditSummary
@@ -233,6 +274,8 @@ export function VendorStatusAuditClient({ groups, summary, initialQuery = "" }: 
   const [showHistorical, setShowHistorical] = useState(false)
   const [showInternalTest, setShowInternalTest] = useState(false)
   const [expanded, setExpanded] = useState<Record<string, boolean>>({})
+  const [selectedGroupKeys, setSelectedGroupKeys] = useState<Set<string>>(() => new Set())
+  const [copyFeedback, setCopyFeedback] = useState<string | null>(null)
 
   const productionGroupCount = groups.length - summary.internalTestRecords
 
@@ -286,6 +329,73 @@ export function VendorStatusAuditClient({ groups, summary, initialQuery = "" }: 
       return true
     })
   }, [groups, query, focusBlockers, showReady, showInternalTest, quickFilter])
+
+  const filteredGroupKeys = useMemo(() => filtered.map((g) => g.groupKey), [filtered])
+  const selectedOutreachRows = useMemo(
+    () => buildOutreachRows(groups, selectedGroupKeys),
+    [groups, selectedGroupKeys]
+  )
+  const allFilteredSelected =
+    filteredGroupKeys.length > 0 && filteredGroupKeys.every((key) => selectedGroupKeys.has(key))
+  const someFilteredSelected = filteredGroupKeys.some((key) => selectedGroupKeys.has(key))
+
+  function toggleGroupSelection(groupKey: string, checked: boolean) {
+    setSelectedGroupKeys((prev) => {
+      const next = new Set(prev)
+      if (checked) next.add(groupKey)
+      else next.delete(groupKey)
+      return next
+    })
+  }
+
+  function toggleSelectAllFiltered() {
+    setSelectedGroupKeys((prev) => {
+      const next = new Set(prev)
+      if (allFilteredSelected) {
+        for (const key of filteredGroupKeys) next.delete(key)
+      } else {
+        for (const key of filteredGroupKeys) next.add(key)
+      }
+      return next
+    })
+  }
+
+  function clearSelection() {
+    setSelectedGroupKeys(new Set())
+  }
+
+  async function copyToClipboard(text: string, feedback: string) {
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopyFeedback(feedback)
+      window.setTimeout(() => setCopyFeedback(null), 2000)
+    } catch {
+      setCopyFeedback("Copy failed — check browser permissions")
+      window.setTimeout(() => setCopyFeedback(null), 2500)
+    }
+  }
+
+  function copySelectedEmails() {
+    const emails = selectedOutreachRows.map((row) => row.email?.trim()).filter(Boolean) as string[]
+    if (emails.length === 0) {
+      setCopyFeedback("No vendor emails in selection")
+      window.setTimeout(() => setCopyFeedback(null), 2000)
+      return
+    }
+    void copyToClipboard(emails.join("\n"), `Copied ${emails.length} email${emails.length === 1 ? "" : "s"}`)
+  }
+
+  function copySelectedOutreachList() {
+    if (selectedOutreachRows.length === 0) {
+      setCopyFeedback("Select at least one vendor group")
+      window.setTimeout(() => setCopyFeedback(null), 2000)
+      return
+    }
+    void copyToClipboard(
+      formatOutreachListText(selectedOutreachRows),
+      `Copied outreach list for ${selectedOutreachRows.length} vendor${selectedOutreachRows.length === 1 ? "" : "s"}`
+    )
+  }
 
   return (
     <div className="space-y-6">
@@ -360,6 +470,57 @@ export function VendorStatusAuditClient({ groups, summary, initialQuery = "" }: 
               : null}
           </p>
         </div>
+
+        <div className="rounded-lg border border-dashed bg-muted/20 p-3 space-y-3">
+          <div>
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Manual outreach</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Search by truck name, select rows, then copy emails or a formatted outreach list. Nothing is sent from
+              this page.
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              className="h-8 text-xs"
+              disabled={selectedOutreachRows.length === 0}
+              onClick={copySelectedEmails}
+            >
+              <Copy className="h-3.5 w-3.5 mr-1.5" />
+              Copy selected emails
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              className="h-8 text-xs"
+              disabled={selectedOutreachRows.length === 0}
+              onClick={copySelectedOutreachList}
+            >
+              <Copy className="h-3.5 w-3.5 mr-1.5" />
+              Copy selected outreach list
+            </Button>
+            <Button type="button" size="sm" variant="outline" className="h-8 text-xs" onClick={toggleSelectAllFiltered}>
+              {allFilteredSelected ? "Deselect shown" : "Select all shown"}
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              className="h-8 text-xs"
+              disabled={selectedGroupKeys.size === 0}
+              onClick={clearSelection}
+            >
+              Clear selection
+            </Button>
+            <span className="text-xs text-muted-foreground tabular-nums">
+              {selectedGroupKeys.size} selected
+              {copyFeedback ? <span className="ml-2 text-foreground">· {copyFeedback}</span> : null}
+            </span>
+          </div>
+        </div>
         <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm">
           <label className="flex items-center gap-2 cursor-pointer">
             <Checkbox
@@ -396,6 +557,14 @@ export function VendorStatusAuditClient({ groups, summary, initialQuery = "" }: 
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="w-10">
+                <Checkbox
+                  checked={allFilteredSelected ? true : someFilteredSelected ? "indeterminate" : false}
+                  onCheckedChange={() => toggleSelectAllFiltered()}
+                  disabled={filteredGroupKeys.length === 0}
+                  aria-label="Select all shown vendor groups"
+                />
+              </TableHead>
               <TableHead className="w-10" />
               <TableHead className="min-w-[160px]">Truck / type</TableHead>
               <TableHead>Email / app</TableHead>
@@ -408,7 +577,7 @@ export function VendorStatusAuditClient({ groups, summary, initialQuery = "" }: 
           <TableBody>
             {filtered.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center text-muted-foreground py-10">
+                <TableCell colSpan={8} className="text-center text-muted-foreground py-10">
                   No groups match your filters. Try another quick filter or clearing search.
                 </TableCell>
               </TableRow>
@@ -416,6 +585,7 @@ export function VendorStatusAuditClient({ groups, summary, initialQuery = "" }: 
               filtered.map((group) => {
                 const hasHistorical = group.linkedApplications.length > 0
                 const isOpen = showHistorical || expanded[group.groupKey] === true
+                const isSelected = selectedGroupKeys.has(group.groupKey)
 
                 const expandBtn = hasHistorical ? (
                   <Button
@@ -438,6 +608,13 @@ export function VendorStatusAuditClient({ groups, summary, initialQuery = "" }: 
                       historicalCount={hasHistorical ? group.linkedApplications.length : 0}
                       expandControl={expandBtn}
                       internalTest={group.groupClassification === "internal_test"}
+                      outreachSelect={
+                        <Checkbox
+                          checked={isSelected}
+                          onCheckedChange={(v) => toggleGroupSelection(group.groupKey, v === true)}
+                          aria-label={`Select ${group.primary.truckName} for outreach`}
+                        />
+                      }
                     />
                     {hasHistorical && isOpen
                       ? group.linkedApplications.map((appRow) => (
