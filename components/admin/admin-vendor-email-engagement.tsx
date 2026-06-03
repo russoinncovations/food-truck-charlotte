@@ -44,9 +44,16 @@ export function AdminVendorEmailEngagement({ keyQ, data }: Props) {
     openedDistinct,
     clickedDistinct,
     bouncedFailedComplainedDistinct,
+    eventTypeCounts,
+    recentEvents,
+    openClickRowsAnyCampaign,
     clickers,
     bouncedOrFailed,
   } = data
+
+  const eventTypeEntries = Object.entries(eventTypeCounts).sort((a, b) => b[1] - a[1])
+  const hasOpenClickOutsideCampaign =
+    openClickRowsAnyCampaign > 0 && openedDistinct === 0 && clickedDistinct === 0
 
   const stats = [
     { label: "Sent (accepted / queued)", value: sentDistinct },
@@ -101,6 +108,69 @@ export function AdminVendorEmailEngagement({ keyQ, data }: Props) {
               {s.hint ? <p className="mt-1 text-[11px] text-muted-foreground leading-snug">{s.hint}</p> : null}
             </div>
           ))}
+        </div>
+
+        <div className="rounded-lg border border-dashed border-border bg-muted/15 p-4 space-y-3">
+          <h3 className="text-sm font-semibold">Webhook diagnostic (raw events)</h3>
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            Counts below are from <code className="text-[11px]">vendor_email_events</code> for reminder campaigns
+            only. If opens/clicks stay at 0 but delivery works, check the Resend dashboard webhook is subscribed to{" "}
+            <code className="text-[11px]">email.opened</code> and <code className="text-[11px]">email.clicked</code>.
+            Open pixels are often blocked; clicks require recipients to use Resend-tracked links in the email.
+          </p>
+          {hasOpenClickOutsideCampaign ? (
+            <p className="text-xs text-amber-900 dark:text-amber-100 rounded-md border border-amber-500/35 bg-amber-500/10 px-3 py-2">
+              Found {openClickRowsAnyCampaign} open/click row(s) in this window outside the reminder campaign filter —
+              webhook events may be missing <code className="text-[11px]">campaign</code> attribution.
+            </p>
+          ) : null}
+          {eventTypeEntries.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No event rows in this window.</p>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {eventTypeEntries.map(([type, count]) => (
+                <span
+                  key={type}
+                  className="inline-flex items-center gap-1.5 rounded-md border bg-background px-2 py-1 text-xs"
+                >
+                  <code className="text-[11px]">{type}</code>
+                  <span className="tabular-nums font-medium">{count}</span>
+                </span>
+              ))}
+            </div>
+          )}
+          {recentEvents.length > 0 ? (
+            <div className="rounded-md border border-border overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Event</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Campaign</TableHead>
+                    <TableHead>When</TableHead>
+                    <TableHead>Link</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {recentEvents.map((ev, i) => (
+                    <TableRow key={`${ev.eventType}-${ev.createdAt}-${i}`}>
+                      <TableCell className="text-xs font-mono whitespace-nowrap">{ev.eventType}</TableCell>
+                      <TableCell className="max-w-[180px] break-all text-xs">{ev.vendorEmail ?? "—"}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                        {ev.campaign ?? "—"}
+                      </TableCell>
+                      <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                        {fmtTime(ev.createdAt)}
+                      </TableCell>
+                      <TableCell className="max-w-[220px] break-all text-[11px] text-muted-foreground">
+                        {ev.linkUrl ?? "—"}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          ) : null}
         </div>
 
         <div className="grid gap-6 lg:grid-cols-2">

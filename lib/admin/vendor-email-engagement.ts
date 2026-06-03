@@ -33,6 +33,15 @@ export type VendorEmailIssueRow = {
   campaign: string | null
 }
 
+export type VendorEmailRecentEventRow = {
+  eventType: string
+  vendorEmail: string | null
+  campaign: string | null
+  createdAt: string
+  linkUrl: string | null
+  resendEmailId: string | null
+}
+
 export type VendorEmailEngagementSummary = {
   usedServiceRole: boolean
   sinceIso: string
@@ -46,6 +55,12 @@ export type VendorEmailEngagementSummary = {
   clickedDistinct: number
   /** Distinct sends with bounce, delivery failure, or spam complaint. */
   bouncedFailedComplainedDistinct: number
+  /** Rows in window grouped by event_type (reminder campaigns only). */
+  eventTypeCounts: Record<string, number>
+  /** Latest reminder-campaign events for webhook/dispatch debugging. */
+  recentEvents: VendorEmailRecentEventRow[]
+  /** Open/click rows in window regardless of campaign (detects missing campaign on webhook rows). */
+  openClickRowsAnyCampaign: number
   clickers: VendorEmailClickRow[]
   bouncedOrFailed: VendorEmailIssueRow[]
 }
@@ -60,6 +75,9 @@ function emptySummary(sinceIso: string): VendorEmailEngagementSummary {
     openedDistinct: 0,
     clickedDistinct: 0,
     bouncedFailedComplainedDistinct: 0,
+    eventTypeCounts: {},
+    recentEvents: [],
+    openClickRowsAnyCampaign: 0,
     clickers: [],
     bouncedOrFailed: [],
   }
@@ -90,6 +108,16 @@ export async function fetchVendorEmailEngagementSummary(): Promise<VendorEmailEn
     return { ...emptySummary(sinceIso), usedServiceRole: true }
   }
 
+  const { count: openClickAnyCampaign, error: openClickCountErr } = await admin
+    .from("vendor_email_events")
+    .select("id", { count: "exact", head: true })
+    .in("event_type", ["email.opened", "email.clicked"])
+    .gte("created_at", sinceIso)
+
+  if (openClickCountErr) {
+    console.error("[vendor-email-engagement] open/click count:", openClickCountErr.message)
+  }
+
   const rows = (data ?? []) as {
     resend_email_id: string | null
     vendor_email: string | null
@@ -100,6 +128,20 @@ export async function fetchVendorEmailEngagementSummary(): Promise<VendorEmailEn
     event_timestamp: string
     created_at: string
   }[]
+
+  const eventTypeCounts: Record<string, number> = {}
+  for (const r of rows) {
+    eventTypeCounts[r.event_type] = (eventTypeCounts[r.event_type] ?? 0) + 1
+  }
+
+  const recentEvents: VendorEmailRecentEventRow[] = rows.slice(0, 10).map((r) => ({
+    eventType: r.event_type,
+    vendorEmail: r.vendor_email,
+    campaign: r.campaign,
+    createdAt: r.created_at,
+    linkUrl: r.link_url,
+    resendEmailId: r.resend_email_id,
+  }))
 
   const sentIds = new Set<string>()
   for (const r of rows) {
@@ -236,6 +278,9 @@ export async function fetchVendorEmailEngagementSummary(): Promise<VendorEmailEn
     openedDistinct: opened.size,
     clickedDistinct: clicked.size,
     bouncedFailedComplainedDistinct: bad.size,
+    eventTypeCounts,
+    recentEvents,
+    openClickRowsAnyCampaign: openClickAnyCampaign ?? 0,
     clickers,
     bouncedOrFailed,
   }
