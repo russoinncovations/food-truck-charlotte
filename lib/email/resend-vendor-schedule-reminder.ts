@@ -1,7 +1,4 @@
-import {
-  PUBLIC_LIVE_MAP_URL,
-  VENDOR_EMAIL_GO_LIVE_DASHBOARD_URL,
-} from "@/lib/email/vendor-email-public-links"
+import { VENDOR_EMAIL_GO_LIVE_DASHBOARD_URL } from "@/lib/email/vendor-email-public-links"
 import {
   VENDOR_EMAIL_CAMPAIGN_SCHEDULE_REMINDER,
   VENDOR_EMAIL_CAMPAIGN_SCHEDULE_REMINDER_TEST,
@@ -16,24 +13,20 @@ function escapeHtml(s: string): string {
     .replace(/"/g, "&quot;")
 }
 
-export const VENDOR_SCHEDULE_REMINDER_SUBJECT =
-  "Going out this week? Add yourself to the FoodTruckCLT map"
+export const VENDOR_SCHEDULE_REMINDER_SUBJECT = "Help people find your truck this week"
 
 export function buildVendorScheduleReminderHtml(): string {
-  const goLiveHref = VENDOR_EMAIL_GO_LIVE_DASHBOARD_URL
-  const goLiveLabel = escapeHtml(goLiveHref)
-  const mapHref = PUBLIC_LIVE_MAP_URL
-  const mapLabel = escapeHtml(mapHref)
+  const dashboardHref = VENDOR_EMAIL_GO_LIVE_DASHBOARD_URL
+  const dashboardLabel = escapeHtml(dashboardHref)
   return `
 <p>Hi everyone,</p>
-<p>We&apos;re starting to push more people to the FoodTruckCLT live map so customers can find trucks in real time.</p>
-<p>If you&apos;re serving this week, add your location or turn your live pin on here:</p>
-<p><a href="${goLiveHref}">${goLiveLabel}</a></p>
-<p>You can also save that page to your phone&apos;s home screen so it&apos;s easy to tap when you&apos;re out serving.</p>
-<p>When you&apos;re done for the day, just turn your live pin off so the map stays accurate.</p>
-<p><strong>Live map:</strong><br />
-<a href="${mapHref}">${mapLabel}</a></p>
-<p>Let&apos;s make it easier for people to find you.</p>
+<p>FoodTruckCLT is starting to get more traffic from people looking for trucks and submitting booking requests.</p>
+<p>If you want people to find you, please add your upcoming stops to your vendor dashboard.</p>
+<p><strong>Vendor dashboard:</strong><br />
+<a href="${dashboardHref}">${dashboardLabel}</a></p>
+<p>You can add planned stops ahead of time so your schedule is visible, and if something changes last minute, you can use Go Live to update your pin.</p>
+<p>Going forward, trucks with updated profiles and schedules will be easier to share, easier to find on the map, and easier to match with booking requests.</p>
+<p>We&apos;re also seeing BBQ come up in requests, and we only have a handful of BBQ/smokehouse-style trucks listed right now. If that&apos;s your lane, please make sure your profile is updated.</p>
 <p>Thanks,<br />Nicole<br />FoodTruckCLT</p>
 <p>If you do not want reminder emails, reply and we&apos;ll remove you from future reminders.</p>
 `
