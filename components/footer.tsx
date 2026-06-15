@@ -17,6 +17,7 @@ const navigation = {
     { name: "Book for an Event", href: "/book-a-truck" },
   ],
   community: [
+    { name: "Resource Guide", href: "/resources" },
     { name: "Facebook Group", href: "https://www.facebook.com/share/g/1DjV7rGgcU/" },
     { name: "About", href: "/about" },
   ],
