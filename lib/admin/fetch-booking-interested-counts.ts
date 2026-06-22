@@ -1,16 +1,81 @@
 import { createAdminSupabaseClient } from "@/lib/supabase/admin"
 import { createClient } from "@/lib/supabase/server"
+import {
+  bookingNotificationWasEmailed,
+  BOOKING_NOTIFICATION_STATUS,
+} from "@/lib/booking/booking-notification-status"
 
 export type BookingOpportunityMetrics = {
   interestedCount: number
   totalOpportunities: number
   /** True if at least one opportunity is not still pending (interested, not available, or legacy pass). */
   hasVendorResponse: boolean
+  /** No Resend send attempted for any opportunity on this booking. */
+  hasNoNotificationSent: boolean
+  /** At least one email delivered and no vendor has responded yet. */
+  hasDeliveredNoResponse: boolean
+  /** At least one bounced or failed notification. */
+  hasBouncedOrFailed: boolean
+  /** At least one opportunity flagged missing vendor email. */
+  hasMissingVendorEmail: boolean
+  /** All opportunities are dashboard-only (no email send attempted). */
+  isDashboardOnly: boolean
 }
 
 function isRespondedOpportunityStatus(status: string): boolean {
   const s = status.toLowerCase()
   return s === "interested" || s === "not_available" || s === "pass"
+}
+
+type OppRow = {
+  booking_request_id: string | null
+  status: string | null
+  notification_status: string | null
+}
+
+function emptyMetrics(): BookingOpportunityMetrics {
+  return {
+    interestedCount: 0,
+    totalOpportunities: 0,
+    hasVendorResponse: false,
+    hasNoNotificationSent: false,
+    hasDeliveredNoResponse: false,
+    hasBouncedOrFailed: false,
+    hasMissingVendorEmail: false,
+    isDashboardOnly: false,
+  }
+}
+
+function computeMetricsFromRows(rows: OppRow[]): Omit<BookingOpportunityMetrics, "interestedCount" | "totalOpportunities"> {
+  let hasVendorResponse = false
+  let anyEmailed = false
+  let anyDelivered = false
+  let anyBouncedOrFailed = false
+  let anyMissingEmail = false
+  let allDashboardOnly = rows.length > 0
+
+  for (const row of rows) {
+    const st = String(row.status ?? "")
+    if (isRespondedOpportunityStatus(st)) hasVendorResponse = true
+
+    const ns = (row.notification_status ?? "").toLowerCase()
+    if (bookingNotificationWasEmailed(ns)) anyEmailed = true
+    if (ns === BOOKING_NOTIFICATION_STATUS.DELIVERED) anyDelivered = true
+    if (ns === BOOKING_NOTIFICATION_STATUS.BOUNCED || ns === BOOKING_NOTIFICATION_STATUS.FAILED) {
+      anyBouncedOrFailed = true
+    }
+    if (ns === BOOKING_NOTIFICATION_STATUS.NOT_ELIGIBLE_NO_EMAIL) anyMissingEmail = true
+    if (ns !== BOOKING_NOTIFICATION_STATUS.DASHBOARD_ONLY) allDashboardOnly = false
+  }
+
+  return {
+    hasVendorResponse,
+    hasNoNotificationSent: rows.length > 0 && !anyEmailed,
+    hasDeliveredNoResponse: anyDelivered && !hasVendorResponse,
+    hasBouncedOrFailed: anyBouncedOrFailed,
+    hasMissingVendorEmail: anyMissingEmail,
+    isDashboardOnly: rows.length > 0 && allDashboardOnly,
+  }
 }
 
 /**
@@ -28,7 +93,7 @@ export async function fetchBookingOpportunityMetricsByBookingId(
 
   const { data, error } = await db
     .from("truck_opportunities")
-    .select("booking_request_id, status")
+    .select("booking_request_id, status, notification_status")
     .in("booking_request_id", ids)
 
   if (error) {
@@ -36,30 +101,28 @@ export async function fetchBookingOpportunityMetricsByBookingId(
     return out
   }
 
-  const agg = new Map<string, { total: number; interested: number; responded: boolean }>()
-  for (const bid of ids) {
-    agg.set(bid, { total: 0, interested: 0, responded: false })
-  }
+  const byBooking = new Map<string, OppRow[]>()
+  for (const bid of ids) byBooking.set(bid, [])
 
-  for (const row of data ?? []) {
-    const bid = row.booking_request_id as string | null
+  for (const row of (data ?? []) as OppRow[]) {
+    const bid = row.booking_request_id
     if (!bid) continue
-    const cur = agg.get(bid) ?? { total: 0, interested: 0, responded: false }
-    cur.total += 1
-    const st = String(row.status ?? "")
-    if (st.toLowerCase() === "interested") cur.interested += 1
-    if (isRespondedOpportunityStatus(st)) cur.responded = true
-    agg.set(bid, cur)
+    const list = byBooking.get(bid) ?? []
+    list.push(row)
+    byBooking.set(bid, list)
   }
 
   for (const bid of ids) {
-    const a = agg.get(bid) ?? { total: 0, interested: 0, responded: false }
+    const rows = byBooking.get(bid) ?? []
+    const interested = rows.filter((r) => String(r.status ?? "").toLowerCase() === "interested").length
+    const derived = computeMetricsFromRows(rows)
     out.set(bid, {
-      interestedCount: a.interested,
-      totalOpportunities: a.total,
-      hasVendorResponse: a.responded,
+      interestedCount: interested,
+      totalOpportunities: rows.length,
+      ...derived,
     })
   }
+
   return out
 }
 
@@ -73,3 +136,5 @@ export async function fetchInterestedVendorCountByBookingId(
   const metrics = await fetchBookingOpportunityMetricsByBookingId(bookingIds)
   return new Map([...metrics.entries()].map(([id, m]) => [id, m.interestedCount]))
 }
+
+export { emptyMetrics as defaultBookingOpportunityMetrics }

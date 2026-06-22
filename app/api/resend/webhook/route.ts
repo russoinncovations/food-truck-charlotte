@@ -1,6 +1,12 @@
 import { NextResponse } from "next/server"
 import { Webhook } from "svix"
 import { insertVendorEmailEvent, lookupVendorEmailDispatchMeta } from "@/lib/email/vendor-email-events"
+import {
+  applyBookingNotificationWebhookEvent,
+  lookupBookingOpportunityIdForResendEmail,
+  ensureBookingOpportunityResendLink,
+} from "@/lib/email/apply-booking-notification-webhook"
+import { VENDOR_EMAIL_CAMPAIGN_BOOKING_LEAD } from "@/lib/email/vendor-email-campaigns"
 
 export const runtime = "nodejs"
 
@@ -186,8 +192,19 @@ async function processResendEvent(verified: unknown): Promise<NextResponse> {
   } catch (e) {
     console.warn("[resend-webhook] lookupVendorEmailDispatchMeta failed:", e)
   }
-  const truckId = meta?.truck_id ?? null
-  const campaign = meta?.campaign ?? null
+  let truckId = meta?.truck_id ?? null
+  let campaign = meta?.campaign ?? null
+
+  if (campaign === VENDOR_EMAIL_CAMPAIGN_BOOKING_LEAD) {
+    try {
+      const oppId = await lookupBookingOpportunityIdForResendEmail(emailId)
+      if (oppId) {
+        await ensureBookingOpportunityResendLink(emailId, oppId)
+      }
+    } catch (e) {
+      console.warn("[resend-webhook] booking opportunity link failed:", e)
+    }
+  }
 
   let recipients: string[]
   try {
@@ -278,6 +295,17 @@ async function processResendEvent(verified: unknown): Promise<NextResponse> {
       { ok: false, error: "partial_or_failed_insert", type, resend_email_id: emailId },
       { status: 500 }
     )
+  }
+
+  try {
+    await applyBookingNotificationWebhookEvent({
+      resendEmailId: emailId,
+      eventType: type,
+      eventTimestamp,
+      campaign,
+    })
+  } catch (e) {
+    console.warn("[resend-webhook] booking notification apply failed:", e)
   }
 
   return NextResponse.json({ ok: true, type, resend_email_id: emailId })

@@ -507,6 +507,28 @@ export default async function AdminBookingsPage({
               ) : null}
             </CardHeader>
             <CardContent className="space-y-4">
+              <div className="flex flex-wrap gap-2 text-xs">
+                {(
+                  [
+                    "no-notification-sent",
+                    "delivered-no-response",
+                    "bounced-failed",
+                    "missing-vendor-email",
+                    "dashboard-only",
+                  ] as const
+                ).map((filterKey) => (
+                  <Button
+                    key={filterKey}
+                    variant={dashboardFilter === filterKey ? "default" : "outline"}
+                    size="sm"
+                    asChild
+                  >
+                    <Link href={`/admin/bookings${keyQ}&filter=${filterKey}`}>
+                      {ADMIN_BOOKINGS_DASHBOARD_FILTER_LABEL[filterKey].title}
+                    </Link>
+                  </Button>
+                ))}
+              </div>
               {filterBanner ? (
                 <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-muted/40 px-4 py-3 text-sm">
                   <span className="text-muted-foreground">

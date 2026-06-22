@@ -72,6 +72,11 @@ function defaultMetrics(): BookingOpportunityMetrics {
     interestedCount: 0,
     totalOpportunities: 0,
     hasVendorResponse: false,
+    hasNoNotificationSent: false,
+    hasDeliveredNoResponse: false,
+    hasBouncedOrFailed: false,
+    hasMissingVendorEmail: false,
+    isDashboardOnly: false,
   }
 }
 
@@ -90,6 +95,16 @@ function passesDashboardFilter(
       return metrics.totalOpportunities > 0 && !metrics.hasVendorResponse
     case "vendor-interest":
       return metrics.hasVendorResponse
+    case "no-notification-sent":
+      return metrics.totalOpportunities > 0 && metrics.hasNoNotificationSent
+    case "delivered-no-response":
+      return metrics.hasDeliveredNoResponse
+    case "bounced-failed":
+      return metrics.hasBouncedOrFailed
+    case "missing-vendor-email":
+      return metrics.hasMissingVendorEmail
+    case "dashboard-only":
+      return metrics.isDashboardOnly
     default:
       return true
   }

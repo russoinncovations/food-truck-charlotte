@@ -4,6 +4,7 @@ import {
   type BookingRequestTypeValue,
 } from "@/lib/booking/booking-request-constants"
 import { fetchEligibleTruckIdsForBroadcast } from "@/lib/booking/eligible-trucks-for-opportunities"
+import { sendBookingVendorLeadEmails } from "@/lib/email/send-booking-vendor-lead-emails"
 import { createAdminSupabaseClient } from "@/lib/supabase/admin"
 
 export { BOOKING_REQUEST_TYPE }
@@ -79,14 +80,25 @@ export async function completeBookingRequest(
     console.error("[booking] truck_opportunities: SUPABASE_SERVICE_ROLE_KEY required for opportunity fan-out")
   }
 
+  const vendorNotifyOpportunities: { id: string; truck_id: string }[] = []
+
   if (isSpecific && oppDb) {
-    const { error: oppErr } = await oppDb.from("truck_opportunities").insert({
-      booking_request_id: id,
-      truck_id: row.truck_id,
-      status: "pending",
-    })
+    const { data: inserted, error: oppErr } = await oppDb
+      .from("truck_opportunities")
+      .insert({
+        booking_request_id: id,
+        truck_id: row.truck_id,
+        status: "pending",
+      })
+      .select("id, truck_id")
+      .single()
     if (oppErr) {
       console.error("[booking] truck_opportunities specific insert:", oppErr)
+    } else if (inserted?.id && inserted.truck_id) {
+      vendorNotifyOpportunities.push({
+        id: String(inserted.id),
+        truck_id: String(inserted.truck_id),
+      })
     }
   }
 
@@ -106,10 +118,30 @@ export async function completeBookingRequest(
     }))
 
     if (rows.length > 0) {
-      const { error: oppErr } = await oppDb.from("truck_opportunities").insert(rows)
+      const { data: insertedRows, error: oppErr } = await oppDb
+        .from("truck_opportunities")
+        .insert(rows)
+        .select("id, truck_id")
       if (oppErr) {
         console.error("[booking] truck_opportunities broadcast insert:", oppErr)
+      } else {
+        for (const r of insertedRows ?? []) {
+          if (r?.id && r.truck_id) {
+            vendorNotifyOpportunities.push({
+              id: String(r.id),
+              truck_id: String(r.truck_id),
+            })
+          }
+        }
       }
+    }
+  }
+
+  if (oppDb && vendorNotifyOpportunities.length > 0) {
+    try {
+      await sendBookingVendorLeadEmails(oppDb, row, vendorNotifyOpportunities, id)
+    } catch (e) {
+      console.error("[booking] vendor lead emails:", e)
     }
   }
 

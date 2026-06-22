@@ -26,6 +26,7 @@ import { fetchVendorRoutingForBookingRequest } from "@/lib/admin/fetch-booking-v
 import { AdminBookingEmailCustomer } from "@/components/admin/admin-booking-email-customer"
 import { AdminBookingFollowUpAction } from "@/components/admin/admin-booking-follow-up-action"
 import { AdminBookingLifecycleActions } from "@/components/admin/admin-booking-lifecycle-actions"
+import { AdminSendBookingNotificationButton } from "@/components/admin/admin-send-booking-notification-button"
 import { checkAdminPageAccess } from "@/lib/admin/verify-admin-key"
 
 export const metadata: Metadata = {
@@ -210,10 +211,10 @@ export default async function BookingDetailPage({
                     <span className="font-medium text-foreground tabular-nums">{interestedRows.length}</span> interested.
                   </p>
                   <p className="text-xs text-muted-foreground leading-relaxed">
-                    Open and cuisine requests create dashboard opportunities for matching vendors—FoodTruckCLT does not
-                    email every vendor. When a vendor marks <strong className="font-medium text-foreground">I&apos;m interested</strong>
-                    , their contact is shown on their dashboard so they can mail the host. Mark the booking fulfilled or
-                    closed when the host has found a truck to hide it from vendors.
+                    Matching vendors receive a dashboard opportunity and, when a valid email is on file, a booking
+                    lead notification from FoodTruckCLT. Vendors contact the host directly—FoodTruckCLT is not in the
+                    middle of the conversation. Notification status below reflects whether an email was actually sent
+                    and whether Resend reported delivery.
                   </p>
                   {interestedRows.length > 0 ? (
                     <div className="rounded-md border border-border bg-muted/30 px-3 py-3 space-y-2">
@@ -256,29 +257,65 @@ export default async function BookingDetailPage({
                         <thead className="bg-muted/50 border-b border-border">
                           <tr>
                             <th className="p-3 font-medium">Truck</th>
-                            <th className="p-3 font-medium">Truck email</th>
-                            <th className="p-3 font-medium whitespace-nowrap">Truck phone</th>
-                            <th className="p-3 font-medium">Status</th>
-                            <th className="p-3 font-medium whitespace-nowrap">Sent</th>
+                            <th className="p-3 font-medium whitespace-nowrap">Opportunity created</th>
+                            <th className="p-3 font-medium">Notification email</th>
+                            <th className="p-3 font-medium whitespace-nowrap">Notification status</th>
+                            <th className="p-3 font-medium whitespace-nowrap">Delivery status</th>
+                            <th className="p-3 font-medium">Vendor status</th>
                             <th className="p-3 font-medium whitespace-nowrap">Responded</th>
-                            <th className="p-3 font-medium whitespace-nowrap">Created</th>
+                            <th className="p-3 font-medium whitespace-nowrap">Last reminder</th>
+                            <th className="p-3 font-medium whitespace-nowrap">Actions</th>
                           </tr>
                         </thead>
                         <tbody>
                           {vendorRouting.rows.map((row) => (
                             <tr key={row.id} className="border-b border-border/80 last:border-0 align-top">
-                              <td className="p-3 font-medium text-foreground">{row.truck_name ?? "—"}</td>
+                              <td className="p-3">
+                                <p className="font-medium text-foreground">{row.truck_name ?? "—"}</p>
+                                {row.needs_manual_outreach ? (
+                                  <Badge variant="destructive" className="mt-1 text-[10px] font-normal">
+                                    Manual outreach needed
+                                  </Badge>
+                                ) : null}
+                                {row.truck_phone ? (
+                                  <p className="text-xs text-muted-foreground mt-1 tabular-nums">{row.truck_phone}</p>
+                                ) : null}
+                              </td>
+                              <td className="p-3 text-muted-foreground whitespace-nowrap tabular-nums">
+                                {formatDateTime(row.created_at)}
+                              </td>
                               <td className="p-3 text-muted-foreground break-all max-w-[180px]">
-                                {row.truck_email ? (
-                                  <a href={`mailto:${row.truck_email}`} className="hover:text-primary hover:underline">
-                                    {row.truck_email}
+                                {row.notification_email ? (
+                                  <a
+                                    href={`mailto:${row.notification_email}`}
+                                    className="hover:text-primary hover:underline"
+                                  >
+                                    {row.notification_email}
                                   </a>
+                                ) : row.truck_email ? (
+                                  <span className="text-amber-700 dark:text-amber-300">{row.truck_email} (not sent)</span>
                                 ) : (
                                   "—"
                                 )}
                               </td>
-                              <td className="p-3 text-muted-foreground whitespace-nowrap tabular-nums">
-                                {row.truck_phone ?? "—"}
+                              <td className="p-3">
+                                <Badge variant="secondary" className="font-normal whitespace-nowrap">
+                                  {row.notification_status_label}
+                                </Badge>
+                                {row.notification_sent_at ? (
+                                  <p className="text-[11px] text-muted-foreground mt-1 tabular-nums">
+                                    {formatDateTime(row.notification_sent_at)}
+                                  </p>
+                                ) : null}
+                                {row.notification_error ? (
+                                  <p className="text-[11px] text-destructive mt-1 max-w-[200px]">{row.notification_error}</p>
+                                ) : null}
+                              </td>
+                              <td className="p-3 text-muted-foreground whitespace-nowrap">
+                                {row.delivery_status_label}
+                                {row.delivered_at ? (
+                                  <p className="text-[11px] tabular-nums">{formatDateTime(row.delivered_at)}</p>
+                                ) : null}
                               </td>
                               <td className="p-3">
                                 <Badge variant="secondary" className="capitalize font-normal">
@@ -286,13 +323,19 @@ export default async function BookingDetailPage({
                                 </Badge>
                               </td>
                               <td className="p-3 text-muted-foreground whitespace-nowrap tabular-nums">
-                                {formatDateTime(row.sent_at)}
-                              </td>
-                              <td className="p-3 text-muted-foreground whitespace-nowrap tabular-nums">
                                 {formatDateTime(row.responded_at)}
                               </td>
                               <td className="p-3 text-muted-foreground whitespace-nowrap tabular-nums">
-                                {formatDateTime(row.created_at)}
+                                {formatDateTime(row.reminder_sent_at)}
+                              </td>
+                              <td className="p-3">
+                                <AdminSendBookingNotificationButton
+                                  opportunityId={row.id}
+                                  bookingId={booking.id}
+                                  adminKey={key ?? ""}
+                                  notificationStatus={row.notification_status}
+                                  truckEmail={row.truck_email}
+                                />
                               </td>
                             </tr>
                           ))}
