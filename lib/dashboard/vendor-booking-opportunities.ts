@@ -7,7 +7,7 @@ import {
   parseBookingEmbed,
   shouldShowBookingOnVendorDashboard,
 } from "@/lib/dashboard/vendor-booking-opportunity-visibility"
-import { isInternalDemoVendorTruck } from "@/lib/trucks/internal-demo-vendor"
+import { isInternalTestTruck } from "@/lib/trucks/internal-test-recipients"
 
 export type VendorDashboardTruck = {
   id: string
@@ -254,7 +254,7 @@ export async function fetchVendorOpportunityDiagnostics(
     authEmail,
     truckId: truck.id,
     truckEmail: truck.email,
-    isInternalDemoTruck: isInternalDemoVendorTruck(truck),
+    isInternalDemoTruck: isInternalTestTruck(truck),
     rawPendingCount: rows.length,
     activePendingCount: active.length,
     pendingOpportunityIds: active.map((r) => r.id),

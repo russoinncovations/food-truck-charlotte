@@ -2,7 +2,7 @@ import { createAdminSupabaseClient } from "@/lib/supabase/admin"
 import { isValidTruckMapCoordinates } from "@/lib/location/truck-map-coords"
 import { isFreshManualLivePin, isStaleManualLivePin } from "@/lib/serving/manual-live-pin"
 import { PUBLIC_LISTED_TRUCK_EQ } from "@/lib/trucks/public-listed-truck-query"
-import { isInternalDemoVendorTruck } from "@/lib/trucks/internal-demo-vendor"
+import { isInternalTestTruck } from "@/lib/trucks/internal-test-recipients"
 import { isPlausibleVendorEmail } from "@/lib/trucks/vendor-reminder-recipients"
 import {
   emailsMatchForVendor,
@@ -202,11 +202,11 @@ export function hasObviousInternalTestName(name: string | null | undefined): boo
 function isKnownInternalTestEmail(email: string | null | undefined): boolean {
   const key = trimStr(email).toLowerCase()
   if (!key) return false
-  return isInternalDemoVendorTruck({ email: key })
+  return isInternalTestTruck({ email: key })
 }
 
 export function classifyVendorAuditGroup(primary: VendorStatusAuditRow): VendorAuditGroupClassification {
-  if (isInternalDemoVendorTruck({ name: primary.truckName, email: primary.vendorEmail })) {
+  if (isInternalTestTruck({ name: primary.truckName, email: primary.vendorEmail })) {
     return "internal_test"
   }
   if (hasObviousInternalTestName(primary.truckName)) return "internal_test"

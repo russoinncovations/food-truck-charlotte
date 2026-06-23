@@ -21,7 +21,7 @@ import {
   mapRowsToDashboardOpportunities,
   resolveVendorTruckForDashboard,
 } from "@/lib/dashboard/vendor-booking-opportunities"
-import { isInternalDemoVendorTruck } from "@/lib/trucks/internal-demo-vendor"
+import { isInternalTestTruck } from "@/lib/trucks/internal-test-recipients"
 import { VendorDashboardOpportunityDiagnostics } from "@/components/dashboard/vendor-dashboard-opportunity-diagnostics"
 
 export const metadata: Metadata = {
@@ -105,7 +105,7 @@ export default async function DashboardPage() {
     opportunityCards = mapRowsToDashboardOpportunities(pendingRows)
     historyOpportunityCards = mapRowsToDashboardOpportunities(historyRows)
 
-    if (isInternalDemoVendorTruck(truckData)) {
+    if (isInternalTestTruck(truckData)) {
       opportunityDiagnostics = await fetchVendorOpportunityDiagnostics(supabase, truckData, authEmail)
       if (resolutionNote && opportunityDiagnostics) {
         opportunityDiagnostics = {

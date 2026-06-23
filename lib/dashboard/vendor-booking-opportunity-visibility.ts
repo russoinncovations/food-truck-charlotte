@@ -1,5 +1,5 @@
 import { INTERNAL_TEST_BOOKING_MARKER } from "@/lib/booking/create-internal-test-booking"
-import { isInternalDemoVendorTruck } from "@/lib/trucks/internal-demo-vendor"
+import { isInternalTestTruck } from "@/lib/trucks/internal-test-recipients"
 import { normalizeVendorEmailKey } from "@/lib/trucks/canonical-vendor-email"
 
 export type BookingRequestEmbed = {
@@ -22,16 +22,15 @@ export function isInternalTestBookingRequest(br: BookingRequestEmbed | null | un
 }
 
 /**
- * Internal test bookings are visible only on the internal demo vendor dashboard.
- * Production vendors never see them; demo vendor sees all non-terminal active bookings.
+ * Internal test bookings are visible only on internal test truck dashboards.
+ * Production vendors never see them.
  */
 export function shouldShowBookingOnVendorDashboard(
   br: BookingRequestEmbed | null | undefined,
   truck: { name?: string | null; email?: string | null }
 ): boolean {
   const internalTest = isInternalTestBookingRequest(br)
-  const demoTruck = isInternalDemoVendorTruck(truck)
-  if (internalTest && !demoTruck) return false
+  if (internalTest && !isInternalTestTruck(truck)) return false
   return true
 }
 

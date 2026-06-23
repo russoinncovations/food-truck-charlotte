@@ -6,6 +6,11 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { createInternalTestBooking } from "@/app/admin/bookings/internal-test-actions"
 import type { BookingAdminDiagnostics } from "@/lib/admin/fetch-booking-admin-diagnostics"
+import {
+  DEFAULT_INTERNAL_TEST_RECIPIENT_ID,
+  INTERNAL_TEST_RECIPIENT_LIST,
+  type InternalTestRecipientId,
+} from "@/lib/trucks/internal-test-recipients"
 
 type Props = {
   adminKey: string
@@ -38,6 +43,7 @@ export function AdminBookingDiagnosticsPanel({ adminKey, keyQ, diagnostics }: Pr
   const [pending, startTransition] = useTransition()
   const [testMessage, setTestMessage] = useState<string | null>(null)
   const [testBookingId, setTestBookingId] = useState<string | null>(null)
+  const [recipient, setRecipient] = useState<InternalTestRecipientId>(DEFAULT_INTERNAL_TEST_RECIPIENT_ID)
 
   const { runtime } = diagnostics
 
@@ -47,11 +53,14 @@ export function AdminBookingDiagnosticsPanel({ adminKey, keyQ, diagnostics }: Pr
     const fd = new FormData()
     fd.set("adminKey", adminKey)
     fd.set("mode", mode)
+    fd.set("recipient", recipient)
     startTransition(async () => {
       const result = await createInternalTestBooking(fd)
       if (result.ok && result.bookingId) {
         setTestBookingId(result.bookingId)
-        setTestMessage("Internal test booking created.")
+        const label =
+          INTERNAL_TEST_RECIPIENT_LIST.find((r) => r.id === recipient)?.label ?? recipient
+        setTestMessage(`INTERNAL TEST booking created for ${label}.`)
       } else {
         setTestMessage(result.error ?? "Could not create test booking.")
       }
@@ -186,12 +195,30 @@ export function AdminBookingDiagnosticsPanel({ adminKey, keyQ, diagnostics }: Pr
         </table>
       </div>
 
-      <div className="border-t border-border/60 pt-4 space-y-2">
+      <div className="border-t border-border/60 pt-4 space-y-3">
         <p className="font-medium text-foreground text-sm">Create internal test booking</p>
         <p className="text-xs text-muted-foreground max-w-2xl">
-          Admin-only. Routes to the hidden FoodTruckCLT Demo Vendor (or open request including demo
-          truck in broadcast). Uses the same completeBookingRequest path as production.
+          Admin-only. Uses the same <code className="text-[11px]">completeBookingRequest</code> path as
+          production. Targets hidden internal test trucks only — never public directory, map, or normal
+          vendor routing.
         </p>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:flex-wrap max-w-xl">
+          <label className="flex flex-col gap-1 text-xs">
+            <span className="text-muted-foreground">Internal test recipient</span>
+            <select
+              className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+              value={recipient}
+              disabled={pending}
+              onChange={(e) => setRecipient(e.target.value as InternalTestRecipientId)}
+            >
+              {INTERNAL_TEST_RECIPIENT_LIST.map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.label} ({r.email})
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
         <div className="flex flex-wrap gap-2">
           <Button
             type="button"
@@ -200,7 +227,7 @@ export function AdminBookingDiagnosticsPanel({ adminKey, keyQ, diagnostics }: Pr
             disabled={pending || !runtime.adminClientInitialized}
             onClick={() => runInternalTest("specific")}
           >
-            {pending ? "Creating…" : "INTERNAL TEST — specific demo vendor"}
+            {pending ? "Creating…" : "INTERNAL TEST — specific vendor"}
           </Button>
           <Button
             type="button"
@@ -209,7 +236,7 @@ export function AdminBookingDiagnosticsPanel({ adminKey, keyQ, diagnostics }: Pr
             disabled={pending || !runtime.adminClientInitialized}
             onClick={() => runInternalTest("open")}
           >
-            {pending ? "Creating…" : "INTERNAL TEST — open request"}
+            {pending ? "Creating…" : "INTERNAL TEST — open (internal trucks only)"}
           </Button>
         </div>
         {testMessage ? <p className="text-xs text-muted-foreground">{testMessage}</p> : null}

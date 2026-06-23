@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache"
 import { createAdminSupabaseClient } from "@/lib/supabase/admin"
 import { verifyAdminKey } from "@/lib/admin/verify-admin-key"
 import { createInternalTestBookingRequest } from "@/lib/booking/create-internal-test-booking"
+import { parseInternalTestRecipientId } from "@/lib/trucks/internal-test-recipients"
 
 export async function createInternalTestBooking(formData: FormData): Promise<{
   ok: boolean
@@ -21,10 +22,12 @@ export async function createInternalTestBooking(formData: FormData): Promise<{
 
   const mode = String(formData.get("mode") ?? "specific").trim()
   const requestType = mode === "open" ? "open_request" : "specific_vendor"
+  const recipientId = parseInternalTestRecipientId(formData.get("recipient"))
 
   const result = await createInternalTestBookingRequest({
     adminDb,
     requestType,
+    recipientId,
   })
 
   if (!result.ok) {

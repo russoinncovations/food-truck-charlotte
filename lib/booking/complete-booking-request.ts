@@ -40,6 +40,11 @@ export type BookingInsertRow = {
 
 type CompleteResult = { ok: true; id: string } | { ok: false; error: string }
 
+export type CompleteBookingRequestOptions = {
+  /** Admin internal-test open requests: fan-out only to these truck IDs (no public listed trucks). */
+  broadcastTruckIds?: string[]
+}
+
 function adminInboxEmail(): string | null {
   const a = process.env.INQUIRY_TO_EMAIL?.trim()
   if (a) return a
@@ -50,7 +55,8 @@ function adminInboxEmail(): string | null {
 
 export async function completeBookingRequest(
   supabase: SupabaseClient,
-  row: BookingInsertRow
+  row: BookingInsertRow,
+  opts?: CompleteBookingRequestOptions
 ): Promise<CompleteResult> {
   /** Server-only persistence: service role bypasses RLS for insert + returning id. */
   const persistDb = createAdminSupabaseClient()
@@ -118,11 +124,14 @@ export async function completeBookingRequest(
   if (isBroadcast && oppDb) {
     const requestType =
       row.request_type === BOOKING_REQUEST_TYPE.CUISINE_MATCH ? "cuisine_match" : "open_request"
-    const truckIds = await fetchEligibleTruckIdsForBroadcast(db, {
-      requestType,
-      cuisines: row.cuisines,
-      vendorType: row.vendor_type,
-    })
+    const truckIds =
+      opts?.broadcastTruckIds && opts.broadcastTruckIds.length > 0
+        ? opts.broadcastTruckIds
+        : await fetchEligibleTruckIdsForBroadcast(db, {
+            requestType,
+            cuisines: row.cuisines,
+            vendorType: row.vendor_type,
+          })
 
     const rows = truckIds.map((truckId) => ({
       booking_request_id: id,

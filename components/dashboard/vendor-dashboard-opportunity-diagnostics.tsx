@@ -25,9 +25,10 @@ export function VendorDashboardOpportunityDiagnostics(props: {
   return (
     <Card className="border-amber-500/40 bg-amber-500/5">
       <CardHeader className="pb-2">
-        <CardTitle className="text-base">Internal demo — booking visibility diagnostics</CardTitle>
+        <CardTitle className="text-base">Internal test — booking visibility diagnostics</CardTitle>
         <CardDescription>
-          Admin-safe debug panel for the FoodTruckCLT Demo Vendor only. Not shown to production vendors.
+          Admin-safe debug panel for internal test trucks only (Demo Vendor and Official Test Truck).
+          Not shown to production vendors.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3 text-xs font-mono">

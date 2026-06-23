@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 import { PUBLIC_LISTED_TRUCK_EQ } from "@/lib/trucks/public-listed-truck-query"
-import { isInternalDemoVendorTruck } from "@/lib/trucks/internal-demo-vendor"
+import { isInternalTestTruck } from "@/lib/trucks/internal-test-recipients"
 import {
   isPlausibleVendorEmail,
   normalizeVendorEmailForSend,
@@ -34,7 +34,7 @@ export async function fetchVendorReminderRecipients(
     return { recipients: [], eligibleTruckCount: 0 }
   }
 
-  const rows = (data ?? []).filter((row) => !isInternalDemoVendorTruck(row as { name?: string; email?: string }))
+  const rows = (data ?? []).filter((row) => !isInternalTestTruck(row as { name?: string; email?: string }))
   const eligibleTruckCount = rows.length
   const seenEmail = new Set<string>()
   const recipients: VendorReminderRecipient[] = []
@@ -78,7 +78,7 @@ export async function fetchVendorProfileReminderRecipients(
 
   type Row = { id: string; name: string | null; email: string | null }
 
-  const rows = ((data ?? []) as Row[]).filter((row) => !isInternalDemoVendorTruck(row))
+  const rows = ((data ?? []) as Row[]).filter((row) => !isInternalTestTruck(row))
 
   const eligibleRows: Row[] = []
   for (const row of rows) {
