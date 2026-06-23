@@ -16,6 +16,7 @@ import {
 import {
   evaluateVendorDashboardRetrieval,
   vendorDashboardRetrievalWarning,
+  vendorDashboardVisibilityLabel,
 } from "@/lib/admin/vendor-opportunity-dashboard-retrieval"
 import type { BookingRequestEmbed } from "@/lib/dashboard/vendor-booking-opportunity-visibility"
 
@@ -50,6 +51,7 @@ export type VendorOpportunityAdminRow = {
   vendor_dashboard_retrievable: boolean
   vendor_dashboard_retrieval_reasons: string[]
   vendor_dashboard_retrieval_warning: string | null
+  vendor_dashboard_visibility_label: string | null
   /** @deprecated Use canonical_email — kept for components not yet migrated */
   truck_email: string | null
 }
@@ -299,6 +301,7 @@ export async function fetchVendorRoutingForBookingRequest(
       vendor_dashboard_retrievable: retrieval.retrievable,
       vendor_dashboard_retrieval_reasons: retrieval.reasons,
       vendor_dashboard_retrieval_warning: vendorDashboardRetrievalWarning(notificationStatus, retrieval),
+      vendor_dashboard_visibility_label: vendorDashboardVisibilityLabel(notificationStatus, retrieval),
     }
   })
 

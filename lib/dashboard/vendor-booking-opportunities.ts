@@ -103,6 +103,36 @@ export function sortOpportunitiesNewestFirst<T extends { created_at?: string }>(
   )
 }
 
+export const VENDOR_DASHBOARD_RECENT_RESPONSE_STATUSES = new Set([
+  "interested",
+  "not_available",
+  "pass",
+])
+
+/** Matches “Requests to Confirm” on /dashboard. */
+export function opportunityVisibleInRequestsToConfirm(
+  oppStatus: string | null | undefined,
+  br: ReturnType<typeof parseBookingEmbed>,
+  truck: { name?: string | null; email?: string | null }
+): boolean {
+  if (String(oppStatus ?? "").toLowerCase() !== "pending") return false
+  if (!br) return false
+  if (!isBookingActiveForVendorOpportunities(br.status)) return false
+  if (!shouldShowBookingOnVendorDashboard(br, truck)) return false
+  return true
+}
+
+/** Matches “Your recent responses” on /dashboard. */
+export function opportunityVisibleInRecentResponses(
+  oppStatus: string | null | undefined,
+  br: ReturnType<typeof parseBookingEmbed>,
+  truck: { name?: string | null; email?: string | null }
+): boolean {
+  const status = String(oppStatus ?? "").toLowerCase()
+  if (!VENDOR_DASHBOARD_RECENT_RESPONSE_STATUSES.has(status)) return false
+  return shouldShowBookingOnVendorDashboard(br, truck)
+}
+
 function auditPendingOpportunity(
   opp: TruckOpportunityRow,
   truck: VendorDashboardTruck
@@ -125,11 +155,7 @@ function auditPendingOpportunity(
     }
   }
 
-  const includedInActiveList =
-    String(opp.status).toLowerCase() === "pending" &&
-    !!br &&
-    isBookingActiveForVendorOpportunities(bookingStatus) &&
-    shouldShowBookingOnVendorDashboard(br, truck)
+  const includedInActiveList = opportunityVisibleInRequestsToConfirm(opp.status, br, truck)
 
   return {
     opportunityId: opp.id,
@@ -145,12 +171,8 @@ export function filterActivePendingOpportunities(
   truck: VendorDashboardTruck
 ): TruckOpportunityRow[] {
   return sortOpportunitiesNewestFirst(rows).filter((opp) => {
-    if (String(opp.status).toLowerCase() !== "pending") return false
     const br = parseBookingEmbed(opp.booking_requests)
-    if (!br) return false
-    if (!isBookingActiveForVendorOpportunities(br.status)) return false
-    if (!shouldShowBookingOnVendorDashboard(br, truck)) return false
-    return true
+    return opportunityVisibleInRequestsToConfirm(opp.status, br, truck)
   })
 }
 
@@ -194,7 +216,7 @@ export async function fetchVendorHistoryOpportunities(
 
   return sortOpportunitiesNewestFirst((data ?? []) as TruckOpportunityRow[]).filter((opp) => {
     const br = parseBookingEmbed(opp.booking_requests)
-    return shouldShowBookingOnVendorDashboard(br, truck)
+    return opportunityVisibleInRecentResponses(opp.status, br, truck)
   })
 }
 
