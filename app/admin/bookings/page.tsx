@@ -7,6 +7,11 @@ import { Header } from "@/components/header"
 import { BookingsTable } from "@/components/admin/bookings-table"
 import { fetchBookingOpportunityMetricsByBookingId } from "@/lib/admin/fetch-booking-interested-counts"
 import {
+  fetchAllBookingRequestsForAdmin,
+  fetchBookingAdminDiagnostics,
+} from "@/lib/admin/fetch-booking-admin-diagnostics"
+import { AdminBookingDiagnosticsPanel } from "@/components/admin/admin-booking-diagnostics-panel"
+import {
   parseAdminBookingsDashboardFilter,
   ADMIN_BOOKINGS_DASHBOARD_FILTER_LABEL,
 } from "@/lib/admin/booking-admin-filters"
@@ -25,26 +30,28 @@ export const metadata: Metadata = {
   description: "Manage food truck booking requests",
 }
 
-/** Service-role reads after page key gate; matches command center / booking detail. */
+/** Service-role client for admin writes/reads when available. */
 async function adminBookingsDbClient() {
+  return createAdminSupabaseClient()
+}
+
+/** Fallback to session client for auxiliary admin panels when service role is unset. */
+async function adminAuxDbClient() {
   const admin = createAdminSupabaseClient()
   return admin ?? (await createClient())
 }
 
-async function getBookings(): Promise<BookingRequest[]> {
-  const supabase = await adminBookingsDbClient()
-
-  const { data, error } = await supabase
-    .from("booking_requests")
-    .select("*")
-    .order("created_at", { ascending: false })
-
-  if (error) {
-    console.error("[admin/bookings] Error fetching bookings:", error)
-    return []
+async function getBookings(): Promise<{
+  bookings: BookingRequest[]
+  loadError: string | null
+  usedServiceRole: boolean
+}> {
+  const loaded = await fetchAllBookingRequestsForAdmin()
+  return {
+    bookings: loaded.bookings.map((row) => normalizeBookingRowForAdmin(row)),
+    loadError: loaded.loadError,
+    usedServiceRole: loaded.usedServiceRole,
   }
-
-  return (data ?? []).map((row) => normalizeBookingRowForAdmin(row as Record<string, unknown>))
 }
 
 function getStatusCounts(bookings: BookingRequest[]) {
@@ -70,7 +77,7 @@ type AdminEventRow = {
 }
 
 async function getRecentEventsForAdmin(): Promise<AdminEventRow[]> {
-  const supabase = await adminBookingsDbClient()
+  const supabase = await adminAuxDbClient()
   const { data, error } = await supabase
     .from("events")
     .select("id, title, slug, date, location_name, address, active, listing_status, created_at, updated_at")
@@ -199,7 +206,7 @@ function formatVendorAppliedAt(createdAt: unknown): string {
 }
 
 async function getPendingVendorApplications(): Promise<Record<string, unknown>[]> {
-  const supabase = await adminBookingsDbClient()
+  const supabase = await adminAuxDbClient()
   const { data, error } = await supabase
     .from("vendor_applications")
     .select("*")
@@ -231,7 +238,9 @@ export default async function AdminBookingsPage({
     )
   }
 
-  const bookings = await getBookings()
+  const bookingsLoad = await getBookings()
+  const bookings = bookingsLoad.bookings
+  const bookingDiagnostics = await fetchBookingAdminDiagnostics()
   const dashboardFilter = parseAdminBookingsDashboardFilter(sp?.filter)
   const opportunityMetricsByBookingId = Object.fromEntries(
     (await fetchBookingOpportunityMetricsByBookingId(bookings.map((b) => b.id))).entries()
@@ -494,6 +503,37 @@ export default async function AdminBookingsPage({
             </Card>
           </div>
 
+          {/* Diagnostics + internal test */}
+          <Card className="mb-8 border-amber-500/20">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg">Pipeline diagnostics</CardTitle>
+              <CardDescription>
+                Verify submissions are persisting and routing — independent of dashboard filters below.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <AdminBookingDiagnosticsPanel
+                adminKey={key}
+                keyQ={keyQ}
+                diagnostics={bookingDiagnostics}
+              />
+            </CardContent>
+          </Card>
+
+          {bookingsLoad.loadError ? (
+            <div className="mb-6 rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+              {bookingsLoad.loadError}
+            </div>
+          ) : null}
+
+          {!bookingsLoad.usedServiceRole ? (
+            <div className="mb-6 rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-900 dark:text-amber-100">
+              Admin booking list requires <code className="text-xs">SUPABASE_SERVICE_ROLE_KEY</code> on
+              the server. Without it, the dashboard appears empty even when requests exist in the
+              database.
+            </div>
+          ) : null}
+
           {/* Bookings Table */}
           <Card>
             <CardHeader className="pb-4">
@@ -550,10 +590,22 @@ export default async function AdminBookingsPage({
                 <div className="text-center py-12">
                   <Inbox className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                   <h3 className="text-lg font-medium text-foreground mb-1">
-                    No booking requests yet
+                    {bookingsLoad.loadError
+                      ? "Could not load booking requests"
+                      : dashboardFilter
+                        ? "No requests match this filter"
+                        : bookingDiagnostics.tableRowCount && bookingDiagnostics.tableRowCount > 0
+                          ? "No requests in filtered view"
+                          : "No booking requests yet"}
                   </h3>
                   <p className="text-sm text-muted-foreground">
-                    When someone submits a booking request, it will appear here.
+                    {bookingsLoad.loadError
+                      ? "Fix the server configuration above, then refresh."
+                      : dashboardFilter
+                        ? "Clear the dashboard filter or check the diagnostics panel for recent rows."
+                        : bookingDiagnostics.tableRowCount && bookingDiagnostics.tableRowCount > 0
+                          ? "The diagnostics panel shows rows in the database — check active filters."
+                          : "When someone submits a booking request, it will appear here."}
                   </p>
                 </div>
               )}

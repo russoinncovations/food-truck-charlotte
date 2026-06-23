@@ -52,7 +52,16 @@ export async function completeBookingRequest(
   supabase: SupabaseClient,
   row: BookingInsertRow
 ): Promise<CompleteResult> {
-  const { data, error } = await supabase
+  /** Server-only persistence: service role bypasses RLS for insert + returning id. */
+  const persistDb = createAdminSupabaseClient()
+  if (!persistDb) {
+    console.error(
+      "[booking] SUPABASE_SERVICE_ROLE_KEY missing — insert may fail or omit id; routing will not run"
+    )
+  }
+  const db = persistDb ?? supabase
+
+  const { data, error } = await db
     .from("booking_requests")
     .insert(row as Record<string, unknown>)
     .select("id")
@@ -105,7 +114,7 @@ export async function completeBookingRequest(
   if (isBroadcast && oppDb) {
     const requestType =
       row.request_type === BOOKING_REQUEST_TYPE.CUISINE_MATCH ? "cuisine_match" : "open_request"
-    const truckIds = await fetchEligibleTruckIdsForBroadcast(supabase, {
+    const truckIds = await fetchEligibleTruckIdsForBroadcast(db, {
       requestType,
       cuisines: row.cuisines,
       vendorType: row.vendor_type,

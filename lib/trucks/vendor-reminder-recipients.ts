@@ -1,6 +1,11 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 import { PUBLIC_LISTED_TRUCK_EQ } from "@/lib/trucks/public-listed-truck-query"
 import { isInternalDemoVendorTruck } from "@/lib/trucks/internal-demo-vendor"
+import {
+  isPlausibleVendorEmail,
+  normalizeVendorEmailForSend,
+  resolveCanonicalVendorNotificationEmail,
+} from "@/lib/trucks/canonical-vendor-email"
 
 export type VendorReminderRecipient = {
   id: string
@@ -8,11 +13,7 @@ export type VendorReminderRecipient = {
   email: string
 }
 
-export function isPlausibleVendorEmail(email: string | null | undefined): boolean {
-  const t = (email ?? "").trim()
-  if (t.length < 5) return false
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(t)
-}
+export { isPlausibleVendorEmail } from "@/lib/trucks/canonical-vendor-email"
 
 /**
  * Directory-visible active trucks, deduped by email (one reminder per inbox).
@@ -39,8 +40,8 @@ export async function fetchVendorReminderRecipients(
   const recipients: VendorReminderRecipient[] = []
 
   for (const row of rows) {
-    const email = (row.email as string | null | undefined)?.trim()
-    if (!email || !isPlausibleVendorEmail(email)) continue
+    const email = normalizeVendorEmailForSend(resolveCanonicalVendorNotificationEmail(row))
+    if (!email) continue
     const key = email.toLowerCase()
     if (seenEmail.has(key)) continue
     seenEmail.add(key)
@@ -83,7 +84,7 @@ export async function fetchVendorProfileReminderRecipients(
   for (const row of rows) {
     const nameRaw = String(row.name ?? "").trim()
     if (nameRaw.toLowerCase().includes("test")) continue
-    const email = (row.email ?? "").trim()
+    const email = resolveCanonicalVendorNotificationEmail(row)
     if (!email || !isPlausibleVendorEmail(email)) continue
     eligibleRows.push(row)
   }
@@ -93,7 +94,8 @@ export async function fetchVendorProfileReminderRecipients(
   const recipients: VendorReminderRecipient[] = []
 
   for (const row of eligibleRows) {
-    const email = (row.email ?? "").trim()
+    const email = normalizeVendorEmailForSend(resolveCanonicalVendorNotificationEmail(row))
+    if (!email) continue
     const key = email.toLowerCase()
     if (seenEmail.has(key)) continue
     seenEmail.add(key)

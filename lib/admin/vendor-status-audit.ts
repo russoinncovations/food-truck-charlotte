@@ -4,12 +4,17 @@ import { isFreshManualLivePin, isStaleManualLivePin } from "@/lib/serving/manual
 import { PUBLIC_LISTED_TRUCK_EQ } from "@/lib/trucks/public-listed-truck-query"
 import { isInternalDemoVendorTruck } from "@/lib/trucks/internal-demo-vendor"
 import { isPlausibleVendorEmail } from "@/lib/trucks/vendor-reminder-recipients"
+import {
+  emailsMatchForVendor,
+  resolveCanonicalVendorNotificationEmail,
+} from "@/lib/trucks/canonical-vendor-email"
 import { VENDOR_EMAIL_GO_LIVE_DASHBOARD_URL, VENDOR_EMAIL_VENDOR_LOGIN_URL } from "@/lib/email/vendor-email-public-links"
 
 export type VendorStatusIssueFlag =
   | "application_not_approved"
   | "missing_vendor_email"
   | "duplicate_email"
+  | "application_email_mismatch"
   | "duplicate_truck_name"
   | "no_slug"
   | "hidden_from_directory"
@@ -150,6 +155,7 @@ const FLAG_SEVERITY: Record<VendorStatusIssueFlag, VendorAuditIssueSeverity> = {
   application_not_approved: "action",
   listed_inactive: "action",
   duplicate_email: "info",
+  application_email_mismatch: "action",
   duplicate_truck_name: "info",
   no_recent_activity: "info",
   historical_application_record: "info",
@@ -159,6 +165,7 @@ export const ISSUE_LABELS: Record<VendorStatusIssueFlag, string> = {
   application_not_approved: "Application not approved",
   missing_vendor_email: "Missing vendor email",
   duplicate_email: "Duplicate email (cross-vendor)",
+  application_email_mismatch: "Application email differs from trucks.email",
   duplicate_truck_name: "Duplicate name (cross-vendor)",
   no_slug: "No slug",
   hidden_from_directory: "Hidden / unlisted",
@@ -372,13 +379,15 @@ function truckDuplicateKeys(trucks: TruckRow[]): {
 function computeTruckIssues(opts: {
   truck: TruckRow
   primaryApplicationStatus: string | null
+  linkedApplicationEmail: string | null
   duplicateEmails: Set<string>
   duplicateNames: Set<string>
   authByEmail: Map<string, string>
 }): VendorStatusAuditIssue[] {
-  const { truck, primaryApplicationStatus, duplicateEmails, duplicateNames, authByEmail } = opts
+  const { truck, primaryApplicationStatus, linkedApplicationEmail, duplicateEmails, duplicateNames, authByEmail } =
+    opts
   const flags: VendorStatusIssueFlag[] = []
-  const email = trimStr(truck.email)
+  const email = resolveCanonicalVendorNotificationEmail(truck) ?? ""
   const emailKey = email.toLowerCase()
   const nameKey = normalizeAuditName(trimStr(truck.name))
   const listed = isPublicListed(truck)
@@ -389,6 +398,14 @@ function computeTruckIssues(opts: {
   }
 
   if (!isPlausibleVendorEmail(email)) flags.push("missing_vendor_email")
+  if (
+    linkedApplicationEmail &&
+    isPlausibleVendorEmail(linkedApplicationEmail) &&
+    isPlausibleVendorEmail(email) &&
+    !emailsMatchForVendor(linkedApplicationEmail, email)
+  ) {
+    flags.push("application_email_mismatch")
+  }
   if (emailKey && duplicateEmails.has(emailKey)) flags.push("duplicate_email")
   if (nameKey && duplicateNames.has(nameKey)) flags.push("duplicate_truck_name")
   if (!trimStr(truck.slug)) flags.push("no_slug")
@@ -490,13 +507,14 @@ function buildTruckRow(
   opts: {
     primaryApplicationStatus: string | null
     applicationId: string | null
+    linkedApplicationEmail: string | null
     duplicateEmails: Set<string>
     duplicateNames: Set<string>
     authByEmail: Map<string, string>
     adminVendorsUrl: string
   }
 ): VendorStatusAuditRow {
-  const email = trimStr(truck.email) || null
+  const email = resolveCanonicalVendorNotificationEmail(truck) || null
   const emailKey = email?.toLowerCase() ?? ""
   const slug = trimStr(truck.slug) || null
   const visible = isRlsPublicVisible(truck)
@@ -526,6 +544,7 @@ function buildTruckRow(
     issues: computeTruckIssues({
       truck,
       primaryApplicationStatus: opts.primaryApplicationStatus,
+      linkedApplicationEmail: opts.linkedApplicationEmail,
       duplicateEmails: opts.duplicateEmails,
       duplicateNames: opts.duplicateNames,
       authByEmail: opts.authByEmail,
@@ -722,6 +741,7 @@ export async function fetchVendorStatusAudit(adminVendorsUrl: string): Promise<{
     const primary = buildTruckRow(truck, {
       primaryApplicationStatus: primaryApp?.status ?? null,
       applicationId: primaryApp?.id ?? truck.source_application_id ?? null,
+      linkedApplicationEmail: primaryApp ? trimStr(primaryApp.email) || null : null,
       duplicateEmails,
       duplicateNames,
       authByEmail,

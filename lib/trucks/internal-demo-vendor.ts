@@ -2,7 +2,8 @@ import type { SupabaseClient } from "@supabase/supabase-js"
 
 /** Internal-only test vendor: hidden from public directory but receives broadcast booking opportunities. */
 export const INTERNAL_DEMO_VENDOR_NAME = "FoodTruckCLT Demo Vendor"
-export const INTERNAL_DEMO_VENDOR_EMAIL = "evolvetc@gmail.com"
+/** Must match `trucks.email` for the demo vendor row (not booking_email or application email). */
+export const INTERNAL_DEMO_VENDOR_EMAIL = "evolvebtc@gmail.com"
 
 export function isInternalDemoVendorTruck(row: {
   name?: string | null

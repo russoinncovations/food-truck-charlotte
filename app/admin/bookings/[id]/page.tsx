@@ -26,8 +26,9 @@ import { fetchVendorRoutingForBookingRequest } from "@/lib/admin/fetch-booking-v
 import { AdminBookingEmailCustomer } from "@/components/admin/admin-booking-email-customer"
 import { AdminBookingFollowUpAction } from "@/components/admin/admin-booking-follow-up-action"
 import { AdminBookingLifecycleActions } from "@/components/admin/admin-booking-lifecycle-actions"
-import { AdminSendBookingNotificationButton } from "@/components/admin/admin-send-booking-notification-button"
+import { AdminBookingOpportunityEmailActions } from "@/components/admin/admin-booking-opportunity-email-actions"
 import { checkAdminPageAccess } from "@/lib/admin/verify-admin-key"
+import { isHistoricalNotificationEmailRecord } from "@/lib/trucks/canonical-vendor-email"
 
 export const metadata: Metadata = {
   title: "Booking Details | Admin | Food Truck CLT",
@@ -226,13 +227,13 @@ export default async function BookingDetailPage({
                           <li key={row.id} className="border-b border-border/70 pb-2 last:border-0 last:pb-0">
                             <p className="font-medium text-foreground">{row.truck_name ?? "—"}</p>
                             <div className="text-xs text-muted-foreground mt-1 space-y-0.5">
-                              {row.truck_email ? (
+                              {row.canonical_email ? (
                                 <p>
                                   <a
-                                    href={`mailto:${row.truck_email}`}
+                                    href={`mailto:${row.canonical_email}`}
                                     className="text-primary hover:underline break-all"
                                   >
-                                    {row.truck_email}
+                                    {row.canonical_email}
                                   </a>
                                 </p>
                               ) : (
@@ -258,7 +259,8 @@ export default async function BookingDetailPage({
                           <tr>
                             <th className="p-3 font-medium">Truck</th>
                             <th className="p-3 font-medium whitespace-nowrap">Opportunity created</th>
-                            <th className="p-3 font-medium">Notification email</th>
+                            <th className="p-3 font-medium">Canonical email (trucks.email)</th>
+                            <th className="p-3 font-medium">Sent to (audit)</th>
                             <th className="p-3 font-medium whitespace-nowrap">Notification status</th>
                             <th className="p-3 font-medium whitespace-nowrap">Delivery status</th>
                             <th className="p-3 font-medium">Vendor status</th>
@@ -280,20 +282,47 @@ export default async function BookingDetailPage({
                                 {row.truck_phone ? (
                                   <p className="text-xs text-muted-foreground mt-1 tabular-nums">{row.truck_phone}</p>
                                 ) : null}
+                                {row.email_warning_messages.length > 0 ? (
+                                  <ul className="mt-2 space-y-1 text-[11px] text-amber-800 dark:text-amber-200 max-w-[220px]">
+                                    {row.email_warning_messages.map((msg) => (
+                                      <li key={msg}>{msg}</li>
+                                    ))}
+                                  </ul>
+                                ) : null}
                               </td>
                               <td className="p-3 text-muted-foreground whitespace-nowrap tabular-nums">
                                 {formatDateTime(row.created_at)}
                               </td>
                               <td className="p-3 text-muted-foreground break-all max-w-[180px]">
-                                {row.notification_email ? (
+                                {row.canonical_email ? (
                                   <a
-                                    href={`mailto:${row.notification_email}`}
+                                    href={`mailto:${row.canonical_email}`}
                                     className="hover:text-primary hover:underline"
                                   >
-                                    {row.notification_email}
+                                    {row.canonical_email}
                                   </a>
-                                ) : row.truck_email ? (
-                                  <span className="text-amber-700 dark:text-amber-300">{row.truck_email} (not sent)</span>
+                                ) : (
+                                  "—"
+                                )}
+                                {row.application_email &&
+                                row.canonical_email &&
+                                row.application_email.toLowerCase() !== row.canonical_email.toLowerCase() ? (
+                                  <p className="text-[10px] text-muted-foreground mt-1">
+                                    Application: {row.application_email}
+                                  </p>
+                                ) : null}
+                              </td>
+                              <td className="p-3 text-muted-foreground break-all max-w-[160px]">
+                                {row.notification_email ? (
+                                  <>
+                                    <a
+                                      href={`mailto:${row.notification_email}`}
+                                      className="hover:text-primary hover:underline"
+                                    >
+                                      {row.notification_email}
+                                    </a>
+                                    <p className="text-[10px] text-muted-foreground mt-1">Historical send record</p>
+                                  </>
                                 ) : (
                                   "—"
                                 )}
@@ -329,12 +358,21 @@ export default async function BookingDetailPage({
                                 {formatDateTime(row.reminder_sent_at)}
                               </td>
                               <td className="p-3">
-                                <AdminSendBookingNotificationButton
+                                <AdminBookingOpportunityEmailActions
                                   opportunityId={row.id}
                                   bookingId={booking.id}
                                   adminKey={key ?? ""}
                                   notificationStatus={row.notification_status}
-                                  truckEmail={row.truck_email}
+                                  canonicalEmail={row.canonical_email}
+                                  hasEmailWarnings={row.email_warnings.length > 0}
+                                  notificationIsHistorical={isHistoricalNotificationEmailRecord({
+                                    notification_status: row.notification_status,
+                                    notification_sent_at: row.notification_sent_at,
+                                    resend_email_id: row.resend_email_id,
+                                    delivered_at: row.delivered_at,
+                                    bounced_at: row.bounced_at,
+                                    complained_at: row.complained_at,
+                                  })}
                                 />
                               </td>
                             </tr>

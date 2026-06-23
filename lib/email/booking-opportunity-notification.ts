@@ -5,7 +5,11 @@ import { resolveVendorBookingFromEmail } from "@/lib/email/booking-vendor-from"
 import { buildVendorBookingLeadEmail } from "@/lib/email/booking-vendor-lead-email"
 import { VENDOR_EMAIL_CAMPAIGN_BOOKING_LEAD } from "@/lib/email/vendor-email-campaigns"
 import { insertVendorEmailEvent } from "@/lib/email/vendor-email-events"
-import { isPlausibleVendorEmail } from "@/lib/trucks/vendor-reminder-recipients"
+import {
+  isPlausibleVendorEmail,
+  normalizeVendorEmailForSend,
+  resolveCanonicalVendorNotificationEmail,
+} from "@/lib/trucks/canonical-vendor-email"
 
 export type BookingOpportunityRef = {
   id: string
@@ -41,7 +45,7 @@ async function loadTruckMap(
       {
         id: String(t.id),
         name: String(t.name ?? "").trim() || "your truck",
-        email: (t.email as string | null) ?? null,
+        email: resolveCanonicalVendorNotificationEmail(t),
       },
     ])
   )
@@ -68,18 +72,18 @@ export async function sendBookingNotificationForOpportunity(
   truck: TruckRow,
   bookingRequestId?: string | null
 ): Promise<SendBookingNotificationResult> {
-  const email = String(truck.email ?? "").trim()
+  const email = normalizeVendorEmailForSend(truck.email)
 
-  if (!isPlausibleVendorEmail(email)) {
+  if (!email) {
     await patchOpportunityNotification(db, opportunity.id, {
       notification_status: BOOKING_NOTIFICATION_STATUS.NOT_ELIGIBLE_NO_EMAIL,
       notification_email: null,
-      notification_error: "No valid vendor email on file",
+      notification_error: "No valid vendor email on trucks.email",
     })
     return {
       ok: false,
       status: BOOKING_NOTIFICATION_STATUS.NOT_ELIGIBLE_NO_EMAIL,
-      error: "No valid vendor email on file",
+      error: "No valid vendor email on trucks.email",
     }
   }
 
@@ -196,3 +200,6 @@ export async function processBookingOpportunityNotifications(
     await sendBookingNotificationForOpportunity(db, booking, opp, truck, bookingRequestId)
   }
 }
+
+/** @deprecated Import from canonical-vendor-email — kept for callers validating format only. */
+export { isPlausibleVendorEmail }

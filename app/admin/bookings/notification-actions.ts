@@ -6,6 +6,11 @@ import { verifyAdminKey } from "@/lib/admin/verify-admin-key"
 import { normalizeBookingRowForAdmin } from "@/lib/admin/normalize-booking-row"
 import type { BookingInsertRow } from "@/lib/booking/complete-booking-request"
 import { sendBookingNotificationForOpportunity } from "@/lib/email/booking-opportunity-notification"
+import {
+  isHistoricalNotificationEmailRecord,
+  normalizeVendorEmailForSend,
+  resolveCanonicalVendorNotificationEmail,
+} from "@/lib/trucks/canonical-vendor-email"
 
 function bookingRowFromRequest(row: Record<string, unknown>): BookingInsertRow {
   const normalized = normalizeBookingRowForAdmin(row)
@@ -93,7 +98,7 @@ export async function sendBookingNotificationNow(formData: FormData): Promise<{ 
     {
       id: String(truck.id),
       name: String(truck.name ?? "").trim() || "your truck",
-      email: (truck.email as string | null) ?? null,
+      email: resolveCanonicalVendorNotificationEmail(truck),
     },
     bookingId
   )
@@ -105,4 +110,90 @@ export async function sendBookingNotificationNow(formData: FormData): Promise<{ 
     return { ok: false, error: result.error }
   }
   return { ok: true }
+}
+
+/**
+ * Aligns an unsent opportunity with trucks.email for future sends.
+ * Does not send email and never overwrites historical delivery records.
+ */
+export async function syncOpportunityNotificationEmailFromTruck(
+  formData: FormData
+): Promise<{ ok: boolean; error?: string; canonicalEmail?: string }> {
+  if (!verifyAdminKey(formData.get("adminKey") as string | null)) {
+    return { ok: false, error: "Unauthorized" }
+  }
+
+  const opportunityId = String(formData.get("opportunityId") ?? "").trim()
+  const bookingId = String(formData.get("bookingId") ?? "").trim()
+  if (!opportunityId || !bookingId) {
+    return { ok: false, error: "Missing opportunity or booking id" }
+  }
+
+  const admin = createAdminSupabaseClient()
+  if (!admin) {
+    return { ok: false, error: "SUPABASE_SERVICE_ROLE_KEY is required" }
+  }
+
+  const { data: opp, error: oppErr } = await admin
+    .from("truck_opportunities")
+    .select(
+      "id, truck_id, booking_request_id, notification_status, notification_email, notification_sent_at, resend_email_id, delivered_at, bounced_at, complained_at"
+    )
+    .eq("id", opportunityId)
+    .maybeSingle()
+
+  if (oppErr || !opp) {
+    return { ok: false, error: oppErr?.message ?? "Opportunity not found" }
+  }
+  if (String(opp.booking_request_id) !== bookingId) {
+    return { ok: false, error: "Opportunity does not belong to this booking" }
+  }
+
+  if (
+    isHistoricalNotificationEmailRecord({
+      notification_status: opp.notification_status as string | null,
+      notification_sent_at: opp.notification_sent_at as string | null,
+      resend_email_id: opp.resend_email_id as string | null,
+      delivered_at: opp.delivered_at as string | null,
+      bounced_at: opp.bounced_at as string | null,
+      complained_at: opp.complained_at as string | null,
+    })
+  ) {
+    return {
+      ok: false,
+      error: "This opportunity has a delivery audit record; notification email cannot be changed.",
+    }
+  }
+
+  const { data: truck, error: truckErr } = await admin
+    .from("trucks")
+    .select("id, email")
+    .eq("id", opp.truck_id)
+    .maybeSingle()
+
+  if (truckErr || !truck) {
+    return { ok: false, error: truckErr?.message ?? "Truck not found" }
+  }
+
+  const canonical = normalizeVendorEmailForSend(resolveCanonicalVendorNotificationEmail(truck))
+  if (!canonical) {
+    return { ok: false, error: "Active truck profile has no valid email on trucks.email" }
+  }
+
+  const { error: updateErr } = await admin
+    .from("truck_opportunities")
+    .update({
+      notification_email: null,
+      notification_error: null,
+    })
+    .eq("id", opportunityId)
+
+  if (updateErr) {
+    return { ok: false, error: updateErr.message }
+  }
+
+  revalidatePath(`/admin/bookings/${bookingId}`)
+  revalidatePath("/admin/bookings")
+
+  return { ok: true, canonicalEmail: canonical }
 }
