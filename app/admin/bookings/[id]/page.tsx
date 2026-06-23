@@ -289,6 +289,11 @@ export default async function BookingDetailPage({
                                     ))}
                                   </ul>
                                 ) : null}
+                                {row.vendor_dashboard_retrieval_warning ? (
+                                  <p className="mt-2 text-[11px] text-destructive max-w-[220px]">
+                                    {row.vendor_dashboard_retrieval_warning}
+                                  </p>
+                                ) : null}
                               </td>
                               <td className="p-3 text-muted-foreground whitespace-nowrap tabular-nums">
                                 {formatDateTime(row.created_at)}

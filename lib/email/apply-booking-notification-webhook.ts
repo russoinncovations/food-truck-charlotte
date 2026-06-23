@@ -4,6 +4,11 @@ import {
   BOOKING_RESEND_DELIVERY_EVENTS,
   type BookingNotificationStatus,
 } from "@/lib/booking/booking-notification-status"
+import {
+  evaluateVendorDashboardRetrieval,
+  vendorDashboardRetrievalWarning,
+} from "@/lib/admin/vendor-opportunity-dashboard-retrieval"
+import type { BookingRequestEmbed } from "@/lib/dashboard/vendor-booking-opportunity-visibility"
 import { VENDOR_EMAIL_CAMPAIGN_BOOKING_LEAD } from "@/lib/email/vendor-email-campaigns"
 
 type OpportunityPatch = {
@@ -12,6 +17,7 @@ type OpportunityPatch = {
   bounced_at?: string
   failed_at?: string
   complained_at?: string
+  notification_error?: string | null
 }
 
 function timestampColumnForEvent(eventType: string): keyof OpportunityPatch | null {
@@ -54,7 +60,7 @@ export async function applyBookingNotificationWebhookEvent(opts: {
 
   const { data: opp, error: lookupErr } = await admin
     .from("truck_opportunities")
-    .select("id, notification_status, resend_email_id")
+    .select("id, status, truck_id, booking_request_id, notification_status, resend_email_id, notification_error")
     .eq("resend_email_id", emailId)
     .maybeSingle()
 
@@ -69,6 +75,29 @@ export async function applyBookingNotificationWebhookEvent(opts: {
   const col = timestampColumnForEvent(opts.eventType)
   if (col && col !== "notification_status") {
     patch[col] = ts
+  }
+
+  if (nextStatus === BOOKING_NOTIFICATION_STATUS.DELIVERED && opp.booking_request_id && opp.truck_id) {
+    const [{ data: bookingRow }, { data: truckRow }] = await Promise.all([
+      admin
+        .from("booking_requests")
+        .select("status, additional_notes, contact_email, contact_name")
+        .eq("id", opp.booking_request_id)
+        .maybeSingle(),
+      admin.from("trucks").select("name, email").eq("id", opp.truck_id).maybeSingle(),
+    ])
+
+    const retrieval = evaluateVendorDashboardRetrieval({
+      opportunityStatus: opp.status,
+      bookingRequest: (bookingRow ?? null) as BookingRequestEmbed | null,
+      truck: truckRow ?? {},
+      notificationStatus: nextStatus,
+    })
+    const warning = vendorDashboardRetrievalWarning(nextStatus, retrieval)
+    if (warning) {
+      patch.notification_error = warning
+      console.warn("[booking-notification-webhook] vendor dashboard retrieval:", opp.id, retrieval.reasons)
+    }
   }
 
   const { error: updateErr } = await admin.from("truck_opportunities").update(patch).eq("id", opp.id)

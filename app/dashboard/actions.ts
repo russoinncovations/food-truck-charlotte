@@ -2,6 +2,8 @@
 
 import { revalidatePath } from "next/cache"
 import { isBookingActiveForVendorOpportunities } from "@/lib/booking/booking-request-status"
+import { parseBookingEmbed, shouldShowBookingOnVendorDashboard } from "@/lib/dashboard/vendor-booking-opportunity-visibility"
+import { resolveVendorTruckForDashboard } from "@/lib/dashboard/vendor-booking-opportunities"
 import { createClient } from "@/lib/supabase/server"
 
 export type OpportunityActionResult = {
@@ -32,11 +34,7 @@ export async function updateTruckOpportunityStatus(
     return { success: false, error: "Unauthorized" }
   }
 
-  const { data: truck } = await supabase
-    .from("trucks")
-    .select("id")
-    .eq("email", user.email)
-    .maybeSingle()
+  const { truck } = await resolveVendorTruckForDashboard(supabase, user.email)
 
   if (!truck?.id) {
     return { success: false, error: "No truck profile" }
@@ -44,7 +42,7 @@ export async function updateTruckOpportunityStatus(
 
   const { data: existing, error: readErr } = await supabase
     .from("truck_opportunities")
-    .select("id, status, booking_requests(status)")
+    .select("id, status, booking_requests(*)")
     .eq("id", opportunityId)
     .eq("truck_id", truck.id)
     .maybeSingle()
@@ -58,15 +56,15 @@ export async function updateTruckOpportunityStatus(
     return { success: false, error: "This opportunity was already updated" }
   }
 
-  const embed = (existing as { booking_requests?: unknown }).booking_requests
-  const brRow = Array.isArray(embed) ? embed[0] : embed
-  const bookingStatus =
-    brRow && typeof brRow === "object" && "status" in brRow
-      ? String((brRow as { status?: string }).status ?? "")
-      : ""
+  const brRow = parseBookingEmbed((existing as { booking_requests?: unknown }).booking_requests)
+  const bookingStatus = brRow?.status != null ? String(brRow.status) : ""
 
   if (!isBookingActiveForVendorOpportunities(bookingStatus)) {
     return { success: false, error: "This booking request is closed — responses are no longer accepted." }
+  }
+
+  if (!shouldShowBookingOnVendorDashboard(brRow, truck)) {
+    return { success: false, error: "This opportunity is not available for your truck." }
   }
 
   const { data: updated, error: updateError } = await supabase

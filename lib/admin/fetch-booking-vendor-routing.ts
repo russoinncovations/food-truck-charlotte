@@ -13,6 +13,11 @@ import {
   resolveCanonicalVendorNotificationEmail,
   type VendorEmailConsistencyWarning,
 } from "@/lib/trucks/canonical-vendor-email"
+import {
+  evaluateVendorDashboardRetrieval,
+  vendorDashboardRetrievalWarning,
+} from "@/lib/admin/vendor-opportunity-dashboard-retrieval"
+import type { BookingRequestEmbed } from "@/lib/dashboard/vendor-booking-opportunity-visibility"
 
 export type VendorOpportunityAdminRow = {
   id: string
@@ -42,6 +47,9 @@ export type VendorOpportunityAdminRow = {
   needs_manual_outreach: boolean
   email_warnings: VendorEmailConsistencyWarning[]
   email_warning_messages: string[]
+  vendor_dashboard_retrievable: boolean
+  vendor_dashboard_retrieval_reasons: string[]
+  vendor_dashboard_retrieval_warning: string | null
   /** @deprecated Use canonical_email — kept for components not yet migrated */
   truck_email: string | null
 }
@@ -167,6 +175,16 @@ export async function fetchVendorRoutingForBookingRequest(
   const list = opps ?? []
   const truckIds = [...new Set(list.map((o) => o.truck_id).filter(Boolean))]
 
+  let bookingEmbed: BookingRequestEmbed | null = null
+  const { data: bookingRow } = await client
+    .from("booking_requests")
+    .select("status, additional_notes, contact_email, contact_name")
+    .eq("id", id)
+    .maybeSingle()
+  if (bookingRow) {
+    bookingEmbed = bookingRow as BookingRequestEmbed
+  }
+
   let truckMap = new Map<string, TruckMeta>()
   if (truckIds.length > 0) {
     const { data: trucks, error: truckErr } = await client
@@ -244,6 +262,13 @@ export async function fetchVendorRoutingForBookingRequest(
         : false,
     })
 
+    const retrieval = evaluateVendorDashboardRetrieval({
+      opportunityStatus: r.status,
+      bookingRequest: bookingEmbed,
+      truck: { name: t.name, email: t.email },
+      notificationStatus,
+    })
+
     return {
       id: r.id,
       truck_id: r.truck_id,
@@ -271,6 +296,9 @@ export async function fetchVendorRoutingForBookingRequest(
       needs_manual_outreach: bookingNotificationNeedsOutreach(notificationStatus),
       email_warnings: consistency.warnings,
       email_warning_messages: consistency.warningMessages,
+      vendor_dashboard_retrievable: retrieval.retrievable,
+      vendor_dashboard_retrieval_reasons: retrieval.reasons,
+      vendor_dashboard_retrieval_warning: vendorDashboardRetrievalWarning(notificationStatus, retrieval),
     }
   })
 

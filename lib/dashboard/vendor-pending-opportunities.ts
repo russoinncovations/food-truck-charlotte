@@ -1,5 +1,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
-import { isBookingActiveForVendorOpportunities } from "@/lib/booking/booking-request-status"
+import {
+  filterActivePendingOpportunities,
+  type TruckOpportunityRow,
+  type VendorDashboardTruck,
+} from "@/lib/dashboard/vendor-booking-opportunities"
 
 /**
  * Count of pending truck_opportunities whose linked booking is still active for vendors.
@@ -7,12 +11,12 @@ import { isBookingActiveForVendorOpportunities } from "@/lib/booking/booking-req
  */
 export async function countVendorActivePendingBookingOpportunities(
   supabase: SupabaseClient,
-  truckId: string
+  truck: VendorDashboardTruck
 ): Promise<number> {
   const { data, error } = await supabase
     .from("truck_opportunities")
-    .select("id, booking_requests(status)")
-    .eq("truck_id", truckId)
+    .select("*, booking_requests(status, additional_notes, contact_email, contact_name)")
+    .eq("truck_id", truck.id)
     .eq("status", "pending")
     .limit(80)
 
@@ -21,15 +25,5 @@ export async function countVendorActivePendingBookingOpportunities(
     return 0
   }
 
-  let n = 0
-  for (const row of data ?? []) {
-    const embed = (row as { booking_requests?: unknown }).booking_requests
-    const br = Array.isArray(embed) ? embed[0] : embed
-    const st =
-      br && typeof br === "object" && "status" in br
-        ? String((br as { status?: string }).status ?? "")
-        : ""
-    if (isBookingActiveForVendorOpportunities(st)) n += 1
-  }
-  return n
+  return filterActivePendingOpportunities((data ?? []) as TruckOpportunityRow[], truck).length
 }

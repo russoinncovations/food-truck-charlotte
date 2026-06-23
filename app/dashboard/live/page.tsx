@@ -4,6 +4,7 @@ import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
 import { VendorLiveDashboard } from "@/components/dashboard/vendor-live-dashboard"
 import { countVendorActivePendingBookingOpportunities } from "@/lib/dashboard/vendor-pending-opportunities"
+import { resolveVendorTruckForDashboard } from "@/lib/dashboard/vendor-booking-opportunities"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 
@@ -21,11 +22,7 @@ export default async function VendorLivePage() {
     redirect("/vendor-login")
   }
 
-  const { data: truckData } = await supabase
-    .from("trucks")
-    .select("id, name, serving_today, serving_started_at, today_location, street_address, latitude, longitude, updated_at")
-    .eq("email", user.email)
-    .single()
+  const { truck: truckData } = await resolveVendorTruckForDashboard(supabase, user.email)
 
   if (!truckData?.id) {
     return (
@@ -48,7 +45,7 @@ export default async function VendorLivePage() {
     )
   }
 
-  const pendingRequestCount = await countVendorActivePendingBookingOpportunities(supabase, truckData.id)
+  const pendingRequestCount = await countVendorActivePendingBookingOpportunities(supabase, truckData)
 
   return (
     <VendorLiveDashboard
