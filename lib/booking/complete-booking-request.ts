@@ -5,7 +5,7 @@ import {
 } from "@/lib/booking/booking-request-constants"
 import { fetchEligibleTruckIdsForBroadcast } from "@/lib/booking/eligible-trucks-for-opportunities"
 import { sendBookingVendorLeadEmails } from "@/lib/email/send-booking-vendor-lead-emails"
-import { createAdminSupabaseClient } from "@/lib/supabase/admin"
+import { createAdminSupabaseClient, getAdminSupabaseEnvDiagnostics, describeAdminClientInitFailure } from "@/lib/supabase/admin"
 
 export { BOOKING_REQUEST_TYPE }
 export type { BookingRequestTypeValue }
@@ -56,7 +56,8 @@ export async function completeBookingRequest(
   const persistDb = createAdminSupabaseClient()
   if (!persistDb) {
     console.error(
-      "[booking] SUPABASE_SERVICE_ROLE_KEY missing — insert may fail or omit id; routing will not run"
+      "[booking] Admin Supabase client unavailable — insert/routing may use session client or fail:",
+      describeAdminClientInitFailure(getAdminSupabaseEnvDiagnostics())
     )
   }
   const db = persistDb ?? supabase
@@ -84,9 +85,12 @@ export async function completeBookingRequest(
     row.request_type === BOOKING_REQUEST_TYPE.CUISINE_MATCH
 
   /** Opportunity fan-out is server-only; bypass anon INSERT policy (RLS Phase 2). */
-  const oppDb = createAdminSupabaseClient()
+  const oppDb = persistDb ?? createAdminSupabaseClient()
   if (!oppDb && (isSpecific || isBroadcast)) {
-    console.error("[booking] truck_opportunities: SUPABASE_SERVICE_ROLE_KEY required for opportunity fan-out")
+    console.error(
+      "[booking] truck_opportunities: admin client unavailable:",
+      describeAdminClientInitFailure(getAdminSupabaseEnvDiagnostics())
+    )
   }
 
   const vendorNotifyOpportunities: { id: string; truck_id: string }[] = []

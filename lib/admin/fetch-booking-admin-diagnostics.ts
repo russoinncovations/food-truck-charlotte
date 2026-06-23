@@ -1,4 +1,24 @@
-import { createAdminSupabaseClient } from "@/lib/supabase/admin"
+import {
+  createAdminSupabaseClient,
+  describeAdminClientInitFailure,
+  getAdminSupabaseEnvDiagnostics,
+  type AdminSupabaseEnvDiagnostics,
+} from "@/lib/supabase/admin"
+
+export type BookingPipelineRuntimeChecks = {
+  /** Env vars visible to this server runtime (values never shown). */
+  env: AdminSupabaseEnvDiagnostics
+  /** createAdminSupabaseClient() returned a client in this runtime. */
+  adminClientInitialized: boolean
+  /** Service-role SELECT on booking_requests succeeded. */
+  serviceRoleQueryOk: boolean
+  /** Code path: completeBookingRequest persists via createAdminSupabaseClient when available. */
+  bookingPersistUsesAdminClient: true
+  /** Code path: opportunity fan-out uses createAdminSupabaseClient. */
+  bookingRoutingUsesAdminClient: true
+  /** When persist would fall back to the anon/session client passed from the form action. */
+  bookingPersistWouldFallbackToSessionClient: boolean
+}
 
 export type BookingAdminDiagnosticRow = {
   id: string
@@ -15,11 +35,11 @@ export type BookingAdminDiagnosticRow = {
 }
 
 export type BookingAdminDiagnostics = {
-  usedServiceRole: boolean
+  runtime: BookingPipelineRuntimeChecks
   loadError: string | null
   tableRowCount: number | null
   latest: BookingAdminDiagnosticRow[]
-  envHints: string[]
+  notes: string[]
 }
 
 function isInternalTestRow(row: Record<string, unknown>): boolean {
@@ -30,23 +50,59 @@ function isInternalTestRow(row: Record<string, unknown>): boolean {
   return false
 }
 
+function buildRuntimeChecks(): BookingPipelineRuntimeChecks {
+  const env = getAdminSupabaseEnvDiagnostics()
+  const admin = createAdminSupabaseClient()
+  return {
+    env,
+    adminClientInitialized: admin !== null,
+    serviceRoleQueryOk: false,
+    bookingPersistUsesAdminClient: true,
+    bookingRoutingUsesAdminClient: true,
+    bookingPersistWouldFallbackToSessionClient: admin === null,
+  }
+}
+
+function buildNotes(runtime: BookingPipelineRuntimeChecks): string[] {
+  const notes: string[] = []
+
+  if (!runtime.env.supabaseUrlPresent) {
+    notes.push("NEXT_PUBLIC_SUPABASE_URL is not visible to this server runtime.")
+  }
+  if (!runtime.env.serviceRoleKeyPresent) {
+    notes.push(
+      "SUPABASE_SERVICE_ROLE_KEY is not visible to this server runtime (empty or unset in process.env)."
+    )
+  } else if (!runtime.adminClientInitialized) {
+    notes.push(describeAdminClientInitFailure(runtime.env))
+  }
+  if (runtime.bookingPersistWouldFallbackToSessionClient) {
+    notes.push(
+      "Public booking submit would fall back to the anon/session Supabase client for insert — RLS may block .select('id') or routing."
+    )
+  }
+  if (runtime.adminClientInitialized && !runtime.serviceRoleQueryOk && !runtime.env.serviceRoleKeyPresent) {
+    notes.push("Service-role query did not run because the admin client was not initialized.")
+  }
+
+  return notes
+}
+
 /**
  * Latest booking_requests rows for admin diagnostics (bypasses UI filters; service role only).
  */
 export async function fetchBookingAdminDiagnostics(): Promise<BookingAdminDiagnostics> {
-  const admin = createAdminSupabaseClient()
-  const envHints: string[] = []
+  const runtime = buildRuntimeChecks()
+  const notes = buildNotes(runtime)
 
-  if (!process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()) {
-    envHints.push("SUPABASE_SERVICE_ROLE_KEY is not set — admin cannot read booking_requests under RLS.")
-  }
+  const admin = createAdminSupabaseClient()
   if (!admin) {
     return {
-      usedServiceRole: false,
-      loadError: "Service role client unavailable. Set SUPABASE_SERVICE_ROLE_KEY on the server.",
+      runtime,
+      loadError: describeAdminClientInitFailure(runtime.env),
       tableRowCount: null,
       latest: [],
-      envHints,
+      notes,
     }
   }
 
@@ -62,23 +118,27 @@ export async function fetchBookingAdminDiagnostics(): Promise<BookingAdminDiagno
     admin.from("truck_opportunities").select("booking_request_id"),
   ])
 
+  runtime.serviceRoleQueryOk = !countRes.error && !recentRes.error
+
   if (countRes.error) {
+    notes.push(`Service-role count query failed: ${countRes.error.message}`)
     return {
-      usedServiceRole: true,
+      runtime,
       loadError: countRes.error.message,
       tableRowCount: null,
       latest: [],
-      envHints,
+      notes,
     }
   }
 
   if (recentRes.error) {
+    notes.push(`Service-role recent query failed: ${recentRes.error.message}`)
     return {
-      usedServiceRole: true,
+      runtime,
       loadError: recentRes.error.message,
       tableRowCount: countRes.count ?? null,
       latest: [],
-      envHints,
+      notes,
     }
   }
 
@@ -89,12 +149,11 @@ export async function fetchBookingAdminDiagnostics(): Promise<BookingAdminDiagno
       if (!bid) continue
       oppCountByBooking.set(bid, (oppCountByBooking.get(bid) ?? 0) + 1)
     }
+  } else {
+    notes.push(`truck_opportunities lookup failed: ${oppRes.error.message}`)
   }
 
-  const hasServiceRoleForRouting = Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY?.trim())
-  if (!hasServiceRoleForRouting) {
-    envHints.push("Routing and vendor notifications require SUPABASE_SERVICE_ROLE_KEY at submit time.")
-  }
+  const adminAvailableAtSubmit = runtime.adminClientInitialized
 
   const latest: BookingAdminDiagnosticRow[] = (recentRes.data ?? []).map((row) => {
     const r = row as Record<string, unknown>
@@ -108,12 +167,13 @@ export async function fetchBookingAdminDiagnostics(): Promise<BookingAdminDiagno
 
     let routingError: string | null = null
     if (needsRouting && oppCount === 0) {
-      if (!hasServiceRoleForRouting) {
-        routingError = "No opportunities — service role was likely missing when submitted."
+      if (!adminAvailableAtSubmit) {
+        routingError =
+          "No opportunities — admin client was unavailable at submit time (check runtime env above)."
       } else if (requestType === "specific_vendor" && !r.truck_id) {
         routingError = "Specific vendor request missing truck_id."
       } else {
-        routingError = "No opportunities created (routing may have failed silently)."
+        routingError = "No opportunities created (routing insert may have failed — check server logs)."
       }
     }
 
@@ -133,29 +193,29 @@ export async function fetchBookingAdminDiagnostics(): Promise<BookingAdminDiagno
   })
 
   return {
-    usedServiceRole: true,
+    runtime,
     loadError: null,
     tableRowCount: countRes.count ?? null,
     latest,
-    envHints,
+    notes,
   }
 }
 
 export type AdminBookingsLoadResult = {
   bookings: Record<string, unknown>[]
   loadError: string | null
-  usedServiceRole: boolean
+  runtime: BookingPipelineRuntimeChecks
 }
 
-/** Canonical admin list query — must use service role (no public SELECT RLS policy). */
+/** Canonical admin list query — service role only (no public SELECT RLS policy). */
 export async function fetchAllBookingRequestsForAdmin(): Promise<AdminBookingsLoadResult> {
+  const runtime = buildRuntimeChecks()
   const admin = createAdminSupabaseClient()
   if (!admin) {
     return {
       bookings: [],
-      loadError:
-        "Cannot load bookings: SUPABASE_SERVICE_ROLE_KEY is not configured. Requests may exist in the database but RLS blocks reads without the service role.",
-      usedServiceRole: false,
+      loadError: describeAdminClientInitFailure(runtime.env),
+      runtime,
     }
   }
 
@@ -164,10 +224,12 @@ export async function fetchAllBookingRequestsForAdmin(): Promise<AdminBookingsLo
     .select("*")
     .order("created_at", { ascending: false })
 
+  runtime.serviceRoleQueryOk = !error
+
   if (error) {
     console.error("[admin/bookings] Error fetching bookings:", error)
-    return { bookings: [], loadError: error.message, usedServiceRole: true }
+    return { bookings: [], loadError: error.message, runtime }
   }
 
-  return { bookings: (data ?? []) as Record<string, unknown>[], loadError: null, usedServiceRole: true }
+  return { bookings: (data ?? []) as Record<string, unknown>[], loadError: null, runtime }
 }

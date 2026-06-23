@@ -44,13 +44,13 @@ async function adminAuxDbClient() {
 async function getBookings(): Promise<{
   bookings: BookingRequest[]
   loadError: string | null
-  usedServiceRole: boolean
+  runtime: import("@/lib/admin/fetch-booking-admin-diagnostics").BookingPipelineRuntimeChecks
 }> {
   const loaded = await fetchAllBookingRequestsForAdmin()
   return {
     bookings: loaded.bookings.map((row) => normalizeBookingRowForAdmin(row)),
     loadError: loaded.loadError,
-    usedServiceRole: loaded.usedServiceRole,
+    runtime: loaded.runtime,
   }
 }
 
@@ -526,11 +526,13 @@ export default async function AdminBookingsPage({
             </div>
           ) : null}
 
-          {!bookingsLoad.usedServiceRole ? (
+          {!bookingsLoad.runtime.adminClientInitialized ? (
             <div className="mb-6 rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-900 dark:text-amber-100">
-              Admin booking list requires <code className="text-xs">SUPABASE_SERVICE_ROLE_KEY</code> on
-              the server. Without it, the dashboard appears empty even when requests exist in the
-              database.
+              Admin booking list requires a working service-role client in this runtime. See the
+              diagnostics panel above for whether{" "}
+              <code className="text-xs">SUPABASE_SERVICE_ROLE_KEY</code> and{" "}
+              <code className="text-xs">NEXT_PUBLIC_SUPABASE_URL</code> are visible to the server
+              process — not whether they exist only in the Vercel dashboard.
             </div>
           ) : null}
 

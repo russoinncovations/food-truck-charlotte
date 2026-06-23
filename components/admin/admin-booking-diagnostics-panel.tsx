@@ -26,10 +26,20 @@ function formatTs(iso: string | null): string {
   })
 }
 
+function boolBadge(ok: boolean, okLabel: string, failLabel: string) {
+  return (
+    <Badge variant={ok ? "secondary" : "destructive"} className="font-normal text-[11px]">
+      {ok ? okLabel : failLabel}
+    </Badge>
+  )
+}
+
 export function AdminBookingDiagnosticsPanel({ adminKey, keyQ, diagnostics }: Props) {
   const [pending, startTransition] = useTransition()
   const [testMessage, setTestMessage] = useState<string | null>(null)
   const [testBookingId, setTestBookingId] = useState<string | null>(null)
+
+  const { runtime } = diagnostics
 
   function runInternalTest(mode: "specific" | "open") {
     setTestMessage(null)
@@ -54,21 +64,49 @@ export function AdminBookingDiagnosticsPanel({ adminKey, keyQ, diagnostics }: Pr
         <div>
           <p className="font-medium text-foreground">Booking pipeline diagnostics</p>
           <p className="text-xs text-muted-foreground mt-1 max-w-2xl">
-            Raw reads from <code className="text-[11px]">booking_requests</code> (ignores dashboard
-            filters). Public submissions use{" "}
-            <code className="text-[11px]">app/actions/submitBookingRequest.ts</code> →{" "}
-            <code className="text-[11px]">completeBookingRequest</code>.
+            Runtime checks for this deployed server process (not your local machine). Public
+            submissions: <code className="text-[11px]">submitBookingRequest</code> →{" "}
+            <code className="text-[11px]">completeBookingRequest</code> →{" "}
+            <code className="text-[11px]">createAdminSupabaseClient()</code> when available.
           </p>
         </div>
-        <Badge variant={diagnostics.usedServiceRole ? "secondary" : "destructive"} className="font-normal">
-          {diagnostics.usedServiceRole ? "Service role connected" : "No service role"}
-        </Badge>
       </div>
 
-      {diagnostics.envHints.length > 0 ? (
+      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 text-xs">
+        <div className="rounded border border-border bg-background p-2 space-y-1">
+          <p className="text-muted-foreground">SUPABASE_SERVICE_ROLE_KEY in runtime</p>
+          {boolBadge(runtime.env.serviceRoleKeyPresent, "Detected", "Not detected")}
+        </div>
+        <div className="rounded border border-border bg-background p-2 space-y-1">
+          <p className="text-muted-foreground">NEXT_PUBLIC_SUPABASE_URL in runtime</p>
+          {boolBadge(runtime.env.supabaseUrlPresent, "Detected", "Not detected")}
+        </div>
+        <div className="rounded border border-border bg-background p-2 space-y-1">
+          <p className="text-muted-foreground">createAdminSupabaseClient()</p>
+          {boolBadge(runtime.adminClientInitialized, "Initialized", "Returned null")}
+        </div>
+        <div className="rounded border border-border bg-background p-2 space-y-1">
+          <p className="text-muted-foreground">Service-role query (booking_requests)</p>
+          {boolBadge(runtime.serviceRoleQueryOk, "OK", diagnostics.loadError ? "Failed" : "Not run")}
+        </div>
+        <div className="rounded border border-border bg-background p-2 space-y-1">
+          <p className="text-muted-foreground">Form persist path</p>
+          {boolBadge(
+            !runtime.bookingPersistWouldFallbackToSessionClient,
+            "Uses admin client",
+            "Would fall back to session client"
+          )}
+        </div>
+        <div className="rounded border border-border bg-background p-2 space-y-1">
+          <p className="text-muted-foreground">Routing path</p>
+          {boolBadge(runtime.bookingRoutingUsesAdminClient, "Uses admin client", "—")}
+        </div>
+      </div>
+
+      {diagnostics.notes.length > 0 ? (
         <ul className="text-xs text-amber-900 dark:text-amber-100 space-y-1">
-          {diagnostics.envHints.map((hint) => (
-            <li key={hint}>• {hint}</li>
+          {diagnostics.notes.map((note) => (
+            <li key={note}>• {note}</li>
           ))}
         </ul>
       ) : null}
@@ -152,14 +190,14 @@ export function AdminBookingDiagnosticsPanel({ adminKey, keyQ, diagnostics }: Pr
         <p className="font-medium text-foreground text-sm">Create internal test booking</p>
         <p className="text-xs text-muted-foreground max-w-2xl">
           Admin-only. Routes to the hidden FoodTruckCLT Demo Vendor (or open request including demo
-          truck in broadcast). Uses test host email only — never visible on the public site.
+          truck in broadcast). Uses the same completeBookingRequest path as production.
         </p>
         <div className="flex flex-wrap gap-2">
           <Button
             type="button"
             size="sm"
             variant="outline"
-            disabled={pending || !diagnostics.usedServiceRole}
+            disabled={pending || !runtime.adminClientInitialized}
             onClick={() => runInternalTest("specific")}
           >
             {pending ? "Creating…" : "INTERNAL TEST — specific demo vendor"}
@@ -168,7 +206,7 @@ export function AdminBookingDiagnosticsPanel({ adminKey, keyQ, diagnostics }: Pr
             type="button"
             size="sm"
             variant="outline"
-            disabled={pending || !diagnostics.usedServiceRole}
+            disabled={pending || !runtime.adminClientInitialized}
             onClick={() => runInternalTest("open")}
           >
             {pending ? "Creating…" : "INTERNAL TEST — open request"}
@@ -176,7 +214,10 @@ export function AdminBookingDiagnosticsPanel({ adminKey, keyQ, diagnostics }: Pr
         </div>
         {testMessage ? <p className="text-xs text-muted-foreground">{testMessage}</p> : null}
         {testBookingId ? (
-          <Link href={`/admin/bookings/${testBookingId}${keyQ}`} className="text-xs text-primary hover:underline">
+          <Link
+            href={`/admin/bookings/${testBookingId}${keyQ}`}
+            className="text-xs text-primary hover:underline"
+          >
             Open test booking detail →
           </Link>
         ) : null}
