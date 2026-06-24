@@ -184,9 +184,9 @@ export async function fetchVendorPendingOpportunities(
     .from("truck_opportunities")
     .select("*, booking_requests(*)")
     .eq("truck_id", truck.id)
-    .eq("status", "pending")
+    .ilike("status", "pending")
     .order("created_at", { ascending: false })
-    .limit(75)
+    .limit(200)
 
   if (error) {
     console.error("[dashboard] pending opportunities:", error)
@@ -239,9 +239,9 @@ export async function fetchVendorOpportunityDiagnostics(
     .from("truck_opportunities")
     .select("*, booking_requests(*)")
     .eq("truck_id", truck.id)
-    .eq("status", "pending")
+    .ilike("status", "pending")
     .order("created_at", { ascending: false })
-    .limit(75)
+    .limit(200)
 
   if (error) {
     console.error("[dashboard] opportunity diagnostics:", error)

@@ -506,10 +506,19 @@ export default async function AdminBookingsPage({
           {/* Diagnostics + internal test */}
           <Card className="mb-8 border-amber-500/20">
             <CardHeader className="pb-3">
-              <CardTitle className="text-lg">Pipeline diagnostics</CardTitle>
-              <CardDescription>
-                Verify submissions are persisting and routing — independent of dashboard filters below.
-              </CardDescription>
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <CardTitle className="text-lg">Pipeline diagnostics</CardTitle>
+                  <CardDescription>
+                    Verify submissions are persisting and routing — independent of dashboard filters below.
+                  </CardDescription>
+                </div>
+                <Button variant="outline" size="sm" asChild>
+                  <Link href={`/admin/bookings/dashboard-reconciliation${keyQ}`}>
+                    Dashboard reconciliation
+                  </Link>
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
               <AdminBookingDiagnosticsPanel

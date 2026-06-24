@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "generate:pwa-icons": "node scripts/generate-pwa-icons.mjs"
+    "generate:pwa-icons": "node scripts/generate-pwa-icons.mjs",
+    "test:reconciliation": "npx tsx --test lib/dashboard/evaluate-pending-opportunity-dashboard-visibility.test.ts"
   },
   "dependencies": {
     "@radix-ui/react-accordion": "^1.2.12",

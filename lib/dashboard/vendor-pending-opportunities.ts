@@ -17,8 +17,8 @@ export async function countVendorActivePendingBookingOpportunities(
     .from("truck_opportunities")
     .select("*, booking_requests(status, additional_notes, contact_email, contact_name)")
     .eq("truck_id", truck.id)
-    .eq("status", "pending")
-    .limit(80)
+    .ilike("status", "pending")
+    .limit(200)
 
   if (error) {
     console.error("[dashboard] pending opportunities count:", error)

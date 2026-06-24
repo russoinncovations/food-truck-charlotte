@@ -6,9 +6,9 @@ import {
 } from "@/lib/dashboard/vendor-booking-opportunity-visibility"
 import {
   opportunityVisibleInRecentResponses,
-  opportunityVisibleInRequestsToConfirm,
   VENDOR_DASHBOARD_RECENT_RESPONSE_STATUSES,
 } from "@/lib/dashboard/vendor-booking-opportunities"
+import { evaluatePendingOpportunityDashboardVisibility } from "@/lib/dashboard/evaluate-pending-opportunity-dashboard-visibility"
 
 export type VendorDashboardSection = "requests_to_confirm" | "recent_responses" | "none"
 
@@ -20,7 +20,6 @@ export type VendorDashboardRetrievalResult = {
 }
 
 const EXPLICIT_NON_VENDOR_DASHBOARD_STATUSES = new Set([
-  BOOKING_NOTIFICATION_STATUS.DASHBOARD_ONLY,
   BOOKING_NOTIFICATION_STATUS.NOT_ELIGIBLE_NO_EMAIL,
 ])
 
@@ -97,12 +96,20 @@ export function evaluateVendorDashboardRetrieval(opts: {
     loginBlockers.push("Truck profile has no trucks.email — vendor cannot log in to see opportunities.")
   }
 
-  if (opportunityVisibleInRequestsToConfirm(oppStatus, br, opts.truck)) {
-    return {
-      retrievable: loginBlockers.length === 0,
-      reasons: loginBlockers,
-      section: "requests_to_confirm",
-      visibilityLabel: loginBlockers.length === 0 ? "Visible in Requests to Confirm" : null,
+  if (oppStatus === "pending") {
+    const pending = evaluatePendingOpportunityDashboardVisibility({
+      opportunityStatus: opts.opportunityStatus,
+      bookingRequest: br,
+      truck: opts.truck,
+      notificationStatus: opts.notificationStatus,
+    })
+    if (pending.visibleInRequestsToConfirm) {
+      return {
+        retrievable: loginBlockers.length === 0,
+        reasons: loginBlockers,
+        section: "requests_to_confirm",
+        visibilityLabel: loginBlockers.length === 0 ? "Visible in Requests to Confirm" : null,
+      }
     }
   }
 
