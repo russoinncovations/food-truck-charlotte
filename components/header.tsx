@@ -2,9 +2,22 @@
 
 import { useState } from "react"
 import Link from "next/link"
+import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { Menu, MapPin, Calendar, Truck, LayoutDashboard, CalendarPlus } from "lucide-react"
+function HeaderBrandMark() {
+  return (
+    <Image
+      src="/brand-mark.png"
+      alt=""
+      width={36}
+      height={36}
+      className="h-9 w-9 shrink-0"
+      priority
+    />
+  )
+}
 
 const navigation = [
   { name: "Find Trucks", href: "/map", icon: MapPin },
@@ -24,9 +37,7 @@ export function Header() {
         <div className="flex h-16 items-center justify-between">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
-              <Truck className="h-5 w-5 text-primary-foreground" />
-            </div>
+            <HeaderBrandMark />
             <div className="flex flex-col">
               <span className="font-display text-lg font-bold leading-none tracking-tight">
                 FoodTruck
@@ -77,9 +88,7 @@ export function Header() {
                   className="flex items-center gap-2"
                   onClick={() => setIsOpen(false)}
                 >
-                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
-                    <Truck className="h-5 w-5 text-primary-foreground" />
-                  </div>
+                  <HeaderBrandMark />
                   <div className="flex flex-col">
                     <span className="font-display text-lg font-bold leading-none">
                       FoodTruck
