@@ -35,7 +35,7 @@ export default async function BookATruckPage({
       ? `Access ${directoryCount} Charlotte food trucks listed on the platform`
       : `Growing list of Charlotte food vendors`,
     "Free to submit a request",
-    "We match you with available truck vendors",
+    "Relevant local trucks can respond directly",
     "Direct communication with vendors",
   ]
   const { data: directoryTrucks } = await supabase
@@ -49,19 +49,20 @@ export default async function BookATruckPage({
       <Header />
 
       {/* Hero Section */}
-      <section className="relative pt-24 pb-12 md:pt-32 md:pb-16 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-b from-primary/5 to-transparent" />
+      <section className="relative overflow-hidden bg-[#faf6f2] pt-24 pb-8 md:pt-28 md:pb-10">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 relative">
           <div className="text-center max-w-3xl mx-auto">
-            <Badge className="mb-4">Event Planning</Badge>
-            <h1 className="font-display text-4xl md:text-5xl font-bold text-foreground mb-6 text-balance">
-              Book Food Trucks for Your Event
+            <Badge variant="outline" className="mb-4 bg-background/70 text-xs font-semibold uppercase tracking-wide">
+              Event Requests
+            </Badge>
+            <h1 className="font-display text-3xl md:text-5xl font-bold leading-tight text-foreground mb-4 text-balance">
+              Connect With Food Trucks for Your Event
             </h1>
-            <p className="text-lg text-muted-foreground mb-6 max-w-2xl mx-auto">
-              Planning a corporate event, wedding, or private party? Tell us about your event and
-              we&apos;ll connect you with the perfect food trucks.
+            <p className="text-base leading-7 text-muted-foreground mb-5 max-w-2xl mx-auto md:text-lg">
+              Planning a corporate event, wedding, or private party? Share what you need and connect
+              directly with Charlotte-area food trucks.
             </p>
-            <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm text-muted-foreground">
+            <div className="flex flex-wrap justify-center gap-x-5 gap-y-2 text-sm text-muted-foreground">
               {benefits.map((benefit, i) => (
                 <div key={`benefit-${i}`} className="flex items-center gap-2">
                   <Check className="h-4 w-4 text-primary" />
@@ -74,9 +75,9 @@ export default async function BookATruckPage({
       </section>
 
       {/* Form Section */}
-      <section className="py-12 md:py-16">
+      <section className="py-8 md:py-12">
         <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
-          <Card className="p-6 md:p-8">
+          <Card className="border-2 border-primary/15 p-5 shadow-xl shadow-foreground/5 md:p-8">
             <BookingRequestForm
               directoryTrucks={directoryTrucks ?? []}
               preselectedTruckId={preselectedTruckId}

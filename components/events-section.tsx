@@ -67,16 +67,18 @@ export function EventsSection() {
   }, [])
 
   return (
-    <section className="py-16 md:py-24">
+    <section className="bg-card py-14 md:py-20">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        {/* Section Header */}
-        <div className="flex items-end justify-between mb-8">
-          <div>
-            <h2 className="font-display text-2xl md:text-3xl font-bold text-foreground">
-              Coming up in Charlotte
+        <div className="mb-8 flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
+          <div className="max-w-3xl">
+            <p className="text-sm font-semibold uppercase tracking-[0.22em] text-primary">
+              Around Charlotte
+            </p>
+            <h2 className="mt-3 font-display text-3xl font-bold leading-tight tracking-tight text-foreground md:text-4xl">
+              Food-truck events on the calendar
             </h2>
-            <p className="mt-2 text-muted-foreground">
-              Brewery events, rallies, and festivals with food trucks.
+            <p className="mt-4 text-base leading-7 text-muted-foreground md:text-lg md:leading-8">
+              Browse upcoming public events where trucks are part of the experience.
             </p>
           </div>
           <Button variant="outline" asChild className="hidden md:flex">
@@ -87,7 +89,6 @@ export function EventsSection() {
           </Button>
         </div>
 
-        {/* Events Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {events.map((event, index) => (
             <EventCard key={event.id} event={event} featured={index === 0} />
@@ -114,12 +115,11 @@ function EventCard({ event, featured = false }: { event: EventRow; featured?: bo
 
   return (
     <Card
-      className={`group overflow-hidden transition-all hover:shadow-lg hover:border-primary/50 ${
+      className={`group overflow-hidden border-border/80 bg-background shadow-sm transition-all hover:-translate-y-1 hover:border-primary/40 hover:shadow-xl ${
         featured ? "lg:col-span-2 lg:row-span-2" : ""
       }`}
     >
       <Link href={`/events/${event.slug}`} className="flex flex-col h-full">
-        {/* Image */}
         <div
           className={`relative overflow-hidden bg-muted ${featured ? "aspect-[16/9]" : "aspect-[16/10]"}`}
         >
@@ -134,18 +134,16 @@ function EventCard({ event, featured = false }: { event: EventRow; featured?: bo
                 ? "(max-width: 1024px) 100vw, 66vw"
                 : "(max-width: 1024px) 100vw, 33vw"
             }
-            className="object-cover transition-transform duration-300 group-hover:scale-105"
+            className="object-cover transition-transform duration-500 group-hover:scale-105"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-foreground/60 to-transparent" />
 
-          {/* Date Badge */}
           <div className="absolute top-4 left-4 flex flex-col items-center bg-background rounded-lg px-3 py-2 shadow-lg">
             <span className="text-xs font-medium text-muted-foreground uppercase">{month}</span>
             <span className="text-2xl font-bold text-foreground leading-none">{day}</span>
             <span className="text-xs text-muted-foreground">{weekday}</span>
           </div>
 
-          {/* Type Badge */}
           <div className="absolute top-4 right-4">
             <Badge variant="secondary" className="border-0 backdrop-blur-sm">
               Event
@@ -153,11 +151,10 @@ function EventCard({ event, featured = false }: { event: EventRow; featured?: bo
           </div>
         </div>
 
-        {/* Content */}
         <div className={`flex flex-col flex-1 p-5 ${featured ? "p-6" : ""}`}>
           <h3
-            className={`font-display font-semibold text-foreground group-hover:text-primary transition-colors mb-2 ${
-              featured ? "text-xl" : "text-lg"
+            className={`font-display font-bold text-foreground group-hover:text-primary transition-colors mb-2 ${
+              featured ? "text-xl md:text-2xl" : "text-lg"
             }`}
           >
             {event.title}
@@ -172,7 +169,6 @@ function EventCard({ event, featured = false }: { event: EventRow; featured?: bo
           </p>
 
           <div className="mt-auto space-y-2">
-            {/* Location */}
             {event.location_name ? (
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <MapPin className="h-4 w-4 shrink-0" />

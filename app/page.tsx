@@ -34,6 +34,7 @@ export default async function Home() {
     <main className="min-h-screen bg-background">
       <Header />
       <Hero upcomingEventCount={upcomingEventCount} directoryTruckCount={directoryTruckCount} />
+      <VendorCTA directoryTruckCount={directoryTruckCount} />
       <FeaturedTrucks trucks={featuredTrucks} />
       <MapPreviewClient
         liveTruckRows={liveTruckRows}
@@ -41,7 +42,6 @@ export default async function Home() {
         mapPinEvents={mapPinEvents}
       />
       <EventsSection />
-      <VendorCTA directoryTruckCount={directoryTruckCount} />
       <Footer />
     </main>
   )

@@ -117,17 +117,22 @@ function MapPreviewContent({
   const previewHappening = mapPinEvents.slice(0, 4)
 
   return (
-    <section className="py-16 md:py-24 bg-muted/30">
+    <section className="bg-foreground py-14 text-primary-foreground md:py-20">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="flex items-end justify-between mb-8">
-          <div>
-            <h2 className="font-display text-2xl md:text-3xl font-bold text-foreground">Live truck map</h2>
-            <p className="mt-2 text-muted-foreground">
-              Live trucks appear as photo markers (or a green pin) when checked in. Orange pins are events happening
-              now. The sidebar lists directory vendors without map pins until they go live.
+        <div className="mb-8 flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
+          <div className="max-w-3xl">
+            <p className="text-sm font-semibold uppercase tracking-[0.22em] text-primary">
+              Live map
+            </p>
+            <h2 className="mt-3 font-display text-3xl font-bold leading-tight tracking-tight text-primary-foreground md:text-4xl">
+              See where Charlotte trucks are serving
+            </h2>
+            <p className="mt-4 text-base leading-7 text-primary-foreground/75 md:text-lg md:leading-8">
+              Live trucks appear as photo markers or green pins when checked in. Orange pins show events happening
+              now, and listed vendors appear in the sidebar until they go live.
             </p>
           </div>
-          <Button variant="outline" asChild className="hidden md:flex">
+          <Button variant="secondary" asChild className="hidden md:flex bg-primary-foreground text-foreground hover:bg-primary-foreground/90">
             <Link href="/map" className="flex items-center gap-2">
               Open full map
               <ArrowRight className="h-4 w-4" />
@@ -135,7 +140,7 @@ function MapPreviewContent({
           </Button>
         </div>
 
-        <Card className="overflow-hidden">
+        <Card className="overflow-hidden border-primary-foreground/15 bg-background shadow-2xl shadow-black/25">
           <div className="grid lg:grid-cols-3">
             <div className="lg:col-span-2 group relative w-full aspect-[4/3] lg:aspect-auto lg:h-[500px] lg:min-h-[500px] bg-[#f2efe9]">
               <div className="absolute inset-0 z-0 h-full w-full min-h-[inherit]">
@@ -165,7 +170,7 @@ function MapPreviewContent({
                 </Button>
               </div>
 
-              <div className="absolute bottom-4 left-4 z-20 bg-background/95 backdrop-blur rounded-lg p-3 shadow-lg pointer-events-none max-w-[min(100%,22rem)]">
+              <div className="absolute bottom-4 left-4 z-20 bg-background/95 backdrop-blur rounded-2xl p-4 shadow-lg pointer-events-none max-w-[min(100%,22rem)]">
                 <p className="text-xs text-muted-foreground">{mapKeyLine}</p>
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-[11px] mt-2 text-muted-foreground">
                   <div className="flex items-center gap-1.5">
@@ -181,8 +186,8 @@ function MapPreviewContent({
             </div>
 
             <div className="p-6 bg-background border-t lg:border-t-0 lg:border-l space-y-5 max-h-[min(80vh,560px)] lg:max-h-[500px] overflow-y-auto">
-              <div>
-                <h3 className="font-semibold text-foreground text-sm">Snapshot</h3>
+              <div className="rounded-2xl bg-muted/60 p-4">
+                <h3 className="font-semibold text-foreground text-sm">Live snapshot</h3>
                 <p className="text-sm text-muted-foreground mt-1">{statusBlurb}</p>
               </div>
 
