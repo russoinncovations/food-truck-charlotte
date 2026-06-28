@@ -55,7 +55,7 @@ export default async function BookATruckPage({
             <Badge variant="outline" className="mb-4 bg-background/70 text-xs font-semibold uppercase tracking-wide">
               Event Requests
             </Badge>
-            <h1 className="font-display text-3xl md:text-5xl font-bold leading-tight text-foreground mb-4 text-balance">
+            <h1 className="mx-auto max-w-[17.5rem] font-display text-[1.875rem] font-bold leading-[1.1] tracking-[-0.02em] text-foreground mb-4 text-balance sm:max-w-2xl sm:text-4xl lg:text-5xl lg:leading-tight">
               Connect With Food Trucks for Your Event
             </h1>
             <p className="text-base leading-7 text-muted-foreground mb-5 max-w-2xl mx-auto md:text-lg">

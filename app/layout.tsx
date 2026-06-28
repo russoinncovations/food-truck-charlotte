@@ -1,20 +1,16 @@
 import type { Metadata, Viewport } from 'next'
-import { DM_Sans, Space_Grotesk } from 'next/font/google'
+import { Manrope } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import './globals.css'
 import { Toaster } from '@/components/ui/toaster'
 import { FTCLT_BRAND_THEME_COLOR } from '@/lib/brand-colors'
 import { cachedPwaIconHref } from '@/lib/pwa-icon-cache'
 
-const dmSans = DM_Sans({ 
+const manrope = Manrope({
   subsets: ["latin"],
-  variable: '--font-sans',
-});
-
-const spaceGrotesk = Space_Grotesk({ 
-  subsets: ["latin"],
-  variable: '--font-display',
-});
+  weight: ["400", "500", "600", "700", "800"],
+  variable: '--font-manrope',
+})
 
 export const viewport: Viewport = {
   themeColor: FTCLT_BRAND_THEME_COLOR,
@@ -49,7 +45,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${dmSans.variable} ${spaceGrotesk.variable} font-sans antialiased`}>
+      <body className={`${manrope.variable} font-sans antialiased`}>
         {children}
         <Toaster />
         {process.env.NODE_ENV === 'production' && <Analytics />}

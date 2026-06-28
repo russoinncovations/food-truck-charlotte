@@ -140,7 +140,7 @@ export default function ListYourTruckPage() {
             <Badge variant="outline" className="mb-4 bg-background/70 text-xs font-semibold uppercase tracking-wide">
               For Food Truck Owners
             </Badge>
-            <h1 className="font-display text-3xl md:text-5xl font-bold leading-tight text-foreground mb-4 text-balance">
+            <h1 className="mx-auto max-w-[18rem] font-display text-[1.875rem] font-bold leading-[1.1] tracking-[-0.02em] text-foreground mb-4 text-balance sm:max-w-3xl sm:text-4xl lg:text-5xl lg:leading-tight">
               Join Charlotte&apos;s local food truck community.
             </h1>
             <p className="text-base leading-7 md:text-lg text-muted-foreground mb-7 max-w-2xl mx-auto">

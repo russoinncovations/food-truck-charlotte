@@ -107,7 +107,7 @@ export function TrucksDirectoryClient({ trucks }: Props) {
           <p className="text-center text-sm font-medium text-muted-foreground">
             Built from the 35K+ member Food Truck Charlotte community.
           </p>
-          <h1 className="mt-3 text-center font-display text-3xl font-bold leading-tight tracking-tight text-foreground sm:text-5xl text-balance">
+          <h1 className="mx-auto mt-3 max-w-[17rem] text-center font-display text-[1.875rem] font-bold leading-[1.1] tracking-[-0.02em] text-foreground sm:max-w-none sm:text-4xl lg:text-5xl text-balance">
             Explore Charlotte Food Trucks
           </h1>
           <p className="mx-auto mt-4 max-w-3xl text-center text-base leading-7 text-muted-foreground text-pretty md:text-lg">

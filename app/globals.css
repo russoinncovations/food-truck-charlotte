@@ -1,4 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;600;700;800&family=Lora:ital,wght@0,400;0,600;1,400;1,600&display=swap');
 @import 'tailwindcss';
 @import 'tw-animate-css';
 
@@ -76,9 +75,9 @@
 }
 
 @theme inline {
-  --font-sans: var(--font-sans), 'DM Sans', 'Geist', sans-serif;
+  --font-sans: var(--font-manrope), 'Manrope', 'Geist', sans-serif;
   --font-mono: 'Geist Mono', 'Geist Mono Fallback';
-  --font-display: var(--font-display), 'Space Grotesk', 'Geist', sans-serif;
+  --font-display: var(--font-manrope), 'Manrope', 'Geist', sans-serif;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -153,18 +152,10 @@
   --ftc-green:      #2D8A4E;
   --ftc-green-lt:   #CCE8E0;
 
-  /* Typography */
-  --font-display: 'Bricolage Grotesque', sans-serif;
-  --font-serif:   'Lora', serif;
-
   /* Shadows */
   --shadow-card:   4px 4px 0 var(--ftc-ink);
   --shadow-soft:   0 2px 16px rgba(28,26,23,0.07);
 }
-
-/* Utility classes you'll use everywhere */
-.font-display { font-family: var(--font-display); }
-.font-serif   { font-family: var(--font-serif); }
 
 /* Marquee animation */
 @keyframes ftc-marquee {
