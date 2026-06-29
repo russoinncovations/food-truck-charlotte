@@ -309,6 +309,7 @@ export function DashboardEventOpportunities({
   truckContext,
   siteBaseUrl,
   supportEmail,
+  initialOpportunityId = null,
 }: {
   opportunities: DashboardOpportunity[]
   recentResponseOpportunities?: DashboardOpportunity[]
@@ -316,6 +317,7 @@ export function DashboardEventOpportunities({
   truckContext: TruckContext | null
   siteBaseUrl: string
   supportEmail: string
+  initialOpportunityId?: string | null
 }) {
   const router = useRouter()
   const [submitting, setSubmitting] = useState<"interested" | "not_available" | null>(null)
@@ -323,6 +325,18 @@ export function DashboardEventOpportunities({
   const [interestSentIds, setInterestSentIds] = useState<Record<string, true>>({})
   const [detailOpp, setDetailOpp] = useState<DashboardOpportunity | null>(null)
   const busyRef = useRef(false)
+  const deepLinkOpenedRef = useRef(false)
+
+  useEffect(() => {
+    if (deepLinkOpenedRef.current || !initialOpportunityId) return
+    const match = opportunities.find(
+      (o) => o.id === initialOpportunityId && String(o.status).toLowerCase() === "pending"
+    )
+    if (match) {
+      setDetailOpp(match)
+      deepLinkOpenedRef.current = true
+    }
+  }, [initialOpportunityId, opportunities])
 
   useEffect(() => {
     const inActive = opportunities.some((o) => o.id === detailOpp?.id)

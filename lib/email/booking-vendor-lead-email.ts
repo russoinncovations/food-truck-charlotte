@@ -1,4 +1,7 @@
 import type { BookingInsertRow } from "@/lib/booking/complete-booking-request"
+import { BOOKING_REQUEST_TYPE } from "@/lib/booking/booking-request-constants"
+import { EVENT_TYPES } from "@/lib/booking-types"
+import { buildVendorOpportunityDashboardUrl } from "@/lib/email/vendor-opportunity-dashboard-url"
 
 function escapeHtml(s: string): string {
   return s
@@ -15,7 +18,7 @@ function trimOrNull(v: string | null | undefined): string | null {
 
 function formatEventDateLabel(dateStr: string | null | undefined): string {
   const raw = trimOrNull(dateStr)
-  if (!raw) return "TBD"
+  if (!raw) return "Date TBD"
   const d = new Date(`${raw}T12:00:00`)
   if (Number.isNaN(d.getTime())) return raw
   return d.toLocaleDateString("en-US", {
@@ -26,30 +29,47 @@ function formatEventDateLabel(dateStr: string | null | undefined): string {
   })
 }
 
-function formatGuestCount(count: number): string {
-  if (!Number.isFinite(count) || count <= 0) return "an unknown number of"
-  return `about ${count.toLocaleString("en-US")}`
+function formatEventTypeLabel(eventType: string | null | undefined): string {
+  const raw = trimOrNull(eventType)
+  if (!raw) return "Event"
+  return EVENT_TYPES.find((t) => t.value === raw)?.label ?? raw
+}
+
+function formatTimeRange(start: string | null | undefined, end: string | null | undefined): string {
+  const s = trimOrNull(start)
+  const e = trimOrNull(end)
+  if (!s && !e) return "Time TBD"
+  if (s && e) return `${s} – ${e}`
+  return s || e || "Time TBD"
 }
 
 function vendorTypeLabel(vendorType: string | null | undefined): string | null {
   const v = trimOrNull(vendorType)
   if (!v || v.toLowerCase() === "any") return null
   const map: Record<string, string> = {
-    truck: "food trucks",
-    cart: "food carts",
-    tent: "food tents",
+    truck: "Food trucks",
+    cart: "Food carts",
+    tent: "Food tents",
   }
   return map[v.toLowerCase()] ?? v
 }
 
-function requestedFoodLabel(row: BookingInsertRow): string {
+export function bookingRequestCategoryLabel(row: BookingInsertRow): string {
+  const rt = row.request_type
+  if (rt === BOOKING_REQUEST_TYPE.SPECIFIC_VENDOR) return "Requested for your truck"
+  if (rt === BOOKING_REQUEST_TYPE.OPEN_REQUEST) return "Open request"
+  if (rt === BOOKING_REQUEST_TYPE.CUISINE_MATCH) return "Cuisine request"
+  return "Booking request"
+}
+
+function requestedCuisineOrTruckType(row: BookingInsertRow): string {
   const cuisines = (row.cuisines ?? []).map((c) => String(c).trim()).filter(Boolean)
   if (cuisines.length > 0) return cuisines.join(", ")
   const vendor = vendorTypeLabel(row.vendor_type)
   if (vendor) return vendor
   const preferred = trimOrNull(row.preferred_trucks)
   if (preferred) return preferred
-  return "food trucks"
+  return "Any food truck"
 }
 
 function locationLine(row: BookingInsertRow): string {
@@ -58,105 +78,36 @@ function locationLine(row: BookingInsertRow): string {
   return state ? `${city}, ${state}` : city
 }
 
-export function buildVendorBookingLeadSubject(
-  row: BookingInsertRow,
-  truckName?: string | null
-): string {
+function formatGuestCountLabel(count: number): string {
+  if (!Number.isFinite(count) || count <= 0) return "Not specified"
+  return count.toLocaleString("en-US")
+}
+
+export function buildVendorBookingLeadSubject(row: BookingInsertRow): string {
+  const eventLabel = formatEventTypeLabel(row.event_type)
   const dateLabel = formatEventDateLabel(row.event_date)
-  const city = trimOrNull(row.city) ?? "Charlotte"
-  const name = trimOrNull(truckName)
-
-  if (name) {
-    return `New booking inquiry for ${name}: ${dateLabel}`
-  }
-  const eventType = trimOrNull(row.event_type)
-  if (eventType && row.guest_count > 0) {
-    return `Potential event booking: ${eventType} for ${row.guest_count} guests`
-  }
-  return `New potential booking: ${dateLabel} in ${city}`
+  return `New FoodTruckCLT Request: ${eventLabel} · ${dateLabel}`
 }
 
-function leadSummarySentence(row: BookingInsertRow): string {
-  const eventType = trimOrNull(row.event_type) ?? "An event"
-  const city = trimOrNull(row.city) ?? "the Charlotte area"
-  const food = requestedFoodLabel(row)
-  const dateLabel = formatEventDateLabel(row.event_date)
-  const guests = formatGuestCount(row.guest_count)
-  const budget = trimOrNull(row.budget_range)
-  const base = `A ${eventType} in ${city} is looking for ${food} on ${dateLabel} for ${guests} guests.`
-  return budget ? `${base} Budget: ${budget}.` : base
+export type VendorBookingAlertField = {
+  label: string
+  value: string
 }
 
-function leadSummaryBullets(row: BookingInsertRow): string[] {
-  const bullets: string[] = []
-  const push = (label: string, value: string | null | undefined) => {
-    const v = trimOrNull(value ?? undefined)
-    if (v) bullets.push(`${label}: ${v}`)
-  }
-
-  push("Event type", row.event_type)
-  push("Date", formatEventDateLabel(row.event_date))
-  push("Location", locationLine(row))
-  if (row.guest_count > 0) {
-    bullets.push(`Guest count: ${row.guest_count.toLocaleString("en-US")}`)
-  }
-  push("Requested cuisine or truck type", requestedFoodLabel(row))
-  push("Budget", row.budget_range)
-
-  return bullets
+export function buildVendorBookingAlertFields(row: BookingInsertRow): VendorBookingAlertField[] {
+  return [
+    { label: "Event type", value: formatEventTypeLabel(row.event_type) },
+    { label: "Date", value: formatEventDateLabel(row.event_date) },
+    { label: "Time", value: formatTimeRange(row.start_time, row.end_time) },
+    { label: "Location", value: locationLine(row) },
+    { label: "Guest count", value: formatGuestCountLabel(row.guest_count) },
+    { label: "Request category", value: bookingRequestCategoryLabel(row) },
+    { label: "Requested cuisine or truck type", value: requestedCuisineOrTruckType(row) },
+  ]
 }
 
-function detailLine(label: string, value: string | null | undefined): string | null {
-  const v = trimOrNull(value ?? undefined)
-  if (!v) return null
-  return `${label}: ${v}`
-}
-
-function buildEventDetailLines(row: BookingInsertRow): string[] {
-  const lines: string[] = []
-  const push = (label: string, value: string | null | undefined) => {
-    const line = detailLine(label, value)
-    if (line) lines.push(line)
-  }
-
-  push("Event type", row.event_type)
-  push("Date", formatEventDateLabel(row.event_date))
-  if (trimOrNull(row.start_time) || trimOrNull(row.end_time)) {
-    const start = trimOrNull(row.start_time) ?? "—"
-    const end = trimOrNull(row.end_time) ?? "—"
-    lines.push(`Time: ${start} – ${end}`)
-  }
-  push("Venue", row.venue_name)
-  if (trimOrNull(row.street_address)) {
-    const addr = [row.street_address, row.city, row.state, row.zip_code].filter(Boolean).join(", ")
-    push("Address", addr)
-  } else {
-    push("City", row.city)
-    push("State", row.state)
-    push("Zip", row.zip_code)
-  }
-  if (row.guest_count > 0) {
-    lines.push(`Guest count: ${row.guest_count.toLocaleString("en-US")}`)
-  }
-  const cuisines = (row.cuisines ?? []).map((c) => String(c).trim()).filter(Boolean)
-  if (cuisines.length > 0) {
-    lines.push(`Requested cuisine: ${cuisines.join(", ")}`)
-  }
-  const vendor = vendorTypeLabel(row.vendor_type)
-  if (vendor) {
-    lines.push(`Requested vendor type: ${vendor}`)
-  }
-  push("Preferred trucks", row.preferred_trucks)
-  push("Budget", row.budget_range)
-  const dietary = (row.dietary_requirements ?? []).map((d) => String(d).trim()).filter(Boolean)
-  if (dietary.length > 0) {
-    lines.push(`Dietary requirements: ${dietary.join(", ")}`)
-  }
-  push("Organization", row.organization)
-  push("Additional notes", row.additional_notes)
-
-  return lines
-}
+const FOODTRUCKCLT_CONNECT_DISCLAIMER =
+  "FoodTruckCLT connects vendors and hosts. Agreements and payments are handled directly between you and the host."
 
 export type VendorBookingLeadEmailContent = {
   subject: string
@@ -166,70 +117,42 @@ export type VendorBookingLeadEmailContent = {
 
 export function buildVendorBookingLeadEmail(
   row: BookingInsertRow,
-  truckName: string
+  truckName: string,
+  opportunityId: string
 ): VendorBookingLeadEmailContent {
-  const subject = buildVendorBookingLeadSubject(row, truckName)
+  const subject = buildVendorBookingLeadSubject(row)
   const safeTruckName = escapeHtml(truckName.trim() || "there")
-  const summary = escapeHtml(leadSummarySentence(row))
-  const summaryBullets = leadSummaryBullets(row)
-  const hostName = escapeHtml(trimOrNull(row.contact_name) ?? "Host")
-  const hostEmail = escapeHtml(trimOrNull(row.contact_email) ?? "")
-  const hostPhone = trimOrNull(row.contact_phone)
-  const detailLines = buildEventDetailLines(row)
+  const alertFields = buildVendorBookingAlertFields(row)
+  const responseUrl = buildVendorOpportunityDashboardUrl(opportunityId)
 
-  const contactHtml = [
-    `<p><strong>${hostName}</strong></p>`,
-    hostEmail ? `<p><a href="mailto:${hostEmail}">${hostEmail}</a></p>` : "",
-    hostPhone ? `<p>${escapeHtml(hostPhone)}</p>` : "",
-  ]
-    .filter(Boolean)
+  const fieldsHtml = alertFields
+    .map(
+      (field) =>
+        `<tr><td style="padding:4px 12px 4px 0;color:#666;vertical-align:top;white-space:nowrap;">${escapeHtml(field.label)}</td><td style="padding:4px 0;color:#111;">${escapeHtml(field.value)}</td></tr>`
+    )
     .join("\n")
 
-  const detailsHtml = detailLines
-    .map((line) => `<li>${escapeHtml(line)}</li>`)
-    .join("\n")
-
-  const summaryHtml = summaryBullets
-    .map((line) => `<li>${escapeHtml(line)}</li>`)
-    .join("\n")
+  const fieldsText = alertFields.map((field) => `${field.label}: ${field.value}`).join("\n")
 
   const html = `
 <p>Hi ${safeTruckName},</p>
-<p>You may have a new potential customer through FoodTruckCLT.</p>
-<p><strong>${summary}</strong></p>
-<ul>${summaryHtml}</ul>
-<p>If you are interested or available, please contact the host directly:</p>
-${contactHtml}
-<h3>Event details</h3>
-<ul>${detailsHtml}</ul>
-<p style="margin-top:24px;color:#666;font-size:14px;">FoodTruckCLT connects customers with local food trucks. Please respond directly to the host if the opportunity is a fit.</p>
+<p>You have a new booking request on FoodTruckCLT.</p>
+<table style="margin:16px 0;font-size:14px;border-collapse:collapse;">${fieldsHtml}</table>
+<p><a href="${escapeHtml(responseUrl)}" style="display:inline-block;padding:12px 18px;border-radius:8px;background:#C53A2A;color:#ffffff;text-decoration:none;font-weight:700;">View Request &amp; Respond</a></p>
+<p style="margin-top:24px;color:#666;font-size:14px;">${escapeHtml(FOODTRUCKCLT_CONNECT_DISCLAIMER)} Mark Interested or Not Available in your dashboard. Host contact details appear after you mark Interested.</p>
 `.trim()
-
-  const contactText = [
-    trimOrNull(row.contact_name) ?? "Host",
-    trimOrNull(row.contact_email) ?? "",
-    hostPhone ?? "",
-  ]
-    .filter(Boolean)
-    .join("\n")
 
   const text = [
     `Hi ${truckName.trim() || "there"},`,
     "",
-    "You may have a new potential customer through FoodTruckCLT.",
+    "You have a new booking request on FoodTruckCLT.",
     "",
-    leadSummarySentence(row),
+    fieldsText,
     "",
-    ...summaryBullets.map((line) => `- ${line}`),
+    `View Request & Respond: ${responseUrl}`,
     "",
-    "If you are interested or available, please contact the host directly:",
-    "",
-    contactText,
-    "",
-    "Event details",
-    ...detailLines.map((line) => `- ${line}`),
-    "",
-    "FoodTruckCLT connects customers with local food trucks. Please respond directly to the host if the opportunity is a fit.",
+    FOODTRUCKCLT_CONNECT_DISCLAIMER,
+    "Mark Interested or Not Available in your dashboard. Host contact details appear after you mark Interested.",
   ].join("\n")
 
   return { subject, html, text }
