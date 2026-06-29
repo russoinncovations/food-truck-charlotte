@@ -83,6 +83,7 @@ function opportunityResponseLabel(status: string): string {
   const s = status.toLowerCase()
   if (s === "interested") return "Interested"
   if (s === "pass" || s === "not_available") return "Not available"
+  if (s === "expired") return "Expired"
   if (s === "pending") return "Pending"
   return status
 }
@@ -303,13 +304,15 @@ function OpportunityDetailBody({ opp }: { opp: DashboardOpportunity }) {
 
 export function DashboardEventOpportunities({
   opportunities,
-  historyOpportunities = [],
+  recentResponseOpportunities = [],
+  pastOpportunities = [],
   truckContext,
   siteBaseUrl,
   supportEmail,
 }: {
   opportunities: DashboardOpportunity[]
-  historyOpportunities?: DashboardOpportunity[]
+  recentResponseOpportunities?: DashboardOpportunity[]
+  pastOpportunities?: DashboardOpportunity[]
   truckContext: TruckContext | null
   siteBaseUrl: string
   supportEmail: string
@@ -323,11 +326,12 @@ export function DashboardEventOpportunities({
 
   useEffect(() => {
     const inActive = opportunities.some((o) => o.id === detailOpp?.id)
-    const inHistory = historyOpportunities.some((o) => o.id === detailOpp?.id)
-    if (detailOpp && !inActive && !inHistory) {
+    const inRecentResponses = recentResponseOpportunities.some((o) => o.id === detailOpp?.id)
+    const inPast = pastOpportunities.some((o) => o.id === detailOpp?.id)
+    if (detailOpp && !inActive && !inRecentResponses && !inPast) {
       setDetailOpp(null)
     }
-  }, [opportunities, historyOpportunities, detailOpp])
+  }, [opportunities, recentResponseOpportunities, pastOpportunities, detailOpp])
 
   async function handleAction(formData: FormData) {
     if (busyRef.current) return
@@ -370,7 +374,9 @@ export function DashboardEventOpportunities({
     }
   }
 
-  const bothEmpty = opportunities.length === 0 && historyOpportunities.length === 0
+  const allHistoryEmpty =
+    recentResponseOpportunities.length === 0 && pastOpportunities.length === 0
+  const bothEmpty = opportunities.length === 0 && allHistoryEmpty
 
   if (bothEmpty) {
     return (
@@ -417,7 +423,10 @@ export function DashboardEventOpportunities({
       <CardContent>
         {opportunities.length === 0 ? (
           <p className="text-sm text-muted-foreground py-2 mb-4">
-            No active requests need a response right now. Recent responses are below.
+            No active requests need a response right now.
+            {recentResponseOpportunities.length > 0 || pastOpportunities.length > 0
+              ? " See your history below."
+              : null}
           </p>
         ) : null}
         <div className="space-y-4">
@@ -490,7 +499,7 @@ export function DashboardEventOpportunities({
           })}
         </div>
 
-        {historyOpportunities.length > 0 ? (
+        {recentResponseOpportunities.length > 0 ? (
           <div className="mt-8 space-y-3">
             <div>
               <p className="text-sm font-medium text-foreground">Your recent responses</p>
@@ -500,7 +509,7 @@ export function DashboardEventOpportunities({
               </p>
             </div>
             <div className="space-y-4">
-              {historyOpportunities.map((opp) => {
+              {recentResponseOpportunities.map((opp) => {
                 const br = opp.booking
                 const eventTypeLabel =
                   EVENT_TYPES.find((t) => t.value === br?.event_type)?.label ?? br?.event_type ?? "—"
@@ -561,6 +570,76 @@ export function DashboardEventOpportunities({
                           </Button>
                         </div>
                       ) : null}
+                      <div className="pointer-events-auto" onClick={(e) => e.stopPropagation()}>
+                        <a
+                          href={buildReportMailto(opp, supportEmail)}
+                          className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground inline-block"
+                        >
+                          Report this booking request
+                        </a>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        ) : null}
+
+        {pastOpportunities.length > 0 ? (
+          <div className="mt-8 space-y-3">
+            <div>
+              <p className="text-sm font-medium text-foreground">Past opportunities</p>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Requests that expired before you responded. These are no longer actionable.
+              </p>
+            </div>
+            <div className="space-y-4">
+              {pastOpportunities.map((opp) => {
+                const br = opp.booking
+                const eventTypeLabel =
+                  EVENT_TYPES.find((t) => t.value === br?.event_type)?.label ?? br?.event_type ?? "—"
+                const dateStr = br?.event_date
+                  ? new Date(br.event_date).toLocaleDateString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                    })
+                  : "—"
+                const visibilityLabel = requestVisibilityLabel(br)
+
+                return (
+                  <div key={opp.id} className="relative rounded-lg border border-border/80 bg-muted/20">
+                    <button
+                      type="button"
+                      className="absolute inset-0 z-0 rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                      aria-label={`View details: ${br?.event_display_name ?? eventTypeLabel}`}
+                      onClick={() => setDetailOpp(opp)}
+                    />
+                    <div className="relative z-10 space-y-3 p-3 pointer-events-none">
+                      <div className="flex items-start gap-3">
+                        <div className="h-12 w-12 rounded-lg bg-muted flex items-center justify-center shrink-0">
+                          <Calendar className="h-6 w-6 text-muted-foreground" />
+                        </div>
+                        <div className="flex-1 min-w-0 space-y-1">
+                          <p className="font-medium text-foreground text-sm truncate">
+                            {br?.event_display_name ?? eventTypeLabel}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {br?.event_display_name ? `${eventTypeLabel} · ` : ""}
+                            {dateStr}
+                            {br?.city != null && br.city !== "" ? ` · ${br.city}` : ""}
+                          </p>
+                          <div className="flex flex-wrap gap-1.5 pt-0.5">
+                            <Badge variant="outline" className="text-xs font-normal max-w-full truncate">
+                              {visibilityLabel}
+                            </Badge>
+                            <Badge variant="secondary" className="text-xs capitalize">
+                              {opportunityResponseLabel(opp.status)}
+                            </Badge>
+                          </div>
+                        </div>
+                      </div>
                       <div className="pointer-events-auto" onClick={(e) => e.stopPropagation()}>
                         <a
                           href={buildReportMailto(opp, supportEmail)}

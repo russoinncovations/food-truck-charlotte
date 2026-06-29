@@ -75,8 +75,10 @@ function defaultMetrics(): BookingOpportunityMetrics {
     hasNoNotificationSent: false,
     hasDeliveredNoResponse: false,
     hasBouncedOrFailed: false,
+    hasActiveDeliveredNoResponse: false,
     hasMissingVendorEmail: false,
     isDashboardOnly: false,
+    hasActiveNoVendorResponse: false,
   }
 }
 
@@ -92,13 +94,13 @@ function passesDashboardFilter(
     case "needs-follow-up":
       return booking.status === "new"
     case "no-vendor-response":
-      return metrics.totalOpportunities > 0 && !metrics.hasVendorResponse
+      return metrics.hasActiveNoVendorResponse
     case "vendor-interest":
       return metrics.hasVendorResponse
     case "no-notification-sent":
       return metrics.totalOpportunities > 0 && metrics.hasNoNotificationSent
     case "delivered-no-response":
-      return metrics.hasDeliveredNoResponse
+      return metrics.hasActiveDeliveredNoResponse
     case "bounced-failed":
       return metrics.hasBouncedOrFailed
     case "missing-vendor-email":

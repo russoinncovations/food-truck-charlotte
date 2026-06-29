@@ -4,6 +4,8 @@ import {
   bookingNotificationWasEmailed,
   BOOKING_NOTIFICATION_STATUS,
 } from "@/lib/booking/booking-notification-status"
+import { isOpportunityActiveAndActionable, type OpportunityBookingTiming } from "@/lib/booking/opportunity-active"
+import { opportunityHasVendorResponse } from "@/lib/booking/opportunity-delivery-reliability"
 
 export type BookingOpportunityMetrics = {
   interestedCount: number
@@ -16,21 +18,33 @@ export type BookingOpportunityMetrics = {
   hasDeliveredNoResponse: boolean
   /** At least one bounced or failed notification. */
   hasBouncedOrFailed: boolean
+  /** At least one active pending opportunity with delivered email and no response. */
+  hasActiveDeliveredNoResponse: boolean
   /** At least one opportunity flagged missing vendor email. */
   hasMissingVendorEmail: boolean
   /** All opportunities are dashboard-only (no email send attempted). */
   isDashboardOnly: boolean
+  /** True when all opportunities are still pending and at least one is active. */
+  hasActiveNoVendorResponse: boolean
 }
 
 function isRespondedOpportunityStatus(status: string): boolean {
-  const s = status.toLowerCase()
-  return s === "interested" || s === "not_available" || s === "pass"
+  return opportunityHasVendorResponse(status)
 }
 
 type OppRow = {
   booking_request_id: string | null
   status: string | null
   notification_status: string | null
+  expires_at?: string | null
+  booking_requests?: OpportunityBookingTiming | OpportunityBookingTiming[] | null
+}
+
+function bookingTimingFromRow(row: OppRow): OpportunityBookingTiming | null {
+  const raw = row.booking_requests
+  const br = Array.isArray(raw) ? raw[0] : raw
+  if (!br || typeof br !== "object") return null
+  return br
 }
 
 function emptyMetrics(): BookingOpportunityMetrics {
@@ -41,26 +55,42 @@ function emptyMetrics(): BookingOpportunityMetrics {
     hasNoNotificationSent: false,
     hasDeliveredNoResponse: false,
     hasBouncedOrFailed: false,
+    hasActiveDeliveredNoResponse: false,
     hasMissingVendorEmail: false,
     isDashboardOnly: false,
+    hasActiveNoVendorResponse: false,
   }
 }
 
-function computeMetricsFromRows(rows: OppRow[]): Omit<BookingOpportunityMetrics, "interestedCount" | "totalOpportunities"> {
+export function computeMetricsFromRows(
+  rows: OppRow[]
+): Omit<BookingOpportunityMetrics, "interestedCount" | "totalOpportunities"> {
   let hasVendorResponse = false
   let anyEmailed = false
   let anyDelivered = false
+  let anyActiveDelivered = false
   let anyBouncedOrFailed = false
   let anyMissingEmail = false
   let allDashboardOnly = rows.length > 0
+  let anyActive = false
+  let allActivePending = rows.length > 0
 
   for (const row of rows) {
     const st = String(row.status ?? "")
     if (isRespondedOpportunityStatus(st)) hasVendorResponse = true
+    const booking = bookingTimingFromRow(row)
+    const active = isOpportunityActiveAndActionable({
+      status: row.status,
+      expires_at: row.expires_at,
+      booking,
+    })
+    if (active) anyActive = true
+    if (active && st.toLowerCase() !== "pending") allActivePending = false
 
     const ns = (row.notification_status ?? "").toLowerCase()
     if (bookingNotificationWasEmailed(ns)) anyEmailed = true
     if (ns === BOOKING_NOTIFICATION_STATUS.DELIVERED) anyDelivered = true
+    if (active && ns === BOOKING_NOTIFICATION_STATUS.DELIVERED) anyActiveDelivered = true
     if (ns === BOOKING_NOTIFICATION_STATUS.BOUNCED || ns === BOOKING_NOTIFICATION_STATUS.FAILED) {
       anyBouncedOrFailed = true
     }
@@ -72,9 +102,11 @@ function computeMetricsFromRows(rows: OppRow[]): Omit<BookingOpportunityMetrics,
     hasVendorResponse,
     hasNoNotificationSent: rows.length > 0 && !anyEmailed,
     hasDeliveredNoResponse: anyDelivered && !hasVendorResponse,
+    hasActiveDeliveredNoResponse: anyActiveDelivered && !hasVendorResponse,
     hasBouncedOrFailed: anyBouncedOrFailed,
     hasMissingVendorEmail: anyMissingEmail,
     isDashboardOnly: rows.length > 0 && allDashboardOnly,
+    hasActiveNoVendorResponse: anyActive && allActivePending && !hasVendorResponse,
   }
 }
 
@@ -93,7 +125,9 @@ export async function fetchBookingOpportunityMetricsByBookingId(
 
   const { data, error } = await db
     .from("truck_opportunities")
-    .select("booking_request_id, status, notification_status")
+    .select(
+      "booking_request_id, status, notification_status, expires_at, booking_requests(event_date, start_time, end_time, status)"
+    )
     .in("booking_request_id", ids)
 
   if (error) {

@@ -8,6 +8,8 @@ export type BookingRequestEmbed = {
   contact_email?: string | null
   contact_name?: string | null
   event_date?: string | null
+  start_time?: string | null
+  end_time?: string | null
 }
 
 export function isInternalTestBookingRequest(br: BookingRequestEmbed | null | undefined): boolean {

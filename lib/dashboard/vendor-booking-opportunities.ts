@@ -1,5 +1,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 import { EVENT_TYPES } from "@/lib/booking-types"
+import {
+  isOpportunityActiveAndActionable,
+  isOpportunityEffectivelyExpired,
+} from "@/lib/booking/opportunity-active"
 import { isBookingActiveForVendorOpportunities } from "@/lib/booking/booking-request-status"
 import type { DashboardOpportunity } from "@/components/dashboard-event-opportunities"
 import {
@@ -32,12 +36,14 @@ export type TruckOpportunityRow = {
   truck_id?: string | null
   created_at?: string
   responded_at?: string | null
+  expires_at?: string | null
   booking_requests: unknown
 }
 
 export type VendorOpportunityExclusionReason =
   | "booking_not_embedded"
   | "booking_terminal_status"
+  | "opportunity_expired"
   | "internal_test_hidden"
   | "not_pending_status"
 
@@ -109,15 +115,25 @@ export const VENDOR_DASHBOARD_RECENT_RESPONSE_STATUSES = new Set([
   "pass",
 ])
 
+const VENDOR_DASHBOARD_PAST_STATUSES = new Set(["expired"])
+
 /** Matches “Requests to Confirm” on /dashboard. */
 export function opportunityVisibleInRequestsToConfirm(
   oppStatus: string | null | undefined,
   br: ReturnType<typeof parseBookingEmbed>,
-  truck: { name?: string | null; email?: string | null }
+  truck: { name?: string | null; email?: string | null },
+  expiresAt?: string | null
 ): boolean {
-  if (String(oppStatus ?? "").toLowerCase() !== "pending") return false
   if (!br) return false
-  if (!isBookingActiveForVendorOpportunities(br.status)) return false
+  if (
+    !isOpportunityActiveAndActionable({
+      status: oppStatus,
+      expires_at: expiresAt,
+      booking: br,
+    })
+  ) {
+    return false
+  }
   if (!shouldShowBookingOnVendorDashboard(br, truck)) return false
   return true
 }
@@ -131,6 +147,29 @@ export function opportunityVisibleInRecentResponses(
   const status = String(oppStatus ?? "").toLowerCase()
   if (!VENDOR_DASHBOARD_RECENT_RESPONSE_STATUSES.has(status)) return false
   return shouldShowBookingOnVendorDashboard(br, truck)
+}
+
+/** Past expired opportunities (no vendor response) on /dashboard. */
+export function opportunityVisibleInExpiredOpportunities(
+  oppStatus: string | null | undefined,
+  br: ReturnType<typeof parseBookingEmbed>,
+  truck: { name?: string | null; email?: string | null },
+  expiresAt?: string | null
+): boolean {
+  if (!shouldShowBookingOnVendorDashboard(br, truck)) return false
+  const status = String(oppStatus ?? "").toLowerCase()
+  if (VENDOR_DASHBOARD_PAST_STATUSES.has(status)) return true
+  if (
+    status === "pending" &&
+    isOpportunityEffectivelyExpired({
+      status: oppStatus,
+      expires_at: expiresAt,
+      booking: br,
+    })
+  ) {
+    return true
+  }
+  return false
 }
 
 function auditPendingOpportunity(
@@ -147,6 +186,15 @@ function auditPendingOpportunity(
   if (!br) {
     reasons.push("booking_not_embedded")
   } else {
+    if (
+      isOpportunityEffectivelyExpired({
+        status: opp.status,
+        expires_at: opp.expires_at,
+        booking: br,
+      })
+    ) {
+      reasons.push("opportunity_expired")
+    }
     if (!isBookingActiveForVendorOpportunities(bookingStatus)) {
       reasons.push("booking_terminal_status")
     }
@@ -155,7 +203,7 @@ function auditPendingOpportunity(
     }
   }
 
-  const includedInActiveList = opportunityVisibleInRequestsToConfirm(opp.status, br, truck)
+  const includedInActiveList = opportunityVisibleInRequestsToConfirm(opp.status, br, truck, opp.expires_at)
 
   return {
     opportunityId: opp.id,
@@ -172,7 +220,7 @@ export function filterActivePendingOpportunities(
 ): TruckOpportunityRow[] {
   return sortOpportunitiesNewestFirst(rows).filter((opp) => {
     const br = parseBookingEmbed(opp.booking_requests)
-    return opportunityVisibleInRequestsToConfirm(opp.status, br, truck)
+    return opportunityVisibleInRequestsToConfirm(opp.status, br, truck, opp.expires_at)
   })
 }
 
@@ -196,7 +244,7 @@ export async function fetchVendorPendingOpportunities(
   return filterActivePendingOpportunities((data ?? []) as TruckOpportunityRow[], truck)
 }
 
-export async function fetchVendorHistoryOpportunities(
+export async function fetchVendorRecentResponseOpportunities(
   supabase: SupabaseClient,
   truck: VendorDashboardTruck
 ): Promise<TruckOpportunityRow[]> {
@@ -210,7 +258,7 @@ export async function fetchVendorHistoryOpportunities(
     .limit(25)
 
   if (error) {
-    console.error("[dashboard] history opportunities:", error)
+    console.error("[dashboard] recent response opportunities:", error)
     return []
   }
 
@@ -218,6 +266,60 @@ export async function fetchVendorHistoryOpportunities(
     const br = parseBookingEmbed(opp.booking_requests)
     return opportunityVisibleInRecentResponses(opp.status, br, truck)
   })
+}
+
+export async function fetchVendorPastOpportunities(
+  supabase: SupabaseClient,
+  truck: VendorDashboardTruck
+): Promise<TruckOpportunityRow[]> {
+  const [expiredRes, pastPendingRes] = await Promise.all([
+    supabase
+      .from("truck_opportunities")
+      .select("*, booking_requests(*)")
+      .eq("truck_id", truck.id)
+      .ilike("status", "expired")
+      .order("created_at", { ascending: false })
+      .limit(25),
+    supabase
+      .from("truck_opportunities")
+      .select("*, booking_requests(*)")
+      .eq("truck_id", truck.id)
+      .ilike("status", "pending")
+      .order("created_at", { ascending: false })
+      .limit(50),
+  ])
+
+  if (expiredRes.error) {
+    console.error("[dashboard] expired opportunities:", expiredRes.error)
+  }
+  if (pastPendingRes.error) {
+    console.error("[dashboard] past pending opportunities:", pastPendingRes.error)
+  }
+
+  const expiredRows = (expiredRes.data ?? []) as TruckOpportunityRow[]
+  const pastPendingRows = ((pastPendingRes.data ?? []) as TruckOpportunityRow[]).filter((opp) => {
+    const br = parseBookingEmbed(opp.booking_requests)
+    return opportunityVisibleInExpiredOpportunities(opp.status, br, truck, opp.expires_at)
+  })
+
+  const merged = sortOpportunitiesNewestFirst([...expiredRows, ...pastPendingRows])
+  const seen = new Set<string>()
+  const deduped: TruckOpportunityRow[] = []
+
+  for (const opp of merged) {
+    if (seen.has(opp.id)) continue
+    seen.add(opp.id)
+    const br = parseBookingEmbed(opp.booking_requests)
+    if (!opportunityVisibleInExpiredOpportunities(opp.status, br, truck, opp.expires_at)) continue
+    const status = String(opp.status).toLowerCase()
+    deduped.push({
+      ...opp,
+      status: status === "pending" ? "expired" : opp.status,
+    })
+    if (deduped.length >= 25) break
+  }
+
+  return deduped
 }
 
 export async function fetchVendorOpportunityDiagnostics(

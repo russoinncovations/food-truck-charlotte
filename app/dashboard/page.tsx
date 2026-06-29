@@ -15,7 +15,8 @@ import {
 import { DashboardPublicEvents } from "@/components/dashboard/dashboard-public-events"
 import { fetchPublicUpcomingEventsForVendorDashboard } from "@/lib/events/public-events"
 import {
-  fetchVendorHistoryOpportunities,
+  fetchVendorPastOpportunities,
+  fetchVendorRecentResponseOpportunities,
   fetchVendorOpportunityDiagnostics,
   fetchVendorPendingOpportunities,
   mapRowsToDashboardOpportunities,
@@ -73,6 +74,7 @@ export default async function DashboardPage() {
 
   let opportunityCards: DashboardOpportunity[] = []
   let historyOpportunityCards: DashboardOpportunity[] = []
+  let pastOpportunityCards: DashboardOpportunity[] = []
   let pendingCount = 0
   let upcomingEventsCount = 0
   let opportunityDiagnostics: Awaited<ReturnType<typeof fetchVendorOpportunityDiagnostics>> | null = null
@@ -96,14 +98,16 @@ export default async function DashboardPage() {
     if (!upcomingErr && upcomingN != null) {
       upcomingEventsCount = upcomingN
     }
-    const [pendingRows, historyRows] = await Promise.all([
+    const [pendingRows, recentResponseRows, pastRows] = await Promise.all([
       fetchVendorPendingOpportunities(supabase, truckData),
-      fetchVendorHistoryOpportunities(supabase, truckData),
+      fetchVendorRecentResponseOpportunities(supabase, truckData),
+      fetchVendorPastOpportunities(supabase, truckData),
     ])
 
     pendingCount = pendingRows.length
     opportunityCards = mapRowsToDashboardOpportunities(pendingRows)
-    historyOpportunityCards = mapRowsToDashboardOpportunities(historyRows)
+    historyOpportunityCards = mapRowsToDashboardOpportunities(recentResponseRows)
+    pastOpportunityCards = mapRowsToDashboardOpportunities(pastRows)
 
     if (isInternalTestTruck(truckData)) {
       opportunityDiagnostics = await fetchVendorOpportunityDiagnostics(supabase, truckData, authEmail)
@@ -322,7 +326,8 @@ export default async function DashboardPage() {
               <Card id="vendor-requests-to-confirm" className="scroll-mt-28">
                 <DashboardEventOpportunities
                   opportunities={opportunityCards}
-                  historyOpportunities={historyOpportunityCards}
+                  recentResponseOpportunities={historyOpportunityCards}
+                  pastOpportunities={pastOpportunityCards}
                   truckContext={truckContext}
                   siteBaseUrl={publicSiteBase}
                   supportEmail={supportEmail}

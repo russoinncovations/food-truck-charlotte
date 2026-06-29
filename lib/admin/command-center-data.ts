@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server"
 import { createAdminSupabaseClient } from "@/lib/supabase/admin"
 import { easternDateStringToday, publicUpcomingEventsOrFilter } from "@/lib/events/public-events"
+import { isOpportunityActiveAndActionable, type OpportunityBookingTiming } from "@/lib/booking/opportunity-active"
 
 export type AdminActivityItem = {
   id: string
@@ -55,11 +56,34 @@ function isPendingEventRow(r: {
   return false
 }
 
+function bookingTimingFromEmbed(
+  raw: OpportunityBookingTiming | OpportunityBookingTiming[] | null | undefined
+): OpportunityBookingTiming | null {
+  const br = Array.isArray(raw) ? raw[0] : raw
+  if (!br || typeof br !== "object") return null
+  return br
+}
+
 function bookingNoVendorResponseCount(
-  opps: { booking_request_id: string | null; status: string | null }[]
+  opps: {
+    booking_request_id: string | null
+    status: string | null
+    expires_at?: string | null
+    booking_requests?: OpportunityBookingTiming | OpportunityBookingTiming[] | null
+  }[]
 ): number {
   const map = new Map<string, string[]>()
   for (const o of opps) {
+    const booking = bookingTimingFromEmbed(o.booking_requests)
+    if (
+      !isOpportunityActiveAndActionable({
+        status: o.status,
+        expires_at: o.expires_at,
+        booking,
+      })
+    ) {
+      continue
+    }
     const bid = o.booking_request_id
     if (!bid) continue
     const cur = map.get(bid) ?? []
@@ -121,7 +145,12 @@ export async function fetchAdminCommandCenterData(adminKeyForHref: string): Prom
       .eq("active", true)
       .gte("date", today)
       .or(publicUpcomingEventsOrFilter()),
-    db.from("truck_opportunities").select("booking_request_id, status, created_at, id, truck_id").limit(8000),
+    db
+      .from("truck_opportunities")
+      .select(
+        "booking_request_id, status, expires_at, created_at, id, truck_id, booking_requests(event_date, start_time, end_time, status)"
+      )
+      .limit(8000),
     /** Recent bookings: `booking_requests` has no `updated_at` — use `created_at` only. */
     db
       .from("booking_requests")
@@ -174,6 +203,7 @@ export async function fetchAdminCommandCenterData(adminKeyForHref: string): Prom
     created_at: string | null
     id: string
     truck_id: string | null
+    expires_at?: string | null
   }[]
 
   const bookingsNoVendorResponse = bookingNoVendorResponseCount(oppRows)
