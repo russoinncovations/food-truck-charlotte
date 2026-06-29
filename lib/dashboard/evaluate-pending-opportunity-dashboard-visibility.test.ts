@@ -33,7 +33,7 @@ test("historical untracked pending without notification_status remains dashboard
   const result = evaluatePendingOpportunityDashboardVisibility({
     opportunityStatus: "pending",
     notificationStatus: null,
-    bookingRequest: { status: "contacted", event_date: "2026-06-01" },
+    bookingRequest: { status: "contacted", event_date: "2026-12-01", end_time: "22:00", start_time: "18:00" },
     truck: {
       id: "truck-2",
       name: "Another Truck",

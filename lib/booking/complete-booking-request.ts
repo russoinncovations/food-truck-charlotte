@@ -4,6 +4,11 @@ import {
   type BookingRequestTypeValue,
 } from "@/lib/booking/booking-request-constants"
 import { fetchEligibleTruckIdsForBroadcast } from "@/lib/booking/eligible-trucks-for-opportunities"
+import { bookingOpportunityExpiresAt } from "@/lib/booking/opportunity-expiration"
+import {
+  BOOKING_START_TIME_REQUIRED_MESSAGE,
+  isBookingStartTimePresent,
+} from "@/lib/booking/validate-booking-event-time"
 import { sendBookingVendorLeadEmails } from "@/lib/email/send-booking-vendor-lead-emails"
 import { createAdminSupabaseClient, getAdminSupabaseEnvDiagnostics, describeAdminClientInitFailure } from "@/lib/supabase/admin"
 
@@ -58,6 +63,10 @@ export async function completeBookingRequest(
   row: BookingInsertRow,
   opts?: CompleteBookingRequestOptions
 ): Promise<CompleteResult> {
+  if (!isBookingStartTimePresent(row.start_time)) {
+    return { ok: false, error: BOOKING_START_TIME_REQUIRED_MESSAGE }
+  }
+
   /** Server-only persistence: service role bypasses RLS for insert + returning id. */
   const persistDb = createAdminSupabaseClient()
   if (!persistDb) {
@@ -100,6 +109,8 @@ export async function completeBookingRequest(
   }
 
   const vendorNotifyOpportunities: { id: string; truck_id: string }[] = []
+  const routedAt = new Date().toISOString()
+  const expiresAt = bookingOpportunityExpiresAt(row.event_date, row.end_time, row.start_time)
 
   if (isSpecific && oppDb) {
     const { data: inserted, error: oppErr } = await oppDb
@@ -108,6 +119,8 @@ export async function completeBookingRequest(
         booking_request_id: id,
         truck_id: row.truck_id,
         status: "pending",
+        routed_at: routedAt,
+        expires_at: expiresAt,
       })
       .select("id, truck_id")
       .single()
@@ -137,6 +150,8 @@ export async function completeBookingRequest(
       booking_request_id: id,
       truck_id: truckId,
       status: "pending" as const,
+      routed_at: routedAt,
+      expires_at: expiresAt,
     }))
 
     if (rows.length > 0) {
