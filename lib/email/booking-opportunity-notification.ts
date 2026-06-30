@@ -102,7 +102,7 @@ export async function sendBookingNotificationForOpportunity(
   }
 
   const from = resolveVendorBookingFromEmail()
-  const { subject, html, text } = buildVendorBookingLeadEmail(booking, truck.name)
+  const { subject, html, text } = buildVendorBookingLeadEmail(booking, truck.name, opportunity.id)
 
   try {
     const { Resend } = await import("resend")

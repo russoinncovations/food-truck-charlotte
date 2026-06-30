@@ -1,15 +1,18 @@
 "use client"
 
-import { useState, FormEvent } from "react"
+import { Suspense, useState, FormEvent } from "react"
 import Link from "next/link"
+import { useSearchParams } from "next/navigation"
 import { Truck } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { createClient } from "@/lib/supabase/client"
 import { getRoleSubdomainFromHost } from "@/lib/subdomain-routing"
+import { resolveVendorLoginCallbackNext } from "@/lib/dashboard/vendor-dashboard-opportunity-link"
 
-export default function VendorLoginPage() {
+function VendorLoginForm() {
+  const searchParams = useSearchParams()
   const [email, setEmail] = useState("")
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
@@ -22,7 +25,9 @@ export default function VendorLoginPage() {
     setLoading(true)
 
     const host = window.location.host
-    const postAuthPath = getRoleSubdomainFromHost(host) === "vendor" ? "/dashboard/live" : "/dashboard"
+    const defaultPostAuthPath =
+      getRoleSubdomainFromHost(host) === "vendor" ? "/dashboard/live" : "/dashboard"
+    const postAuthPath = resolveVendorLoginCallbackNext(searchParams.get("next"), defaultPostAuthPath)
     /** Callback URL must be allowlisted in Supabase (Auth → Redirect URLs), e.g. …/auth/callback and …/auth/callback*. */
     const callbackUrl = `${window.location.origin}/auth/callback?next=${encodeURIComponent(postAuthPath)}`
 
@@ -45,53 +50,61 @@ export default function VendorLoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-muted/40 p-4">
-      <Card className="w-full max-w-md shadow-md">
-        <CardHeader className="text-center space-y-2">
-          <Link href="/" className="mx-auto flex h-12 w-12 items-center justify-center rounded-lg bg-primary">
-            <Truck className="h-6 w-6 text-primary-foreground" />
-          </Link>
-          <CardTitle className="font-display text-2xl">FoodTruck CLT</CardTitle>
-          <CardDescription>Vendor sign in — we&apos;ll email you a magic link.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <label htmlFor="vendor-email" className="text-sm font-medium text-foreground">
-                Email
-              </label>
-              <Input
-                id="vendor-email"
-                name="email"
-                type="email"
-                autoComplete="email"
-                placeholder="you@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                disabled={loading}
-              />
-            </div>
-            {error && (
-              <p className="text-sm text-destructive" role="alert">
-                {error}
-              </p>
-            )}
-            {success && (
-              <p className="text-sm text-green-700 dark:text-green-400" role="status">
-                Check your email for a login link
-              </p>
-            )}
-            <Button
-              type="submit"
-              className="w-full bg-[#D94F1E] text-white font-medium hover:bg-[#b8441a]"
+    <Card className="w-full max-w-md shadow-md">
+      <CardHeader className="text-center space-y-2">
+        <Link href="/" className="mx-auto flex h-12 w-12 items-center justify-center rounded-lg bg-primary">
+          <Truck className="h-6 w-6 text-primary-foreground" />
+        </Link>
+        <CardTitle className="font-display text-2xl">FoodTruck CLT</CardTitle>
+        <CardDescription>Vendor sign in — we&apos;ll email you a magic link.</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <label htmlFor="vendor-email" className="text-sm font-medium text-foreground">
+              Email
+            </label>
+            <Input
+              id="vendor-email"
+              name="email"
+              type="email"
+              autoComplete="email"
+              placeholder="you@example.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
               disabled={loading}
-            >
-              {loading ? "Sending…" : "Send Login Link"}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
+            />
+          </div>
+          {error && (
+            <p className="text-sm text-destructive" role="alert">
+              {error}
+            </p>
+          )}
+          {success && (
+            <p className="text-sm text-green-700 dark:text-green-400" role="status">
+              Check your email for a login link
+            </p>
+          )}
+          <Button
+            type="submit"
+            className="w-full bg-[#D94F1E] text-white font-medium hover:bg-[#b8441a]"
+            disabled={loading}
+          >
+            {loading ? "Sending…" : "Send Login Link"}
+          </Button>
+        </form>
+      </CardContent>
+    </Card>
+  )
+}
+
+export default function VendorLoginPage() {
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center bg-muted/40 p-4">
+      <Suspense fallback={<div className="text-sm text-muted-foreground">Loading…</div>}>
+        <VendorLoginForm />
+      </Suspense>
     </div>
   )
 }

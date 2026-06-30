@@ -24,6 +24,11 @@ import {
 } from "@/lib/dashboard/vendor-booking-opportunities"
 import { isInternalTestTruck } from "@/lib/trucks/internal-test-recipients"
 import { VendorDashboardOpportunityDiagnostics } from "@/components/dashboard/vendor-dashboard-opportunity-diagnostics"
+import {
+  buildVendorLoginRedirectForDashboardOpportunity,
+  parseDashboardOpportunityId,
+  resolvePendingDeepLinkOpportunity,
+} from "@/lib/dashboard/vendor-dashboard-opportunity-link"
 
 export const metadata: Metadata = {
   title: "Vendor Dashboard | FoodTruck CLT",
@@ -31,12 +36,22 @@ export const metadata: Metadata = {
 }
 
 // Mock vendor data - in production this would come from auth/database
-export default async function DashboardPage() {
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ opportunity?: string }>
+}) {
+  const sp = await searchParams
+  const requestedOpportunityId = parseDashboardOpportunityId(sp?.opportunity)
+
   const supabase = await createClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
   if (!user) {
+    if (requestedOpportunityId) {
+      redirect(buildVendorLoginRedirectForDashboardOpportunity(requestedOpportunityId))
+    }
     redirect("/vendor-login")
   }
 
@@ -119,6 +134,9 @@ export default async function DashboardPage() {
       }
     }
   }
+
+  const initialOpportunityId =
+    resolvePendingDeepLinkOpportunity(opportunityCards, requestedOpportunityId)?.id ?? null
 
   return (
     <div className="min-h-screen bg-muted/30">
@@ -331,6 +349,7 @@ export default async function DashboardPage() {
                   truckContext={truckContext}
                   siteBaseUrl={publicSiteBase}
                   supportEmail={supportEmail}
+                  initialOpportunityId={initialOpportunityId}
                 />
               </Card>
 

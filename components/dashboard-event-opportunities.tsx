@@ -18,6 +18,14 @@ import {
 } from "@/components/ui/sheet"
 import { Calendar, Clock, Mail, MapPin, Users } from "lucide-react"
 import { toast } from "@/hooks/use-toast"
+import {
+  getEffectiveOpportunityStatus,
+  isOpportunityInterested,
+  isOpportunityNotAvailable,
+  isOpportunityPendingForAction,
+  opportunityResponseLabel,
+  type LocalOpportunityResponse,
+} from "@/lib/dashboard/opportunity-response-ui"
 import { cn } from "@/lib/utils"
 
 export type DashboardOpportunity = {
@@ -79,15 +87,6 @@ function requestVisibilityLabel(br: NonNullable<DashboardOpportunity["booking"]>
   return "Booking request"
 }
 
-function opportunityResponseLabel(status: string): string {
-  const s = status.toLowerCase()
-  if (s === "interested") return "Interested"
-  if (s === "pass" || s === "not_available") return "Not available"
-  if (s === "expired") return "Expired"
-  if (s === "pending") return "Pending"
-  return status
-}
-
 function formatLocation(br: NonNullable<DashboardOpportunity["booking"]>) {
   const lines: string[] = []
   if (br.venue_name?.trim()) lines.push(br.venue_name.trim())
@@ -138,10 +137,9 @@ function OpportunityActions({
   truckContext,
   siteBaseUrl,
   supportEmail,
-  isPending,
+  effectiveStatus,
   busy,
   submitting,
-  interestRecorded,
   onAction,
   className,
 }: {
@@ -149,65 +147,74 @@ function OpportunityActions({
   truckContext: TruckContext | null
   siteBaseUrl: string
   supportEmail: string
-  isPending: boolean
+  effectiveStatus: string
   busy: boolean
   submitting: "interested" | "not_available" | null
-  interestRecorded: boolean
   onAction: (formData: FormData) => void | Promise<void>
   className?: string
 }) {
   const br = opp.booking
+  const pending = isOpportunityPendingForAction(effectiveStatus)
+  const interested = isOpportunityInterested(effectiveStatus)
+  const notAvailable = isOpportunityNotAvailable(effectiveStatus)
   const organizerMailto =
-    truckContext != null && isPending && br && interestRecorded
-      ? buildOrganizerMailto(opp, truckContext, siteBaseUrl)
-      : null
+    truckContext != null && interested && br ? buildOrganizerMailto(opp, truckContext, siteBaseUrl) : null
 
-  if (!isPending) return null
+  if (!pending && !interested && !notAvailable) return null
 
   return (
     <div className={cn("space-y-2 pt-1", className)} onClick={(e) => e.stopPropagation()}>
-      <p className="text-xs font-medium text-foreground">I’m interested / Not available</p>
-      <p className="text-xs text-muted-foreground leading-relaxed">
-        After you mark <span className="font-medium text-foreground">I&apos;m interested</span>, an{" "}
-        <span className="font-medium text-foreground">Email organizer</span> button appears so you can reach the host
-        directly.
-      </p>
-      <div className="flex gap-2">
-        <form action={onAction} className="flex-1">
-          <input type="hidden" name="opportunityId" value={opp.id} />
-          <input type="hidden" name="status" value="interested" />
-          <Button
-            type="submit"
-            size="sm"
-            className="w-full"
-            disabled={!!busy || interestRecorded}
-          >
-            {busy && submitting === "interested"
-              ? "Saving…"
-              : interestRecorded
-                ? "Interest saved"
-                : "I’m interested"}
-          </Button>
-        </form>
-        <form action={onAction} className="flex-1">
-          <input type="hidden" name="opportunityId" value={opp.id} />
-          <input type="hidden" name="status" value="not_available" />
-          <Button type="submit" variant="outline" size="sm" className="w-full" disabled={!!busy || interestRecorded}>
-            {busy && submitting === "not_available" ? "Saving…" : "Not available"}
-          </Button>
-        </form>
-      </div>
-      {truckContext && organizerMailto && (
-        <Button variant="outline" size="sm" className="w-full" asChild>
-          <a href={organizerMailto}>
-            <Mail className="h-3.5 w-3.5 mr-1.5" />
-            Email Organizer
-          </a>
-        </Button>
-      )}
-      {isPending && !br?.contact_email && (
-        <p className="text-xs text-muted-foreground">Organizer email isn’t available for this request.</p>
-      )}
+      {pending ? (
+        <>
+          <p className="text-xs font-medium text-foreground">I&apos;m interested / Not available</p>
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            After you mark <span className="font-medium text-foreground">I&apos;m interested</span>, an{" "}
+            <span className="font-medium text-foreground">Email Organizer</span> button appears so you can reach the
+            host directly.
+          </p>
+          <div className="flex gap-2">
+            <form action={onAction} className="flex-1">
+              <input type="hidden" name="opportunityId" value={opp.id} />
+              <input type="hidden" name="status" value="interested" />
+              <Button type="submit" size="sm" className="w-full" disabled={busy}>
+                {busy && submitting === "interested" ? "Saving…" : "I'm interested"}
+              </Button>
+            </form>
+            <form action={onAction} className="flex-1">
+              <input type="hidden" name="opportunityId" value={opp.id} />
+              <input type="hidden" name="status" value="not_available" />
+              <Button type="submit" variant="outline" size="sm" className="w-full" disabled={busy}>
+                {busy && submitting === "not_available" ? "Saving…" : "Not available"}
+              </Button>
+            </form>
+          </div>
+        </>
+      ) : null}
+
+      {interested ? (
+        <>
+          <Badge variant="secondary" className="text-xs">
+            Interested
+          </Badge>
+          {truckContext && organizerMailto ? (
+            <Button size="sm" className="w-full" asChild>
+              <a href={organizerMailto}>
+                <Mail className="h-3.5 w-3.5 mr-1.5" />
+                Email Organizer
+              </a>
+            </Button>
+          ) : !br?.contact_email ? (
+            <p className="text-xs text-muted-foreground">Organizer email isn&apos;t available for this request.</p>
+          ) : null}
+        </>
+      ) : null}
+
+      {notAvailable ? (
+        <Badge variant="secondary" className="text-xs">
+          Not available
+        </Badge>
+      ) : null}
+
       <a
         href={buildReportMailto(opp, supportEmail)}
         className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground inline-block"
@@ -309,6 +316,7 @@ export function DashboardEventOpportunities({
   truckContext,
   siteBaseUrl,
   supportEmail,
+  initialOpportunityId = null,
 }: {
   opportunities: DashboardOpportunity[]
   recentResponseOpportunities?: DashboardOpportunity[]
@@ -316,13 +324,28 @@ export function DashboardEventOpportunities({
   truckContext: TruckContext | null
   siteBaseUrl: string
   supportEmail: string
+  initialOpportunityId?: string | null
 }) {
   const router = useRouter()
   const [submitting, setSubmitting] = useState<"interested" | "not_available" | null>(null)
   const [activeOppId, setActiveOppId] = useState<string | null>(null)
-  const [interestSentIds, setInterestSentIds] = useState<Record<string, true>>({})
+  const [localStatusOverrides, setLocalStatusOverrides] = useState<
+    Record<string, LocalOpportunityResponse>
+  >({})
   const [detailOpp, setDetailOpp] = useState<DashboardOpportunity | null>(null)
   const busyRef = useRef(false)
+  const deepLinkOpenedRef = useRef(false)
+
+  useEffect(() => {
+    if (deepLinkOpenedRef.current || !initialOpportunityId) return
+    const match = opportunities.find(
+      (o) => o.id === initialOpportunityId && String(o.status).toLowerCase() === "pending"
+    )
+    if (match) {
+      setDetailOpp(match)
+      deepLinkOpenedRef.current = true
+    }
+  }, [initialOpportunityId, opportunities])
 
   useEffect(() => {
     const inActive = opportunities.some((o) => o.id === detailOpp?.id)
@@ -346,19 +369,20 @@ export function DashboardEventOpportunities({
     try {
       const result = await updateTruckOpportunityStatus(formData)
       if (result.success) {
+        setLocalStatusOverrides((d) => ({ ...d, [id]: nextStatus }))
+        setDetailOpp((open) =>
+          open?.id === id ? { ...open, status: nextStatus } : open
+        )
         if (nextStatus === "interested") {
-          setInterestSentIds((d) => ({ ...d, [id]: true }))
           toast({
-            title: "Marked as interested",
-            description: "We’ve saved your response. Email the organizer to confirm details and payment terms.",
+            title: "You're marked interested",
+            description: "Email the organizer to continue.",
           })
         } else {
           toast({
-            title: "Marked as not available",
-            description: "We’ve recorded that. You won’t see this request in your active list anymore.",
+            title: "Marked as not available.",
           })
         }
-        setDetailOpp((open) => (open?.id === id ? null : open))
         router.refresh()
       } else {
         toast({
@@ -441,9 +465,15 @@ export function DashboardEventOpportunities({
                   year: "numeric",
                 })
               : "—"
-            const isPending = opp.status === "pending"
+            const effectiveStatus = getEffectiveOpportunityStatus(
+              opp.status,
+              localStatusOverrides[opp.id]
+            )
+            const showActions =
+              isOpportunityPendingForAction(effectiveStatus) ||
+              isOpportunityInterested(effectiveStatus) ||
+              isOpportunityNotAvailable(effectiveStatus)
             const busy = activeOppId === opp.id
-            const interestRecorded = interestSentIds[opp.id] === true
             const visibilityLabel = requestVisibilityLabel(br)
 
             return (
@@ -474,21 +504,20 @@ export function DashboardEventOpportunities({
                           {visibilityLabel}
                         </Badge>
                         <Badge variant="secondary" className="text-xs capitalize">
-                          {opportunityResponseLabel(opp.status)}
+                          {opportunityResponseLabel(effectiveStatus)}
                         </Badge>
                       </div>
                     </div>
                   </div>
-                  {isPending && (
+                  {showActions && (
                     <OpportunityActions
                       opp={opp}
                       truckContext={truckContext}
                       siteBaseUrl={siteBaseUrl}
                       supportEmail={supportEmail}
-                      isPending={isPending}
+                      effectiveStatus={effectiveStatus}
                       busy={busy}
                       submitting={submitting}
-                      interestRecorded={interestRecorded}
                       onAction={handleAction}
                       className="pointer-events-auto"
                     />
@@ -683,42 +712,39 @@ export function DashboardEventOpportunities({
                 </SheetDescription>
               </SheetHeader>
               <div className="flex-1 overflow-y-auto px-4 pb-4">
-                <OpportunityDetailBody opp={detailOpp} />
-                {detailOpp.status === "pending" && (
-                  <>
-                    <Separator className="my-4" />
-                    <OpportunityActions
-                      opp={detailOpp}
-                      truckContext={truckContext}
-                      siteBaseUrl={siteBaseUrl}
-                      supportEmail={supportEmail}
-                      isPending
-                      busy={activeOppId === detailOpp.id}
-                      submitting={submitting}
-                      interestRecorded={interestSentIds[detailOpp.id] === true}
-                      onAction={handleAction}
-                      className="pt-0"
-                    />
-                  </>
-                )}
-                {detailOpp.status.toLowerCase() === "interested" && truckContext && detailOpp.booking?.contact_email ? (
-                  <>
-                    <Separator className="my-4" />
-                    <div className="space-y-2">
-                      <p className="text-xs font-medium text-foreground">Follow up with the host</p>
-                      <Button variant="outline" size="sm" className="w-full" asChild>
-                        <a
-                          href={
-                            buildOrganizerMailto(detailOpp, truckContext, siteBaseUrl) ?? "#"
-                          }
-                        >
-                          <Mail className="h-3.5 w-3.5 mr-1.5" />
-                          Email organizer
-                        </a>
-                      </Button>
-                    </div>
-                  </>
-                ) : null}
+                {(() => {
+                  const detailEffectiveStatus = getEffectiveOpportunityStatus(
+                    detailOpp.status,
+                    localStatusOverrides[detailOpp.id]
+                  )
+                  const detailOppWithStatus = { ...detailOpp, status: detailEffectiveStatus }
+                  const showDetailActions =
+                    isOpportunityPendingForAction(detailEffectiveStatus) ||
+                    isOpportunityInterested(detailEffectiveStatus) ||
+                    isOpportunityNotAvailable(detailEffectiveStatus)
+
+                  return (
+                    <>
+                      <OpportunityDetailBody opp={detailOppWithStatus} />
+                      {showDetailActions ? (
+                        <>
+                          <Separator className="my-4" />
+                          <OpportunityActions
+                            opp={detailOpp}
+                            truckContext={truckContext}
+                            siteBaseUrl={siteBaseUrl}
+                            supportEmail={supportEmail}
+                            effectiveStatus={detailEffectiveStatus}
+                            busy={activeOppId === detailOpp.id}
+                            submitting={submitting}
+                            onAction={handleAction}
+                            className="pt-0"
+                          />
+                        </>
+                      ) : null}
+                    </>
+                  )
+                })()}
               </div>
             </>
           )}
