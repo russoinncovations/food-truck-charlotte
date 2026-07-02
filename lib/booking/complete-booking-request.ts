@@ -41,6 +41,7 @@ export type BookingInsertRow = {
   vendor_type: string | null
   preferred_trucks: string | null
   how_heard_about_us?: string | null
+  truck_count?: number | null
 }
 
 type CompleteResult = { ok: true; id: string } | { ok: false; error: string }
