@@ -23,11 +23,17 @@ export async function createInternalTestBooking(formData: FormData): Promise<{
   const mode = String(formData.get("mode") ?? "specific").trim()
   const requestType = mode === "open" ? "open_request" : "specific_vendor"
   const recipientId = parseInternalTestRecipientId(formData.get("recipient"))
+  const eventDate = String(formData.get("eventDate") ?? "").trim() || null
+  const startTime = String(formData.get("startTime") ?? "").trim() || null
+  const endTime = String(formData.get("endTime") ?? "").trim() || null
 
   const result = await createInternalTestBookingRequest({
     adminDb,
     requestType,
     recipientId,
+    eventDate,
+    startTime,
+    endTime,
   })
 
   if (!result.ok) {

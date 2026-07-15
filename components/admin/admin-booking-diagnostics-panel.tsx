@@ -7,6 +7,11 @@ import { Badge } from "@/components/ui/badge"
 import { createInternalTestBooking } from "@/app/admin/bookings/internal-test-actions"
 import type { BookingAdminDiagnostics } from "@/lib/admin/fetch-booking-admin-diagnostics"
 import {
+  DEFAULT_INTERNAL_TEST_END_TIME,
+  DEFAULT_INTERNAL_TEST_START_TIME,
+  defaultInternalTestEventDate,
+} from "@/lib/booking/create-internal-test-booking"
+import {
   DEFAULT_INTERNAL_TEST_RECIPIENT_ID,
   INTERNAL_TEST_RECIPIENT_LIST,
   type InternalTestRecipientId,
@@ -44,6 +49,9 @@ export function AdminBookingDiagnosticsPanel({ adminKey, keyQ, diagnostics }: Pr
   const [testMessage, setTestMessage] = useState<string | null>(null)
   const [testBookingId, setTestBookingId] = useState<string | null>(null)
   const [recipient, setRecipient] = useState<InternalTestRecipientId>(DEFAULT_INTERNAL_TEST_RECIPIENT_ID)
+  const [eventDate, setEventDate] = useState(() => defaultInternalTestEventDate())
+  const [startTime, setStartTime] = useState(DEFAULT_INTERNAL_TEST_START_TIME)
+  const [endTime, setEndTime] = useState(DEFAULT_INTERNAL_TEST_END_TIME)
 
   const { runtime } = diagnostics
 
@@ -54,13 +62,18 @@ export function AdminBookingDiagnosticsPanel({ adminKey, keyQ, diagnostics }: Pr
     fd.set("adminKey", adminKey)
     fd.set("mode", mode)
     fd.set("recipient", recipient)
+    fd.set("eventDate", eventDate)
+    fd.set("startTime", startTime)
+    fd.set("endTime", endTime)
     startTransition(async () => {
       const result = await createInternalTestBooking(fd)
       if (result.ok && result.bookingId) {
         setTestBookingId(result.bookingId)
         const label =
           INTERNAL_TEST_RECIPIENT_LIST.find((r) => r.id === recipient)?.label ?? recipient
-        setTestMessage(`INTERNAL TEST booking created for ${label}.`)
+        setTestMessage(
+          `INTERNAL TEST booking created for ${label} (${eventDate} ${startTime}–${endTime} ET).`
+        )
       } else {
         setTestMessage(result.error ?? "Could not create test booking.")
       }
@@ -202,7 +215,7 @@ export function AdminBookingDiagnosticsPanel({ adminKey, keyQ, diagnostics }: Pr
           production. Targets hidden internal test trucks only — never public directory, map, or normal
           vendor routing.
         </p>
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:flex-wrap max-w-xl">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:flex-wrap max-w-3xl">
           <label className="flex flex-col gap-1 text-xs">
             <span className="text-muted-foreground">Internal test recipient</span>
             <select
@@ -218,7 +231,41 @@ export function AdminBookingDiagnosticsPanel({ adminKey, keyQ, diagnostics }: Pr
               ))}
             </select>
           </label>
+          <label className="flex flex-col gap-1 text-xs">
+            <span className="text-muted-foreground">Event date</span>
+            <input
+              type="date"
+              className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+              value={eventDate}
+              disabled={pending}
+              onChange={(e) => setEventDate(e.target.value)}
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-xs">
+            <span className="text-muted-foreground">Start time</span>
+            <input
+              type="time"
+              className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+              value={startTime}
+              disabled={pending}
+              onChange={(e) => setStartTime(e.target.value)}
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-xs">
+            <span className="text-muted-foreground">End time</span>
+            <input
+              type="time"
+              className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+              value={endTime}
+              disabled={pending}
+              onChange={(e) => setEndTime(e.target.value)}
+            />
+          </label>
         </div>
+        <p className="text-xs text-muted-foreground max-w-3xl">
+          Defaults to tomorrow 11:00 AM–2:00 PM Eastern so opportunities stay active on vendor dashboards.
+          Past or same-day times that have already started are rejected.
+        </p>
         <div className="flex flex-wrap gap-2">
           <Button
             type="button"
@@ -239,7 +286,18 @@ export function AdminBookingDiagnosticsPanel({ adminKey, keyQ, diagnostics }: Pr
             {pending ? "Creating…" : "INTERNAL TEST — open (internal trucks only)"}
           </Button>
         </div>
-        {testMessage ? <p className="text-xs text-muted-foreground">{testMessage}</p> : null}
+        {testMessage ? (
+          <p
+            className={
+              testBookingId
+                ? "text-xs text-muted-foreground"
+                : "text-xs text-destructive"
+            }
+            role={testBookingId ? "status" : "alert"}
+          >
+            {testMessage}
+          </p>
+        ) : null}
         {testBookingId ? (
           <Link
             href={`/admin/bookings/${testBookingId}${keyQ}`}
