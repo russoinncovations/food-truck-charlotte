@@ -12,6 +12,7 @@ import {
   shouldShowBookingOnVendorDashboard,
 } from "@/lib/dashboard/vendor-booking-opportunity-visibility"
 import { isInternalTestTruck } from "@/lib/trucks/internal-test-recipients"
+import { normalizeVendorEmailKey } from "@/lib/trucks/canonical-vendor-email"
 
 export type VendorDashboardTruck = {
   id: string
@@ -59,9 +60,42 @@ const TRUCK_SELECT =
   "id, name, slug, email, cuisine, cuisine_types, serving_today, serving_started_at, today_location, street_address, latitude, longitude, updated_at"
 
 /**
- * Resolves the vendor's truck using RLS (case-insensitive email match in policy).
- * Do not use `.eq('email', user.email)` — Postgres equality is case-sensitive and
- * diverges from RLS `lower(trim(...))` matching.
+ * Picks the truck row that matches the authenticated email after trim + lowercase.
+ * Exported for focused tests — used by resolveVendorTruckForDashboard after the DB query.
+ */
+export function pickVendorTruckForAuthEmail(
+  rows: VendorDashboardTruck[],
+  authEmail: string | null | undefined
+): {
+  truck: VendorDashboardTruck | null
+  resolutionNote: string | null
+} {
+  const email = (authEmail ?? "").trim()
+  if (!email) {
+    return { truck: null, resolutionNote: "No authenticated email" }
+  }
+
+  const matching = rows.filter((t) => authEmailMatchesTruck(email, t.email))
+  if (matching.length === 0) {
+    return {
+      truck: null,
+      resolutionNote:
+        rows.length === 0
+          ? "No truck row visible for this login (check trucks.email matches auth email; RLS uses case-insensitive match)."
+          : "Queried truck row(s) exist but none match auth email after normalization.",
+    }
+  }
+
+  return {
+    truck: matching[0],
+    resolutionNote: matching.length > 1 ? "Multiple trucks matched — using first." : null,
+  }
+}
+
+/**
+ * Resolves the vendor's truck by authenticated email (case-insensitive / trimmed).
+ * Queries trucks.email directly — does not rely on an arbitrary first-N public listing page.
+ * RLS still applies: owners can read their own row; public listed trucks remain readable.
  */
 export async function resolveVendorTruckForDashboard(
   supabase: SupabaseClient,
@@ -76,30 +110,23 @@ export async function resolveVendorTruckForDashboard(
     return { truck: null, authEmail: "", resolutionNote: "No authenticated email" }
   }
 
-  const { data, error } = await supabase.from("trucks").select(TRUCK_SELECT).limit(5)
+  const emailKey = normalizeVendorEmailKey(email)
+  /** ilike without wildcards ≈ case-insensitive equality; avoids brittle limit(5) public scans. */
+  const { data, error } = await supabase
+    .from("trucks")
+    .select(TRUCK_SELECT)
+    .ilike("email", emailKey)
+    .limit(25)
 
   if (error) {
     return { truck: null, authEmail: email, resolutionNote: error.message }
   }
 
-  const rows = (data ?? []) as VendorDashboardTruck[]
-  const matching = rows.filter((t) => authEmailMatchesTruck(email, t.email))
-
-  if (matching.length === 0) {
-    return {
-      truck: null,
-      authEmail: email,
-      resolutionNote:
-        rows.length === 0
-          ? "No truck row visible for this login (check trucks.email matches auth email; RLS uses case-insensitive match)."
-          : "Visible truck row(s) exist but none match auth email after normalization.",
-    }
-  }
-
+  const picked = pickVendorTruckForAuthEmail((data ?? []) as VendorDashboardTruck[], email)
   return {
-    truck: matching[0],
+    truck: picked.truck,
     authEmail: email,
-    resolutionNote: matching.length > 1 ? "Multiple trucks matched — using first." : null,
+    resolutionNote: picked.resolutionNote,
   }
 }
 
