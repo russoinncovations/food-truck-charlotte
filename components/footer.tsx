@@ -1,25 +1,24 @@
 import Link from "next/link"
-import { Truck } from "lucide-react"
 
 const navigation = {
   discover: [
-    { name: "Live Map", href: "/map" },
-    { name: "All Trucks", href: "/trucks" },
+    { name: "Browse Trucks", href: "/trucks" },
     { name: "Events", href: "/events" },
+    { name: "Live Map", href: "/map" },
     { name: "Promote an Event", href: "/promote-event" },
   ],
   forVendors: [
-    { name: "List Your Truck", href: "/list-your-truck" },
+    { name: "Claim Your Profile", href: "/list-your-truck" },
     { name: "Vendor Dashboard", href: "/dashboard" },
+    { name: "Resource Guide", href: "/resources" },
   ],
   forHosts: [
+    { name: "Request a Truck", href: "/book-a-truck" },
     { name: "Browse Trucks", href: "/trucks" },
-    { name: "Book for an Event", href: "/book-a-truck" },
   ],
   community: [
-    { name: "Resource Guide", href: "/resources" },
-    { name: "Facebook Group", href: "https://www.facebook.com/share/g/1DjV7rGgcU/" },
     { name: "About", href: "/about" },
+    { name: "Facebook Group", href: "https://www.facebook.com/share/g/1DjV7rGgcU/" },
   ],
   legal: [
     { name: "Privacy Policy", href: "/privacy" },
@@ -31,31 +30,29 @@ const social = [
   { name: "Facebook", href: "https://www.facebook.com/share/g/1DjV7rGgcU/" },
 ]
 
+function BrandWordmark() {
+  return (
+    <span className="font-display text-lg font-bold leading-none tracking-tight">
+      <span className="text-foreground">FoodTruck</span>
+      <span className="text-primary">CLT</span>
+    </span>
+  )
+}
+
 export function Footer() {
   return (
-    <footer className="bg-card border-t">
+    <footer className="border-t bg-card">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        {/* Main Footer */}
         <div className="py-12 md:py-16">
-          <div className="grid grid-cols-2 md:grid-cols-7 gap-8">
-            {/* Brand */}
+          <div className="grid grid-cols-2 gap-8 md:grid-cols-7">
             <div className="col-span-2">
-              <Link href="/" className="flex items-center gap-2 mb-4">
-                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
-                  <Truck className="h-5 w-5 text-primary-foreground" />
-                </div>
-                <div className="flex flex-col">
-                  <span className="font-display text-lg font-bold leading-none">
-                    FoodTruck
-                  </span>
-                  <span className="text-xs font-medium text-primary">CLT</span>
-                </div>
+              <Link href="/" className="mb-4 inline-flex items-baseline" aria-label="FoodTruckCLT home">
+                <BrandWordmark />
               </Link>
-              <p className="text-sm text-muted-foreground max-w-xs mb-6">
-                The only local guide built from Charlotte&apos;s own 35,000-member 
-                food truck community on Facebook.
+              <p className="mb-6 max-w-xs text-sm text-muted-foreground">
+                Find Charlotte food trucks. Request the right ones for your event. Connect
+                directly.
               </p>
-              {/* Social */}
               <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
                 {social.map((item) => (
                   <a
@@ -63,7 +60,7 @@ export function Footer() {
                     href={item.href}
                     target="_blank"
                     rel="noreferrer"
-                    className="hover:text-foreground transition-colors"
+                    className="transition-colors hover:text-foreground"
                   >
                     {item.name}
                   </a>
@@ -72,22 +69,21 @@ export function Footer() {
                   href="https://www.instagram.com/foodtruckcharlotte/"
                   target="_blank"
                   rel="noreferrer"
-                  className="hover:text-foreground transition-colors"
+                  className="transition-colors hover:text-foreground"
                 >
                   Instagram
                 </a>
               </div>
             </div>
 
-            {/* Navigation */}
             <div>
-              <h3 className="font-semibold text-foreground mb-4">Discover</h3>
+              <h3 className="mb-4 font-semibold text-foreground">Discover</h3>
               <ul className="space-y-3">
                 {navigation.discover.map((item) => (
                   <li key={item.name}>
                     <Link
                       href={item.href}
-                      className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                      className="text-sm text-muted-foreground transition-colors hover:text-foreground"
                     >
                       {item.name}
                     </Link>
@@ -97,13 +93,13 @@ export function Footer() {
             </div>
 
             <div>
-              <h3 className="font-semibold text-foreground mb-4">For Vendors</h3>
+              <h3 className="mb-4 font-semibold text-foreground">For Vendors</h3>
               <ul className="space-y-3">
                 {navigation.forVendors.map((item) => (
                   <li key={item.name}>
                     <Link
                       href={item.href}
-                      className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                      className="text-sm text-muted-foreground transition-colors hover:text-foreground"
                     >
                       {item.name}
                     </Link>
@@ -113,13 +109,13 @@ export function Footer() {
             </div>
 
             <div>
-              <h3 className="font-semibold text-foreground mb-4">For Hosts</h3>
+              <h3 className="mb-4 font-semibold text-foreground">For Hosts</h3>
               <ul className="space-y-3">
                 {navigation.forHosts.map((item) => (
                   <li key={item.name}>
                     <Link
                       href={item.href}
-                      className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                      className="text-sm text-muted-foreground transition-colors hover:text-foreground"
                     >
                       {item.name}
                     </Link>
@@ -129,13 +125,13 @@ export function Footer() {
             </div>
 
             <div>
-              <h3 className="font-semibold text-foreground mb-4">Community</h3>
+              <h3 className="mb-4 font-semibold text-foreground">Community</h3>
               <ul className="space-y-3">
                 {navigation.community.map((item) => (
                   <li key={item.name}>
                     <Link
                       href={item.href}
-                      className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                      className="text-sm text-muted-foreground transition-colors hover:text-foreground"
                     >
                       {item.name}
                     </Link>
@@ -145,13 +141,13 @@ export function Footer() {
             </div>
 
             <div>
-              <h3 className="font-semibold text-foreground mb-4">Legal</h3>
+              <h3 className="mb-4 font-semibold text-foreground">Legal</h3>
               <ul className="space-y-3">
                 {navigation.legal.map((item) => (
                   <li key={item.name}>
                     <Link
                       href={item.href}
-                      className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                      className="text-sm text-muted-foreground transition-colors hover:text-foreground"
                     >
                       {item.name}
                     </Link>
@@ -162,10 +158,9 @@ export function Footer() {
           </div>
         </div>
 
-        {/* Bottom Bar */}
-        <div className="border-t py-6 flex flex-col md:flex-row justify-between items-center gap-4">
+        <div className="flex flex-col items-center justify-between gap-4 border-t py-6 md:flex-row">
           <p className="text-sm text-muted-foreground">
-            &copy; {new Date().getFullYear()} FoodTruck CLT. All rights reserved.
+            &copy; {new Date().getFullYear()} FoodTruckCLT. All rights reserved.
           </p>
           <div className="flex gap-6">
             <Link href="/privacy" className="text-sm text-muted-foreground hover:text-foreground">

@@ -23,28 +23,29 @@ type Props = {
 
 export function FeaturedTrucks({ trucks }: Props) {
   return (
-    <section className="py-16 md:py-24 bg-muted/30">
+    <section className="bg-background py-14 md:py-20">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        {/* Section Header */}
-        <div className="flex items-end justify-between mb-8">
-          <div>
-            <h2 className="font-display text-2xl md:text-3xl font-bold text-foreground">
-              Popular in Charlotte
+        <div className="mb-8 flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
+          <div className="max-w-3xl">
+            <p className="text-sm font-semibold uppercase tracking-[0.22em] text-primary">
+              Truck profiles
+            </p>
+            <h2 className="mt-3 font-display text-3xl font-bold leading-tight tracking-tight text-foreground md:text-4xl">
+              Profiles that help you choose — and help trucks get found
             </h2>
-            <p className="mt-2 text-muted-foreground max-w-2xl">
-              Spotlight on Charlotte vendors with strong FoodTruckCLT profiles—photos, menus, and ways to
-              connect.
+            <p className="mt-4 text-base leading-7 text-muted-foreground md:text-lg md:leading-8">
+              Browse cuisine, photos, and service details before you request. Complete profiles
+              give hosts confidence and give trucks a clear place to be discovered.
             </p>
           </div>
           <Button variant="outline" asChild className="hidden md:flex">
             <Link href="/trucks" className="flex items-center gap-2">
-              All Trucks
+              Browse All Trucks
               <ArrowRight className="h-4 w-4" />
             </Link>
           </Button>
         </div>
 
-        {/* Truck Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {trucks.map((truck) => (
             <TruckCard key={truck.id} truck={truck} />
@@ -73,17 +74,16 @@ function TruckCard({ truck }: { truck: HomepageFeaturedTruckRow }) {
   const booking = Boolean(truck.catering)
 
   return (
-    <Card className="group overflow-hidden transition-all hover:shadow-lg hover:border-primary/50">
+    <Card className="group overflow-hidden border-border/80 bg-card shadow-sm transition-all hover:-translate-y-1 hover:border-primary/40 hover:shadow-xl">
       <Link href={`/trucks/${truck.slug}`}>
-        {/* Image */}
-        <div className="relative aspect-[4/3] overflow-hidden">
+        <div className="relative aspect-[4/3] overflow-hidden bg-muted">
           <Image
             src={imageSrc}
             alt={truck.name}
             fill
-            className="object-cover transition-transform duration-300 group-hover:scale-105"
+            className="object-cover transition-transform duration-500 group-hover:scale-105"
           />
-          {/* Status badge — browse context: no "Closed" */}
+          <div className="absolute inset-0 bg-gradient-to-t from-foreground/45 via-transparent to-transparent opacity-80" />
           <div className="absolute top-3 left-3 flex flex-wrap gap-1.5">
             {servingToday ? (
               <Badge className="bg-green-500/90 text-white border-0 backdrop-blur-sm">
@@ -105,31 +105,29 @@ function TruckCard({ truck }: { truck: HomepageFeaturedTruckRow }) {
           </div>
         </div>
 
-        {/* Content */}
-        <CardContent className="p-4">
-          {/* Cuisine Tags */}
-          <div className="flex flex-wrap gap-1 mb-2">
+        <CardContent className="p-5">
+          <div className="flex flex-wrap gap-1.5 mb-3">
             {cuisineTags.map((c) => (
               <span
                 key={c}
-                className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full"
+                className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground"
               >
                 {c}
               </span>
             ))}
           </div>
 
-          {/* Name */}
-          <div className="flex items-start justify-between gap-2 mb-2">
-            <h3 className="font-display font-semibold text-foreground group-hover:text-primary transition-colors">
+          <div className="mb-2 flex items-start justify-between gap-2">
+            <h3 className="font-display text-lg font-bold leading-snug text-foreground transition-colors group-hover:text-primary">
               {truck.name}
             </h3>
           </div>
 
-          {/* Next Location */}
           {showTodayLocation && (
-            <div className="pt-3 border-t">
-              <p className="text-xs text-muted-foreground mb-1">Next stop</p>
+            <div className="mt-4 border-t pt-4">
+              <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Next stop
+              </p>
               <div className="flex items-center gap-1 text-sm">
                 <MapPin className="h-3.5 w-3.5 text-primary shrink-0" />
                 <span className="truncate">{truck.today_location}</span>

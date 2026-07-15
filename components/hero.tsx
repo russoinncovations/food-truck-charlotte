@@ -1,48 +1,71 @@
 import Image from "next/image"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { CalendarPlus } from "lucide-react"
+import { ArrowRight, Truck } from "lucide-react"
 
-export function Hero() {
+type HeroProps = {
+  upcomingEventCount: number
+  directoryTruckCount: number
+}
+
+export function Hero({ upcomingEventCount, directoryTruckCount }: HeroProps) {
   return (
-    <section className="relative pt-16">
-      <div className="absolute inset-0 h-[520px] md:h-[560px]">
+    <section className="relative overflow-hidden bg-foreground pt-16 text-primary-foreground">
+      <div className="absolute inset-0">
         <Image
           src="/images/hero-truck.jpg"
-          alt="Charlotte food truck scene"
+          alt="Charlotte food truck at an event"
           fill
-          className="object-cover"
+          className="object-cover opacity-40"
           priority
         />
-        <div className="absolute inset-0 bg-gradient-to-b from-foreground/70 via-foreground/50 to-background" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(197,58,42,0.4),transparent_34rem)]" />
+        <div className="absolute inset-0 bg-gradient-to-b from-foreground/88 via-foreground/82 to-background" />
       </div>
 
-      <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="pt-20 pb-16 md:pt-28 md:pb-20">
-          <div className="max-w-3xl">
-            <h1 className="font-display text-4xl font-bold tracking-tight text-primary-foreground sm:text-5xl md:text-6xl text-balance">
-              Find the Right Food Trucks for Your Charlotte Event
-            </h1>
-            <p className="mt-6 text-lg text-primary-foreground/85 max-w-2xl leading-relaxed">
-              Tell us your date, location, guest count, and event needs. FoodTruckCLT helps connect you with
-              available local food trucks.
-            </p>
+      <div className="relative mx-auto max-w-7xl px-4 pb-16 pt-20 sm:px-6 md:pb-20 md:pt-24 lg:px-8">
+        <div className="max-w-3xl">
+          <p className="mb-5 font-display text-2xl font-bold tracking-tight sm:text-3xl">
+            <span className="text-primary-foreground">FoodTruck</span>
+            <span className="text-primary">CLT</span>
+          </p>
 
-            <div className="mt-8 flex flex-col items-start gap-4">
-              <Button size="lg" className="h-14 px-8 shadow-lg" asChild>
-                <Link href="/book-a-truck" className="inline-flex items-center gap-2">
-                  <CalendarPlus className="h-5 w-5" />
-                  Book Food Trucks
-                </Link>
-              </Button>
-              <Link
-                href="/list-your-truck"
-                className="text-sm font-medium text-primary-foreground/90 underline underline-offset-4 hover:text-primary-foreground"
-              >
-                Own a food truck? Join or update your profile
+          <h1 className="font-display text-[2.35rem] font-bold leading-[1.05] tracking-tight text-primary-foreground sm:text-5xl lg:text-6xl">
+            Request the right food trucks for your Charlotte event.
+          </h1>
+
+          <p className="mt-6 max-w-2xl text-base leading-7 text-primary-foreground/80 md:text-lg md:leading-8">
+            Submit one request and connect directly with local food trucks available for schools,
+            neighborhoods, breweries, corporate events, private parties, and community gatherings.
+          </p>
+
+          <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+            <Button size="lg" asChild className="h-14 px-7">
+              <Link href="/book-a-truck" className="flex items-center justify-center gap-2">
+                Request a Food Truck
+                <ArrowRight className="h-4 w-4" />
               </Link>
-            </div>
+            </Button>
+            <Button
+              size="lg"
+              variant="secondary"
+              asChild
+              className="h-14 bg-primary-foreground text-foreground hover:bg-primary-foreground/90"
+            >
+              <Link href="/trucks" className="flex items-center justify-center gap-2">
+                <Truck className="h-5 w-5" />
+                Browse Trucks
+              </Link>
+            </Button>
           </div>
+
+          <p className="mt-6 text-sm text-primary-foreground/65">
+            <span className="font-medium text-primary-foreground/85 tabular-nums">{directoryTruckCount}</span>{" "}
+            trucks listed
+            <span className="mx-2 text-primary-foreground/35">·</span>
+            <span className="font-medium text-primary-foreground/85 tabular-nums">{upcomingEventCount}</span>{" "}
+            upcoming events
+          </p>
         </div>
       </div>
     </section>

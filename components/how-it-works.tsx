@@ -1,75 +1,54 @@
-import { Search, Calendar, MessageSquare, CheckCircle } from "lucide-react"
+import { CalendarPlus, MessageSquare, Users } from "lucide-react"
 
 const steps = [
   {
-    icon: Search,
-    title: "Browse & Discover",
-    description: "Browse by cuisine, service area, and event fit to find the perfect truck for your needs.",
+    icon: CalendarPlus,
+    title: "Submit your event request",
+    description:
+      "Share the date, location, guest count, and cuisine fit. One request reaches relevant Charlotte trucks.",
   },
   {
-    icon: Calendar,
-    title: "See Who's Serving",
-    description: "Check where local trucks are serving this week with real-time availability updates.",
+    icon: Users,
+    title: "Matched trucks review the opportunity",
+    description:
+      "Local trucks that fit your event can review the details and decide if they want to respond.",
   },
   {
     icon: MessageSquare,
-    title: "Submit an Inquiry",
-    description: "Share one inquiry to start your booking process with your chosen food truck.",
-  },
-  {
-    icon: CheckCircle,
-    title: "Confirm & Enjoy",
-    description: "Finalize details directly with the vendor and enjoy amazing food at your event.",
+    title: "Connect directly with interested trucks",
+    description:
+      "Interested vendors reach out so you can compare options and finalize details with them directly.",
   },
 ]
 
 export function HowItWorks() {
   return (
-    <section className="py-24 bg-background">
-      <div className="mx-auto max-w-7xl px-6 lg:px-8">
-        {/* Section Header */}
-        <div className="text-center max-w-2xl mx-auto mb-16">
-          <p className="text-sm font-medium text-primary uppercase tracking-wider mb-2">
-            How It Works
+    <section className="border-b bg-background py-14 md:py-20">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto mb-12 max-w-2xl text-center md:mb-16">
+          <p className="mb-2 text-sm font-semibold uppercase tracking-[0.22em] text-primary">
+            How it works
           </p>
-          <h2 className="font-display text-3xl sm:text-4xl font-bold text-foreground">
-            Simple by Design, Reliable in Practice
+          <h2 className="font-display text-3xl font-bold tracking-tight text-foreground md:text-4xl">
+            Request once. Connect directly.
           </h2>
-          <p className="mt-4 text-muted-foreground">
-            This is a local guide first. You can find trucks, track events, and submit inquiries 
-            without the clutter of a full marketplace app.
+          <p className="mt-4 text-base leading-7 text-muted-foreground md:text-lg">
+            FoodTruckCLT is a local request platform — we help you find and reach the right trucks,
+            then you work with them directly.
           </p>
         </div>
 
-        {/* Steps Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+        <div className="grid grid-cols-1 gap-10 md:grid-cols-3 md:gap-8">
           {steps.map((step, index) => (
-            <div key={step.title} className="relative group">
-              {/* Connector Line */}
-              {index < steps.length - 1 && (
-                <div className="hidden lg:block absolute top-10 left-[calc(50%+40px)] w-[calc(100%-80px)] h-px bg-border" />
-              )}
-              
-              {/* Step Card */}
-              <div className="relative flex flex-col items-center text-center p-6 rounded-2xl bg-card border border-border transition-all hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5">
-                {/* Step Number */}
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center">
-                  {index + 1}
-                </div>
-                
-                {/* Icon */}
-                <div className="w-16 h-16 rounded-xl bg-primary/10 flex items-center justify-center mb-4 group-hover:bg-primary/20 transition-colors">
-                  <step.icon className="h-8 w-8 text-primary" />
-                </div>
-                
-                {/* Content */}
-                <h3 className="font-display font-semibold text-foreground mb-2">
-                  {step.title}
-                </h3>
-                <p className="text-sm text-muted-foreground leading-relaxed">
-                  {step.description}
-                </p>
+            <div key={step.title} className="relative text-center md:text-left">
+              <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                <step.icon className="h-6 w-6" aria-hidden />
               </div>
+              <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
+                Step {index + 1}
+              </p>
+              <h3 className="font-display text-xl font-semibold text-foreground">{step.title}</h3>
+              <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{step.description}</p>
             </div>
           ))}
         </div>
