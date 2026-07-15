@@ -9,7 +9,7 @@ import { cachedPwaIconHref } from '@/lib/pwa-icon-cache'
 const manrope = Manrope({
   subsets: ["latin"],
   weight: ["400", "500", "600", "700", "800"],
-  variable: '--font-manrope',
+  variable: '--font-sans',
 })
 
 export const viewport: Viewport = {
