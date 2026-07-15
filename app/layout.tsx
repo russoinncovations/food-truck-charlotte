@@ -1,20 +1,16 @@
 import type { Metadata, Viewport } from 'next'
-import { DM_Sans, Space_Grotesk } from 'next/font/google'
+import { Manrope } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import './globals.css'
 import { Toaster } from '@/components/ui/toaster'
 import { FTCLT_BRAND_THEME_COLOR } from '@/lib/brand-colors'
 import { cachedPwaIconHref } from '@/lib/pwa-icon-cache'
 
-const dmSans = DM_Sans({ 
+const manrope = Manrope({
   subsets: ["latin"],
-  variable: '--font-sans',
-});
-
-const spaceGrotesk = Space_Grotesk({ 
-  subsets: ["latin"],
-  variable: '--font-display',
-});
+  weight: ["400", "500", "600", "700", "800"],
+  variable: '--font-manrope',
+})
 
 export const viewport: Viewport = {
   themeColor: FTCLT_BRAND_THEME_COLOR,
@@ -24,8 +20,8 @@ export const viewport: Viewport = {
 }
 
 export const metadata: Metadata = {
-  title: 'Food Truck CLT | Charlotte\'s Food Truck Community',
-  description: 'The only local guide built from Charlotte\'s own 35,000-member food truck community. Find trucks, discover events, and book for your next gathering.',
+  title: 'FoodTruckCLT | Request Charlotte Food Trucks',
+  description: 'Find Charlotte food trucks. Request the right ones for your event. Connect directly with local vendors for corporate events, schools, parties, and more.',
   generator: 'v0.app',
   icons: {
     icon: [
@@ -49,7 +45,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${dmSans.variable} ${spaceGrotesk.variable} font-sans antialiased`}>
+      <body className={`${manrope.variable} font-sans antialiased`}>
         {children}
         <Toaster />
         {process.env.NODE_ENV === 'production' && <Analytics />}

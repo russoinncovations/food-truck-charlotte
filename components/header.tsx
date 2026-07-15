@@ -2,28 +2,25 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
-import { Menu, MapPin, Calendar, Truck, LogIn } from "lucide-react"
+import { Menu, MapPin, Calendar, Truck, LayoutDashboard, CalendarPlus, BookOpen } from "lucide-react"
 
-function HeaderBrandMark() {
+function BrandWordmark({ className = "" }: { className?: string }) {
   return (
-    <Image
-      src="/brand-mark.png"
-      alt=""
-      width={36}
-      height={36}
-      className="h-9 w-9 shrink-0"
-      priority
-    />
+    <span className={`font-display text-lg font-bold leading-none tracking-tight ${className}`}>
+      <span className="text-foreground">FoodTruck</span>
+      <span className="text-primary">CLT</span>
+    </span>
   )
 }
 
 const navigation = [
-  { name: "Find Food Trucks", href: "/map", icon: MapPin },
-  { name: "Events & Map", href: "/events", icon: Calendar },
-  { name: "For Truck Owners", href: "/list-your-truck", icon: Truck },
+  { name: "Request a Truck", href: "/book-a-truck", icon: CalendarPlus },
+  { name: "Browse Trucks", href: "/trucks", icon: Truck },
+  { name: "Events", href: "/events", icon: Calendar },
+  { name: "Live Map", href: "/map", icon: MapPin },
+  { name: "Resources", href: "/resources", icon: BookOpen },
 ]
 
 export function Header() {
@@ -31,18 +28,13 @@ export function Header() {
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b border-border">
-      <div className="w-full bg-[#D94F1E] px-4 py-2 text-center text-sm text-white" />
       <nav className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="flex h-16 items-center justify-between gap-3">
-          <Link href="/" className="flex items-center gap-2 shrink-0">
-            <HeaderBrandMark />
-            <div className="flex flex-col">
-              <span className="font-display text-lg font-bold leading-none tracking-tight">FoodTruck</span>
-              <span className="text-xs font-medium text-primary">CLT</span>
-            </div>
+        <div className="flex h-16 items-center justify-between">
+          <Link href="/" className="flex items-baseline" aria-label="FoodTruckCLT home">
+            <BrandWordmark />
           </Link>
 
-          <div className="hidden lg:flex lg:items-center lg:gap-1">
+          <div className="hidden md:flex md:items-center md:gap-1">
             {navigation.map((item) => (
               <Link
                 key={item.name}
@@ -55,15 +47,15 @@ export function Header() {
             ))}
           </div>
 
-          <div className="hidden md:flex md:items-center md:gap-2">
+          <div className="hidden md:flex md:items-center md:gap-3">
             <Button variant="ghost" size="sm" asChild>
-              <Link href="/vendor-login" className="flex items-center gap-2">
-                <LogIn className="h-4 w-4" />
-                Log In
+              <Link href="/dashboard" className="flex items-center gap-2">
+                <LayoutDashboard className="h-4 w-4" />
+                Vendor Login
               </Link>
             </Button>
             <Button size="sm" asChild>
-              <Link href="/book-a-truck">Book Food Trucks</Link>
+              <Link href="/book-a-truck">Request a Truck</Link>
             </Button>
           </div>
 
@@ -76,20 +68,11 @@ export function Header() {
             </SheetTrigger>
             <SheetContent side="right" className="w-80">
               <div className="flex flex-col gap-6 pt-6">
-                <Link href="/" className="flex items-center gap-2" onClick={() => setIsOpen(false)}>
-                  <HeaderBrandMark />
-                  <div className="flex flex-col">
-                    <span className="font-display text-lg font-bold leading-none">FoodTruck</span>
-                    <span className="text-xs font-medium text-primary">CLT</span>
-                  </div>
+                <Link href="/" className="flex items-baseline" onClick={() => setIsOpen(false)}>
+                  <BrandWordmark />
                 </Link>
 
                 <nav className="flex flex-col gap-1">
-                  <Button asChild className="justify-start">
-                    <Link href="/book-a-truck" onClick={() => setIsOpen(false)}>
-                      Book Food Trucks
-                    </Link>
-                  </Button>
                   {navigation.map((item) => (
                     <Link
                       key={item.name}
@@ -104,10 +87,24 @@ export function Header() {
                 </nav>
 
                 <div className="border-t pt-6 flex flex-col gap-3">
+                  <Button asChild>
+                    <Link href="/book-a-truck" onClick={() => setIsOpen(false)}>
+                      Request a Truck
+                    </Link>
+                  </Button>
                   <Button variant="outline" asChild className="justify-start">
-                    <Link href="/vendor-login" onClick={() => setIsOpen(false)} className="flex items-center gap-2">
-                      <LogIn className="h-4 w-4" />
-                      Log In
+                    <Link
+                      href="/dashboard"
+                      onClick={() => setIsOpen(false)}
+                      className="flex items-center gap-2"
+                    >
+                      <LayoutDashboard className="h-4 w-4" />
+                      Vendor Login
+                    </Link>
+                  </Button>
+                  <Button variant="ghost" asChild className="justify-start">
+                    <Link href="/list-your-truck" onClick={() => setIsOpen(false)}>
+                      List Your Truck
                     </Link>
                   </Button>
                 </div>

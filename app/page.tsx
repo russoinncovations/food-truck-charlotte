@@ -1,17 +1,24 @@
 import { Header } from "@/components/header"
 import { Hero } from "@/components/hero"
-import { HomepagePrimaryPaths } from "@/components/homepage-primary-paths"
+import { HowItWorks } from "@/components/how-it-works"
+import { HomepageUseCases } from "@/components/homepage-use-cases"
 import { FeaturedTrucks } from "@/components/featured-trucks"
+import { VendorCTA } from "@/components/vendor-cta"
 import { MapPreviewClient } from "@/components/map-preview-client"
 import { EventsSection } from "@/components/events-section"
+import { HomepageResourcesTeaser } from "@/components/homepage-resources-teaser"
 import { Footer } from "@/components/footer"
 import { createClient } from "@/lib/supabase/server"
+import { countUpcomingPublicEvents } from "@/lib/events/public-events"
 import { fetchMapEventMarkers, filterMapEventsForRealtimePins } from "@/lib/events/map-event-markers"
 import { getMapPageTruckPinRows, getMapSidebarAllListedTruckRows } from "@/lib/map/map-page-truck-rows"
 import { fetchHomepageFeaturedTrucks } from "@/lib/trucks/homepage-featured-trucks"
+import { countPublicDirectoryTrucks } from "@/lib/trucks/public-directory"
 
 export default async function Home() {
   const supabase = await createClient()
+  const upcomingEventCount = await countUpcomingPublicEvents(supabase)
+  const directoryTruckCount = await countPublicDirectoryTrucks(supabase)
 
   const liveTruckRows = await getMapPageTruckPinRows(supabase)
   const allListedTruckRows = await getMapSidebarAllListedTruckRows(supabase)
@@ -29,15 +36,18 @@ export default async function Home() {
   return (
     <main className="min-h-screen bg-background">
       <Header />
-      <Hero />
-      <HomepagePrimaryPaths />
+      <Hero upcomingEventCount={upcomingEventCount} directoryTruckCount={directoryTruckCount} />
+      <HowItWorks />
+      <HomepageUseCases />
       <FeaturedTrucks trucks={featuredTrucks} />
+      <VendorCTA directoryTruckCount={directoryTruckCount} />
       <MapPreviewClient
         liveTruckRows={liveTruckRows}
         allListedTruckRows={allListedTruckRows}
         mapPinEvents={mapPinEvents}
       />
       <EventsSection />
+      <HomepageResourcesTeaser />
       <Footer />
     </main>
   )

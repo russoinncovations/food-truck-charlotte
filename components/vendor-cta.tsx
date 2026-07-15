@@ -1,156 +1,98 @@
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
-import { 
-  Truck, 
-  Calendar, 
-  Users, 
-  CheckCircle2, 
+import {
   ArrowRight,
-  Building2,
-  PartyPopper
+  CheckCircle2,
+  LayoutDashboard,
+  MapPin,
+  Megaphone,
+  Store,
 } from "lucide-react"
 
-const vendorBenefits = [
-  "Post your schedule so customers can find you",
-  "Show up in search when people look for trucks",
-  "Get contacted directly for private events",
-  "Free to list - no subscription fees",
-]
-
-const hostBenefits = [
-  "Browse Charlotte food trucks by cuisine and availability",
-  "See real reviews from Charlotte customers",
-  "Contact trucks directly - no middleman",
-  "Great for breweries, offices, and private parties",
+const ownerBenefits = [
+  "Claim and maintain your truck profile so hosts can find you",
+  "Receive relevant event requests that match your cuisine and service area",
+  "Promote upcoming stops and public events from your dashboard",
+  "Show live on the map when you are serving",
 ]
 
 export function VendorCTA({ directoryTruckCount }: { directoryTruckCount: number }) {
   return (
-    <section className="py-16 md:py-24">
+    <section className="border-y bg-card py-14 md:py-20">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="grid md:grid-cols-2 gap-6">
-          {/* For Truck Owners */}
-          <Card className="relative overflow-hidden border-2 hover:border-primary/50 transition-colors">
-            <CardContent className="p-8">
-              {/* Icon */}
-              <div className="mb-6 inline-flex h-14 w-14 items-center justify-center rounded-xl bg-primary/10">
-                <Truck className="h-7 w-7 text-primary" />
+        <div className="grid items-center gap-10 lg:grid-cols-[1.1fr_0.9fr]">
+          <div>
+            <p className="text-sm font-semibold uppercase tracking-[0.22em] text-primary">
+              For food truck owners
+            </p>
+            <h2 className="mt-3 font-display text-3xl font-bold leading-tight tracking-tight text-foreground md:text-4xl">
+              Get found. Get requested. Stay visible.
+            </h2>
+            <p className="mt-4 max-w-xl text-base leading-7 text-muted-foreground md:text-lg md:leading-8">
+              FoodTruckCLT helps Charlotte trucks claim their profile, receive relevant host
+              requests, promote upcoming stops, and show live when serving — then you connect
+              with hosts directly.
+            </p>
+
+            <ul className="mt-8 grid gap-3">
+              {ownerBenefits.map((benefit) => (
+                <li key={benefit} className="flex items-start gap-3">
+                  <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
+                  <span className="text-sm leading-6 text-foreground">{benefit}</span>
+                </li>
+              ))}
+            </ul>
+
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+              <Button asChild size="lg">
+                <Link href="/list-your-truck" className="flex items-center justify-center gap-2">
+                  Claim Your Profile
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+              </Button>
+              <Button variant="outline" size="lg" asChild>
+                <Link href="/dashboard" className="flex items-center justify-center gap-2">
+                  <LayoutDashboard className="h-4 w-4" />
+                  Vendor Dashboard
+                </Link>
+              </Button>
+            </div>
+          </div>
+
+          <div className="relative overflow-hidden rounded-2xl border bg-background p-6 shadow-sm md:p-8">
+            <div className="mb-6 flex items-center justify-between gap-4">
+              <div className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                <Store className="h-6 w-6" />
               </div>
+              <div className="text-right">
+                <p className="font-display text-3xl font-bold tabular-nums text-foreground">
+                  {directoryTruckCount}
+                </p>
+                <p className="text-xs text-muted-foreground">Trucks listed</p>
+              </div>
+            </div>
 
-              <h3 className="font-display text-2xl font-bold text-foreground mb-2">
-                Own a food truck?
-              </h3>
-              <p className="text-muted-foreground mb-6">
-                List your truck so Charlotte customers can find you. Post your schedule, 
-                get booking requests, and grow your following.
-              </p>
-
-              {/* Benefits */}
-              <ul className="space-y-3 mb-8">
-                {vendorBenefits.map((benefit) => (
-                  <li key={benefit} className="flex items-center gap-3">
-                    <CheckCircle2 className="h-5 w-5 text-primary shrink-0" />
-                    <span className="text-sm text-foreground">{benefit}</span>
-                  </li>
-                ))}
-              </ul>
-
-              {/* Stats */}
-              <div className="flex gap-6 mb-8 pb-8 border-b">
+            <div className="space-y-4">
+              <div className="flex items-start gap-3 rounded-xl bg-muted/50 p-4">
+                <Megaphone className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
                 <div>
-                  <p className="text-2xl font-bold text-foreground">{directoryTruckCount}</p>
-                  <p className="text-sm text-muted-foreground">Trucks listed</p>
+                  <p className="text-sm font-semibold text-foreground">Promote your stops</p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Share upcoming service nights and events so hungry Charlotte finds you.
+                  </p>
                 </div>
+              </div>
+              <div className="flex items-start gap-3 rounded-xl bg-muted/50 p-4">
+                <MapPin className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
                 <div>
-                  <p className="text-2xl font-bold text-foreground">35K</p>
-                  <p className="text-sm text-muted-foreground">Community members</p>
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-foreground">Free</p>
-                  <p className="text-sm text-muted-foreground">Always</p>
+                  <p className="text-sm font-semibold text-foreground">Show live when serving</p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Check in so your truck appears on the live map while you are open.
+                  </p>
                 </div>
               </div>
-
-              {/* CTA */}
-              <div className="flex flex-col sm:flex-row gap-3">
-                <Button asChild className="flex-1">
-                  <Link href="/list-your-truck" className="flex items-center justify-center gap-2">
-                    List Your Truck
-                    <ArrowRight className="h-4 w-4" />
-                  </Link>
-                </Button>
-                <Button variant="outline" asChild className="flex-1">
-                  <Link href="/dashboard">Vendor Dashboard</Link>
-                </Button>
-              </div>
-            </CardContent>
-
-            {/* Background decoration */}
-            <div className="absolute top-0 right-0 -mt-8 -mr-8 h-32 w-32 rounded-full bg-primary/5" />
-          </Card>
-
-          {/* For Event Hosts */}
-          <Card className="relative overflow-hidden border-2 hover:border-accent/50 transition-colors">
-            <CardContent className="p-8">
-              {/* Icon */}
-              <div className="mb-6 inline-flex h-14 w-14 items-center justify-center rounded-xl bg-accent/20">
-                <PartyPopper className="h-7 w-7 text-accent" />
-              </div>
-
-              <h3 className="font-display text-2xl font-bold text-foreground mb-2">
-                Booking trucks for an event?
-              </h3>
-              <p className="text-muted-foreground mb-6">
-                Browse trucks by cuisine and check their availability. 
-                Perfect for breweries, corporate events, HOAs, and private parties.
-              </p>
-
-              {/* Benefits */}
-              <ul className="space-y-3 mb-8">
-                {hostBenefits.map((benefit) => (
-                  <li key={benefit} className="flex items-center gap-3">
-                    <CheckCircle2 className="h-5 w-5 text-accent shrink-0" />
-                    <span className="text-sm text-foreground">{benefit}</span>
-                  </li>
-                ))}
-              </ul>
-
-              {/* Event Types */}
-              <div className="flex flex-wrap gap-2 mb-8 pb-8 border-b">
-                {[
-                  { icon: Building2, label: "Corporate" },
-                  { icon: Users, label: "HOA / Community" },
-                  { icon: PartyPopper, label: "Private Party" },
-                  { icon: Calendar, label: "Recurring" },
-                ].map((type) => (
-                  <div
-                    key={type.label}
-                    className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-muted text-sm"
-                  >
-                    <type.icon className="h-4 w-4 text-muted-foreground" />
-                    <span>{type.label}</span>
-                  </div>
-                ))}
-              </div>
-
-              {/* CTA */}
-              <div className="flex flex-col sm:flex-row gap-3">
-                <Button asChild className="flex-1 bg-accent text-accent-foreground hover:bg-accent/90">
-                  <Link href="/book-a-truck" className="flex items-center justify-center gap-2">
-                    Book Trucks for Event
-                    <ArrowRight className="h-4 w-4" />
-                  </Link>
-                </Button>
-                <Button variant="outline" asChild className="flex-1">
-                  <Link href="/events">Browse Events</Link>
-                </Button>
-              </div>
-            </CardContent>
-
-            {/* Background decoration */}
-            <div className="absolute top-0 right-0 -mt-8 -mr-8 h-32 w-32 rounded-full bg-accent/10" />
-          </Card>
+            </div>
+          </div>
         </div>
       </div>
     </section>
