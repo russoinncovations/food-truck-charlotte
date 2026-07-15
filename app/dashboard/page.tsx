@@ -62,17 +62,6 @@ export default async function DashboardPage({
     user.email
   )
 
-  const publicSiteBase = (() => {
-    const fromEnv = process.env.NEXT_PUBLIC_APP_URL
-    if (fromEnv) return fromEnv.replace(/\/$/, "")
-    const v = process.env.VERCEL_URL
-    if (v) {
-      const host = v.replace(/^https?:\/\//, "")
-      return `https://${host.replace(/\/$/, "")}`
-    }
-    return "https://www.foodtruckclt.com"
-  })()
-
   const supportEmail = process.env.NEXT_PUBLIC_SUPPORT_EMAIL ?? "support@foodtruckclt.com"
 
   const truckContext =
@@ -347,7 +336,6 @@ export default async function DashboardPage({
                   recentResponseOpportunities={historyOpportunityCards}
                   pastOpportunities={pastOpportunityCards}
                   truckContext={truckContext}
-                  siteBaseUrl={publicSiteBase}
                   supportEmail={supportEmail}
                   initialOpportunityId={initialOpportunityId}
                 />

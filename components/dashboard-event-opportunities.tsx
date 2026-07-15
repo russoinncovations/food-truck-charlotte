@@ -16,7 +16,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet"
-import { Calendar, Clock, Mail, MapPin, Users } from "lucide-react"
+import { Calendar, Clock, MapPin, Users } from "lucide-react"
 import { toast } from "@/hooks/use-toast"
 import {
   getEffectiveOpportunityStatus,
@@ -101,28 +101,24 @@ function formatLocation(br: NonNullable<DashboardOpportunity["booking"]>) {
   return lines.length ? lines : ["—"]
 }
 
-function buildOrganizerMailto(opp: DashboardOpportunity, truck: TruckContext, siteBaseUrl: string) {
+function buildNeedMoreInfoMailto(opp: DashboardOpportunity, truck: TruckContext) {
   const br = opp.booking
   if (!br?.contact_email) return null
   const eventName = br.event_display_name
-  const subject = `Food Truck Interest – ${eventName}`
-  const profilePath = truck.slug ? `/trucks/${truck.slug}` : "/trucks"
-  const profileUrl = `${siteBaseUrl}${profilePath}`
+  const subject = `Question about your event request — ${eventName}`
   const body = [
     `Hello,`,
     ``,
-    `I'm writing from ${truck.name} (${truck.cuisineLine}).`,
+    `I'm ${truck.name} (${truck.cuisineLine}). I'm reviewing your event request on FoodTruckCLT and need a little more information before I can confirm interest.`,
     ``,
-    `Truck profile: ${profileUrl}`,
+    `Could you please share:`,
     ``,
-    `Please confirm the event details, schedule, and payment terms before I commit to participating.`,
+    `- `,
     ``,
     `Thank you,`,
     truck.name,
   ].join("\n")
-  const email = br.contact_email.trim()
-  if (!email) return null
-  return `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
+  return `mailto:${br.contact_email.trim()}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
 }
 
 function buildReportMailto(opp: DashboardOpportunity, supportEmail: string) {
@@ -135,7 +131,6 @@ function buildReportMailto(opp: DashboardOpportunity, supportEmail: string) {
 function OpportunityActions({
   opp,
   truckContext,
-  siteBaseUrl,
   supportEmail,
   effectiveStatus,
   busy,
@@ -145,7 +140,6 @@ function OpportunityActions({
 }: {
   opp: DashboardOpportunity
   truckContext: TruckContext | null
-  siteBaseUrl: string
   supportEmail: string
   effectiveStatus: string
   busy: boolean
@@ -157,8 +151,8 @@ function OpportunityActions({
   const pending = isOpportunityPendingForAction(effectiveStatus)
   const interested = isOpportunityInterested(effectiveStatus)
   const notAvailable = isOpportunityNotAvailable(effectiveStatus)
-  const organizerMailto =
-    truckContext != null && interested && br ? buildOrganizerMailto(opp, truckContext, siteBaseUrl) : null
+  const needMoreInfoMailto =
+    truckContext != null && pending && br ? buildNeedMoreInfoMailto(opp, truckContext) : null
 
   if (!pending && !interested && !notAvailable) return null
 
@@ -166,47 +160,43 @@ function OpportunityActions({
     <div className={cn("space-y-2 pt-1", className)} onClick={(e) => e.stopPropagation()}>
       {pending ? (
         <>
-          <p className="text-xs font-medium text-foreground">I&apos;m interested / Not available</p>
-          <p className="text-xs text-muted-foreground leading-relaxed">
-            After you mark <span className="font-medium text-foreground">I&apos;m interested</span>, an{" "}
-            <span className="font-medium text-foreground">Email Organizer</span> button appears so you can reach the
-            host directly.
-          </p>
-          <div className="flex gap-2">
-            <form action={onAction} className="flex-1">
-              <input type="hidden" name="opportunityId" value={opp.id} />
-              <input type="hidden" name="status" value="interested" />
-              <Button type="submit" size="sm" className="w-full" disabled={busy}>
-                {busy && submitting === "interested" ? "Saving…" : "I'm interested"}
+          <p className="text-xs font-medium text-foreground">Your response</p>
+          <div className="flex flex-col gap-2">
+            <div className="flex gap-2">
+              <form action={onAction} className="flex-1">
+                <input type="hidden" name="opportunityId" value={opp.id} />
+                <input type="hidden" name="status" value="interested" />
+                <Button type="submit" size="sm" className="w-full" disabled={busy}>
+                  {busy && submitting === "interested" ? "Saving…" : "I'm interested"}
+                </Button>
+              </form>
+              <form action={onAction} className="flex-1">
+                <input type="hidden" name="opportunityId" value={opp.id} />
+                <input type="hidden" name="status" value="not_available" />
+                <Button type="submit" variant="outline" size="sm" className="w-full" disabled={busy}>
+                  {busy && submitting === "not_available" ? "Saving…" : "Not available"}
+                </Button>
+              </form>
+            </div>
+            {truckContext && needMoreInfoMailto ? (
+              <Button variant="outline" size="sm" className="w-full" asChild>
+                <a href={needMoreInfoMailto}>Need More Information</a>
               </Button>
-            </form>
-            <form action={onAction} className="flex-1">
-              <input type="hidden" name="opportunityId" value={opp.id} />
-              <input type="hidden" name="status" value="not_available" />
-              <Button type="submit" variant="outline" size="sm" className="w-full" disabled={busy}>
-                {busy && submitting === "not_available" ? "Saving…" : "Not available"}
-              </Button>
-            </form>
+            ) : null}
           </div>
         </>
       ) : null}
 
       {interested ? (
-        <>
-          <Badge variant="secondary" className="text-xs">
-            Interested
-          </Badge>
-          {truckContext && organizerMailto ? (
-            <Button size="sm" className="w-full" asChild>
-              <a href={organizerMailto}>
-                <Mail className="h-3.5 w-3.5 mr-1.5" />
-                Email Organizer
-              </a>
-            </Button>
-          ) : !br?.contact_email ? (
-            <p className="text-xs text-muted-foreground">Organizer email isn&apos;t available for this request.</p>
-          ) : null}
-        </>
+        <div className="space-y-2">
+          <Button size="sm" className="w-full" disabled>
+            Interested ✓
+          </Button>
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            You are marked interested. Your truck profile and booking contact details have been shared with the
+            organizer.
+          </p>
+        </div>
       ) : null}
 
       {notAvailable ? (
@@ -314,7 +304,6 @@ export function DashboardEventOpportunities({
   recentResponseOpportunities = [],
   pastOpportunities = [],
   truckContext,
-  siteBaseUrl,
   supportEmail,
   initialOpportunityId = null,
 }: {
@@ -322,7 +311,6 @@ export function DashboardEventOpportunities({
   recentResponseOpportunities?: DashboardOpportunity[]
   pastOpportunities?: DashboardOpportunity[]
   truckContext: TruckContext | null
-  siteBaseUrl: string
   supportEmail: string
   initialOpportunityId?: string | null
 }) {
@@ -375,8 +363,8 @@ export function DashboardEventOpportunities({
         )
         if (nextStatus === "interested") {
           toast({
-            title: "You're marked interested",
-            description: "Email the organizer to continue.",
+            title: "Interested recorded",
+            description: "Your profile and booking contact details were shared with the organizer.",
           })
         } else {
           toast({
@@ -414,9 +402,8 @@ export function DashboardEventOpportunities({
             Requests from customers looking to book a food truck, cart, or tent — not public calendar listings.
           </CardDescription>
           <p className="text-xs text-muted-foreground pt-1">
-            Direct bookings to your truck, open requests, and cuisine matches appear here when hosts submit them. After
-            you mark <span className="font-medium text-foreground">I&apos;m interested</span>, you can email the host
-            from this panel.
+            Direct bookings to your truck, open requests, and cuisine matches appear here when hosts submit them. Mark
+            interested to share your profile with the organizer automatically.
           </p>
         </CardHeader>
         <CardContent>
@@ -436,9 +423,9 @@ export function DashboardEventOpportunities({
           Requests to Confirm
         </CardTitle>
         <CardDescription>
-          Tap a request for full details. Mark <span className="font-medium text-foreground">I&apos;m interested</span>{" "}
-          or <span className="font-medium text-foreground">Not available</span>, then email the organizer only after
-          you&apos;ve recorded interest.
+          Tap a request for full details. Mark <span className="font-medium text-foreground">Interested</span>,{" "}
+          <span className="font-medium text-foreground">Not available</span>, or ask for more information before you
+          respond.
         </CardDescription>
         <p className="text-xs text-muted-foreground pt-1">
           FoodTruckCLT shares opportunities from customers. Agreements and payments are between you and the host.
@@ -513,7 +500,6 @@ export function DashboardEventOpportunities({
                     <OpportunityActions
                       opp={opp}
                       truckContext={truckContext}
-                      siteBaseUrl={siteBaseUrl}
                       supportEmail={supportEmail}
                       effectiveStatus={effectiveStatus}
                       busy={busy}
@@ -533,8 +519,7 @@ export function DashboardEventOpportunities({
             <div>
               <p className="text-sm font-medium text-foreground">Your recent responses</p>
               <p className="text-xs text-muted-foreground leading-relaxed">
-                Opportunities you&apos;ve already marked. Use <span className="font-medium text-foreground">Email organizer</span>{" "}
-                only for requests where you said you were interested.
+                Opportunities you&apos;ve already marked. Interested trucks are shared automatically with the organizer.
               </p>
             </div>
             <div className="space-y-4">
@@ -551,10 +536,6 @@ export function DashboardEventOpportunities({
                   : "—"
                 const st = opp.status.toLowerCase()
                 const isInterested = st === "interested"
-                const organizerMailto =
-                  truckContext && isInterested && br
-                    ? buildOrganizerMailto(opp, truckContext, siteBaseUrl)
-                    : null
                 const visibilityLabel = requestVisibilityLabel(br)
 
                 return (
@@ -589,14 +570,14 @@ export function DashboardEventOpportunities({
                           </div>
                         </div>
                       </div>
-                      {organizerMailto ? (
-                        <div className="pointer-events-auto" onClick={(e) => e.stopPropagation()}>
-                          <Button variant="outline" size="sm" className="w-full" asChild>
-                            <a href={organizerMailto}>
-                              <Mail className="h-3.5 w-3.5 mr-1.5" />
-                              Email organizer
-                            </a>
+                      {isInterested ? (
+                        <div className="pointer-events-auto space-y-2" onClick={(e) => e.stopPropagation()}>
+                          <Button size="sm" className="w-full" disabled>
+                            Interested ✓
                           </Button>
+                          <p className="text-xs text-muted-foreground leading-relaxed">
+                            Your truck profile and booking contact details were shared with the organizer.
+                          </p>
                         </div>
                       ) : null}
                       <div className="pointer-events-auto" onClick={(e) => e.stopPropagation()}>
@@ -732,7 +713,6 @@ export function DashboardEventOpportunities({
                           <OpportunityActions
                             opp={detailOpp}
                             truckContext={truckContext}
-                            siteBaseUrl={siteBaseUrl}
                             supportEmail={supportEmail}
                             effectiveStatus={detailEffectiveStatus}
                             busy={activeOppId === detailOpp.id}

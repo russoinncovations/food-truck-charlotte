@@ -2,9 +2,7 @@ import type { Metadata } from "next"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { Card } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
 import { BookingRequestForm } from "@/components/forms/booking-request-form"
-import { Check } from "lucide-react"
 import { createClient } from "@/lib/supabase/server"
 import { countPublicDirectoryTrucks } from "@/lib/trucks/public-directory"
 
@@ -14,8 +12,8 @@ export async function generateMetadata(): Promise<Metadata> {
   const listingDescriptor =
     n > 0 ? `${n} active Charlotte food trucks on the platform.` : `Growing list of Charlotte food trucks.`
   return {
-    title: "Book a Food Truck | Food Truck CLT",
-    description: `Book food trucks for your next event in Charlotte. Corporate events, weddings, private parties, and more. ${listingDescriptor}`,
+    title: "Book Food Trucks for Your Event | Food Truck CLT",
+    description: `Submit an event request and connect with Charlotte food trucks. ${listingDescriptor}`,
   }
 }
 
@@ -28,16 +26,7 @@ export default async function BookATruckPage({
   const preselectedTruckId = truckParam?.trim() || null
 
   const supabase = await createClient()
-  const directoryCount = await countPublicDirectoryTrucks(supabase)
 
-  const benefits = [
-    directoryCount > 0
-      ? `Access ${directoryCount} Charlotte food trucks listed on the platform`
-      : `Growing list of Charlotte food vendors`,
-    "Free to submit a request",
-    "We match you with available truck vendors",
-    "Direct communication with vendors",
-  ]
   const { data: directoryTrucks } = await supabase
     .from("trucks")
     .select("id, name")
@@ -48,33 +37,21 @@ export default async function BookATruckPage({
     <main className="min-h-screen bg-background">
       <Header />
 
-      {/* Hero Section */}
-      <section className="relative pt-24 pb-12 md:pt-32 md:pb-16 overflow-hidden">
+      <section className="relative pt-24 pb-8 md:pt-32 md:pb-10 overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-b from-primary/5 to-transparent" />
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 relative">
-          <div className="text-center max-w-3xl mx-auto">
-            <Badge className="mb-4">Event Planning</Badge>
-            <h1 className="font-display text-4xl md:text-5xl font-bold text-foreground mb-6 text-balance">
-              Book Food Trucks for Your Event
-            </h1>
-            <p className="text-lg text-muted-foreground mb-6 max-w-2xl mx-auto">
-              Planning a corporate event, wedding, or private party? Tell us about your event and
-              we&apos;ll connect you with the perfect food trucks.
-            </p>
-            <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm text-muted-foreground">
-              {benefits.map((benefit, i) => (
-                <div key={`benefit-${i}`} className="flex items-center gap-2">
-                  <Check className="h-4 w-4 text-primary" />
-                  <span>{benefit}</span>
-                </div>
-              ))}
-            </div>
-          </div>
+        <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 relative text-center">
+          <h1 className="font-display text-4xl md:text-5xl font-bold text-foreground mb-4 text-balance">
+            Book Food Trucks for Your Event
+          </h1>
+          <p className="text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed">
+            Share a few details about your event and FoodTruckCLT will notify local trucks that may be a fit.
+            Interested trucks can contact you directly.
+          </p>
+          <p className="mt-3 text-sm text-muted-foreground">No account required.</p>
         </div>
       </section>
 
-      {/* Form Section */}
-      <section className="py-12 md:py-16">
+      <section className="py-8 md:py-12">
         <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
           <Card className="p-6 md:p-8">
             <BookingRequestForm

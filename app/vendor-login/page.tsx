@@ -82,9 +82,15 @@ function VendorLoginForm() {
             </p>
           )}
           {success && (
-            <p className="text-sm text-green-700 dark:text-green-400" role="status">
-              Check your email for a login link
-            </p>
+            <div className="space-y-2" role="status">
+              <p className="text-sm text-green-700 dark:text-green-400">
+                Check your email for a login link
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Open the newest link on this same device and browser. Older links expire or stop working
+                after one use.
+              </p>
+            </div>
           )}
           <Button
             type="submit"
