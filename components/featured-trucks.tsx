@@ -31,11 +31,11 @@ export function FeaturedTrucks({ trucks }: Props) {
               Truck profiles
             </p>
             <h2 className="mt-3 font-display text-3xl font-bold leading-tight tracking-tight text-foreground md:text-4xl">
-              Profiles that help you choose — and help trucks get found
+              Truck profiles that support better requests
             </h2>
             <p className="mt-4 text-base leading-7 text-muted-foreground md:text-lg md:leading-8">
-              Browse cuisine, photos, and service details before you request. Complete profiles
-              give hosts confidence and give trucks a clear place to be discovered.
+              Browse cuisine, photos, and service details before you request. Complete profiles help
+              hosts choose and help trucks get found.
             </p>
           </div>
           <Button variant="outline" asChild className="hidden md:flex">

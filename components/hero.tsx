@@ -30,7 +30,7 @@ export function Hero({ upcomingEventCount, directoryTruckCount }: HeroProps) {
             <span className="text-primary">CLT</span>
           </p>
 
-          <h1 className="font-display text-[2.35rem] font-bold leading-[1.05] tracking-tight text-primary-foreground sm:text-5xl lg:text-6xl">
+          <h1 className="font-display text-[2.15rem] font-bold leading-[1.1] tracking-tight text-primary-foreground sm:text-4xl lg:text-5xl">
             Request the right food trucks for your Charlotte event.
           </h1>
 
@@ -59,11 +59,16 @@ export function Hero({ upcomingEventCount, directoryTruckCount }: HeroProps) {
             </Button>
           </div>
 
-          <p className="mt-6 text-sm text-primary-foreground/65">
-            <span className="font-medium text-primary-foreground/85 tabular-nums">{directoryTruckCount}</span>{" "}
+          <p className="mt-6 max-w-2xl text-sm leading-6 text-primary-foreground/70">
+            Powered by Charlotte&apos;s largest food truck community · No booking commission · Connect
+            directly with trucks
+          </p>
+
+          <p className="mt-4 text-sm text-primary-foreground/55">
+            <span className="font-medium text-primary-foreground/75 tabular-nums">{directoryTruckCount}</span>{" "}
             trucks listed
-            <span className="mx-2 text-primary-foreground/35">·</span>
-            <span className="font-medium text-primary-foreground/85 tabular-nums">{upcomingEventCount}</span>{" "}
+            <span className="mx-2 text-primary-foreground/30">·</span>
+            <span className="font-medium text-primary-foreground/75 tabular-nums">{upcomingEventCount}</span>{" "}
             upcoming events
           </p>
         </div>

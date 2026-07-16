@@ -33,8 +33,9 @@ export function HowItWorks() {
             Request once. Connect directly.
           </h2>
           <p className="mt-4 text-base leading-7 text-muted-foreground md:text-lg">
-            FoodTruckCLT is a local request platform — we help you find and reach the right trucks,
-            then you work with them directly.
+            FoodTruckCLT is built by Charlotte&apos;s largest food truck community. We help you reach
+            the right local trucks, then you work with them directly. No middleman. No booking
+            commission.
           </p>
         </div>
 

@@ -4,7 +4,7 @@ import { useState } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
-import { Menu, MapPin, Calendar, Truck, LayoutDashboard, CalendarPlus, BookOpen } from "lucide-react"
+import { Menu, Calendar, Truck, LayoutDashboard, CalendarPlus, BookOpen } from "lucide-react"
 
 function BrandWordmark({ className = "" }: { className?: string }) {
   return (
@@ -19,7 +19,6 @@ const navigation = [
   { name: "Request a Truck", href: "/book-a-truck", icon: CalendarPlus },
   { name: "Browse Trucks", href: "/trucks", icon: Truck },
   { name: "Events", href: "/events", icon: Calendar },
-  { name: "Live Map", href: "/map", icon: MapPin },
   { name: "Resources", href: "/resources", icon: BookOpen },
 ]
 
