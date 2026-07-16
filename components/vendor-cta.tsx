@@ -26,12 +26,11 @@ export function VendorCTA({ directoryTruckCount }: { directoryTruckCount: number
               For food truck owners
             </p>
             <h2 className="mt-3 font-display text-3xl font-bold leading-tight tracking-tight text-foreground md:text-4xl">
-              Get found. Get requested. Stay visible.
+              Claim your truck profile and get found by Charlotte event hosts.
             </h2>
             <p className="mt-4 max-w-xl text-base leading-7 text-muted-foreground md:text-lg md:leading-8">
-              FoodTruckCLT helps Charlotte trucks claim their profile, receive relevant host
-              requests, promote upcoming stops, and show live when serving — then you connect
-              with hosts directly.
+              Keep your profile current, promote upcoming stops, and receive relevant food truck
+              requests as the platform grows.
             </p>
 
             <ul className="mt-8 grid gap-3">

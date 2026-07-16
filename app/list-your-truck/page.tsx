@@ -2,7 +2,6 @@
 
 import { useState, FormEvent } from "react"
 import { useRouter } from "next/navigation"
-import Link from "next/link"
 import { createClient } from "@/lib/supabase/client"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
@@ -135,21 +134,23 @@ export default function ListYourTruckPage() {
       <Header />
 
       {/* Hero Section */}
-      <section className="relative pt-24 pb-16 md:pt-32 md:pb-24 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-b from-primary/5 to-transparent" />
+      <section className="relative overflow-hidden bg-[#faf6f2] pt-24 pb-10 md:pt-28 md:pb-12">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 relative">
           <div className="text-center max-w-3xl mx-auto">
-            <Badge className="mb-4">For Food Truck Owners</Badge>
-            <h1 className="font-display text-4xl md:text-5xl lg:text-6xl font-bold text-foreground mb-6 text-balance">
-              Join Charlotte&apos;s local food truck community.
+            <Badge variant="outline" className="mb-4 bg-background/70 text-xs font-semibold uppercase tracking-wide">
+              For Food Truck Owners
+            </Badge>
+            <h1 className="mx-auto max-w-[18rem] font-display text-[1.875rem] font-bold leading-[1.1] tracking-[-0.02em] text-foreground mb-4 text-balance sm:max-w-3xl sm:text-4xl lg:text-5xl lg:leading-tight">
+              Claim your truck profile and get found by Charlotte event hosts.
             </h1>
-            <p className="text-lg md:text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-              Create a free truck profile, share your location, and help customers find you when you&apos;re live.
+            <p className="text-base leading-7 md:text-lg text-muted-foreground mb-7 max-w-2xl mx-auto">
+              Keep your profile current, promote upcoming stops, and receive relevant food truck
+              requests as the platform grows.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button size="lg" className="gap-2" asChild>
                 <a href="#apply">
-                  Create or claim your truck profile
+                  Claim your truck profile
                   <ArrowRight className="h-4 w-4" />
                 </a>
               </Button>
@@ -158,24 +159,24 @@ export default function ListYourTruckPage() {
               </Button>
             </div>
             <p className="mt-4 text-sm text-muted-foreground">
-              Start with a free truck profile
+              Built from Charlotte&apos;s largest food truck community
             </p>
           </div>
         </div>
       </section>
 
       {/* Application Form Section */}
-      <section id="apply" className="py-16 md:py-24 bg-muted/30">
+      <section id="apply" className="py-10 md:py-14 bg-[#faf6f2]">
         <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-10">
-            <h2 className="font-display text-3xl md:text-4xl font-bold text-foreground mb-4">
+          <div className="text-center mb-8">
+            <h2 className="font-display text-3xl md:text-4xl font-bold leading-tight text-foreground mb-3">
               Apply to Join
             </h2>
-            <p className="text-muted-foreground">
+            <p className="text-base leading-7 text-muted-foreground">
               Fill out the form below and we&apos;ll help get your truck listed.
             </p>
           </div>
-          <Card className="p-6 md:p-8">
+          <Card className="border-2 border-primary/15 p-5 shadow-xl shadow-foreground/5 md:p-8">
             <VendorSignupForm
               onSubmit={handleSubmit}
               submitError={submitError}
@@ -186,7 +187,7 @@ export default function ListYourTruckPage() {
       </section>
 
       {/* Stats Section */}
-      <section className="py-12 border-y bg-muted/30">
+      <section className="py-10 border-y bg-background">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 text-center max-w-2xl mx-auto">
             <div>
@@ -204,10 +205,10 @@ export default function ListYourTruckPage() {
       </section>
 
       {/* Features Section */}
-      <section id="features" className="py-16 md:py-24">
+      <section id="features" className="py-14 md:py-20">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h2 className="font-display text-3xl md:text-4xl font-bold text-foreground mb-4">
+          <div className="text-center mb-10">
+            <h2 className="font-display text-3xl md:text-4xl font-bold leading-tight text-foreground mb-3">
               What you get today
             </h2>
             <p className="text-muted-foreground max-w-2xl mx-auto">
@@ -215,7 +216,7 @@ export default function ListYourTruckPage() {
             </p>
           </div>
 
-          <div className="grid sm:grid-cols-2 gap-8 max-w-4xl mx-auto">
+          <div className="grid sm:grid-cols-2 gap-6 max-w-4xl mx-auto">
             {features.map((feature) => (
               <Card key={feature.title} className="border-2 hover:border-primary/50 transition-colors">
                 <CardContent className="p-6">
@@ -236,7 +237,7 @@ export default function ListYourTruckPage() {
       </section>
 
       {/* Pricing — single free tier */}
-      <section className="py-16 md:py-24 bg-muted/30">
+      <section className="py-14 md:py-20 bg-muted/30">
         <div className="mx-auto max-w-lg px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-8">
             <h2 className="font-display text-3xl md:text-4xl font-bold text-foreground mb-2">Simple listing</h2>
@@ -266,7 +267,7 @@ export default function ListYourTruckPage() {
               </ul>
               <Button size="lg" className="w-full gap-2" asChild>
                 <a href="#apply">
-                  Create or claim your truck profile
+                  Claim your truck profile
                   <ArrowRight className="h-4 w-4" />
                 </a>
               </Button>
@@ -276,15 +277,15 @@ export default function ListYourTruckPage() {
       </section>
 
       {/* Testimonials */}
-      <section className="py-16 md:py-24">
+      <section className="py-14 md:py-20">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h2 className="font-display text-3xl md:text-4xl font-bold text-foreground mb-4">
+          <div className="text-center mb-10">
+            <h2 className="font-display text-3xl md:text-4xl font-bold leading-tight text-foreground mb-3">
               Trusted by Charlotte&apos;s Best Trucks
             </h2>
           </div>
 
-          <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+          <div className="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto">
             {testimonials.map((testimonial, index) => (
               <Card key={testimonial.name} className="overflow-hidden">
                 <CardContent className="p-6">
@@ -315,7 +316,7 @@ export default function ListYourTruckPage() {
       </section>
 
       {/* Final CTA */}
-      <section className="py-16 md:py-24 bg-primary text-primary-foreground">
+      <section className="py-14 md:py-20 bg-primary text-primary-foreground">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 text-center">
           <h2 className="font-display text-3xl md:text-4xl font-bold mb-4">
             Ready to Grow Your Business?
@@ -325,7 +326,7 @@ export default function ListYourTruckPage() {
           </p>
           <Button size="lg" variant="secondary" className="gap-2" asChild>
             <a href="#apply">
-              Create or claim your truck profile
+              Claim your truck profile
               <ArrowRight className="h-4 w-4" />
             </a>
           </Button>

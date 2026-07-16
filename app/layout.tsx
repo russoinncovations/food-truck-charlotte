@@ -21,7 +21,7 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   title: 'FoodTruckCLT | Request Charlotte Food Trucks',
-  description: 'Find Charlotte food trucks. Request the right ones for your event. Connect directly with local vendors for corporate events, schools, parties, and more.',
+  description: 'Charlotte\'s food truck request network, built from the city\'s largest food truck community. Submit one request and connect directly with local trucks.',
   generator: 'v0.app',
   icons: {
     icon: [

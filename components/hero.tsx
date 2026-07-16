@@ -3,11 +3,7 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { ArrowRight, Truck } from "lucide-react"
 
-type HeroProps = {
-  directoryTruckCount: number
-}
-
-export function Hero({ directoryTruckCount }: HeroProps) {
+export function Hero() {
   return (
     <section className="relative overflow-hidden bg-foreground pt-16 text-primary-foreground">
       <div className="absolute inset-0">
@@ -34,8 +30,9 @@ export function Hero({ directoryTruckCount }: HeroProps) {
           </h1>
 
           <p className="mt-6 max-w-2xl text-base leading-7 text-primary-foreground/80 md:text-lg md:leading-8">
-            Submit one request and connect directly with local food trucks available for schools,
-            neighborhoods, breweries, corporate events, private parties, and community gatherings.
+            FoodTruckCLT is built from Charlotte&apos;s largest food truck community. Submit one
+            request, reach relevant local trucks, and connect directly with the ones interested in
+            your event.
           </p>
 
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
@@ -59,17 +56,16 @@ export function Hero({ directoryTruckCount }: HeroProps) {
           </div>
 
           <p className="mt-6 max-w-2xl text-sm leading-6 text-primary-foreground/70">
-            Powered by Charlotte&apos;s largest food truck community · No booking commission · Connect
-            directly with trucks
+            Used by Charlotte hosts, neighborhoods, schools, breweries, and food truck owners to
+            find, request, and promote local food trucks.
           </p>
 
           <p className="mt-4 text-sm text-primary-foreground/55">
-            <span className="font-medium text-primary-foreground/75 tabular-nums">{directoryTruckCount}</span>{" "}
-            local trucks
-            <span className="mx-2 text-primary-foreground/30">·</span>
             <span className="font-medium text-primary-foreground/75">35K+</span> community members
             <span className="mx-2 text-primary-foreground/30">·</span>
             No booking commission
+            <span className="mx-2 text-primary-foreground/30">·</span>
+            Connect directly with local trucks
           </p>
         </div>
       </div>

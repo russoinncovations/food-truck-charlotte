@@ -14,7 +14,7 @@ const trustPoints = [
   },
   {
     icon: Handshake,
-    title: "Connect directly",
+    title: "Connect directly with local trucks",
     description:
       "Interested trucks respond so you can compare options, finalize details, and book directly.",
   },
