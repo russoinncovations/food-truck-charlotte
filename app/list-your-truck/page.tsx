@@ -149,7 +149,7 @@ export default function ListYourTruckPage() {
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button size="lg" className="gap-2" asChild>
                 <a href="#apply">
-                  List Your Truck Free
+                  Create or claim your truck profile
                   <ArrowRight className="h-4 w-4" />
                 </a>
               </Button>
@@ -158,7 +158,7 @@ export default function ListYourTruckPage() {
               </Button>
             </div>
             <p className="mt-4 text-sm text-muted-foreground">
-              No credit card required · Free to get started
+              Start with a free truck profile
             </p>
           </div>
         </div>
@@ -266,7 +266,7 @@ export default function ListYourTruckPage() {
               </ul>
               <Button size="lg" className="w-full gap-2" asChild>
                 <a href="#apply">
-                  List Your Truck Free
+                  Create or claim your truck profile
                   <ArrowRight className="h-4 w-4" />
                 </a>
               </Button>
@@ -325,7 +325,7 @@ export default function ListYourTruckPage() {
           </p>
           <Button size="lg" variant="secondary" className="gap-2" asChild>
             <a href="#apply">
-              List Your Truck Free
+              Create or claim your truck profile
               <ArrowRight className="h-4 w-4" />
             </a>
           </Button>

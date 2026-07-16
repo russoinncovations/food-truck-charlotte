@@ -11,7 +11,6 @@ import { EventsSection } from "@/components/events-section"
 import { HomepageResourcesTeaser } from "@/components/homepage-resources-teaser"
 import { Footer } from "@/components/footer"
 import { createClient } from "@/lib/supabase/server"
-import { countUpcomingPublicEvents } from "@/lib/events/public-events"
 import { fetchMapEventMarkers, filterMapEventsForRealtimePins } from "@/lib/events/map-event-markers"
 import { getMapPageTruckPinRows, getMapSidebarAllListedTruckRows } from "@/lib/map/map-page-truck-rows"
 import { fetchHomepageFeaturedTrucks } from "@/lib/trucks/homepage-featured-trucks"
@@ -19,7 +18,6 @@ import { countPublicDirectoryTrucks } from "@/lib/trucks/public-directory"
 
 export default async function Home() {
   const supabase = await createClient()
-  const upcomingEventCount = await countUpcomingPublicEvents(supabase)
   const directoryTruckCount = await countPublicDirectoryTrucks(supabase)
 
   const liveTruckRows = await getMapPageTruckPinRows(supabase)
@@ -38,7 +36,7 @@ export default async function Home() {
   return (
     <main className="min-h-screen bg-background">
       <Header />
-      <Hero upcomingEventCount={upcomingEventCount} directoryTruckCount={directoryTruckCount} />
+      <Hero directoryTruckCount={directoryTruckCount} />
       <HowItWorks />
       <HomepageTrust />
       <HomepageTestimonials />

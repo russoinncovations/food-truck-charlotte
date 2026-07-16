@@ -4,11 +4,10 @@ import { Button } from "@/components/ui/button"
 import { ArrowRight, Truck } from "lucide-react"
 
 type HeroProps = {
-  upcomingEventCount: number
   directoryTruckCount: number
 }
 
-export function Hero({ upcomingEventCount, directoryTruckCount }: HeroProps) {
+export function Hero({ directoryTruckCount }: HeroProps) {
   return (
     <section className="relative overflow-hidden bg-foreground pt-16 text-primary-foreground">
       <div className="absolute inset-0">
@@ -66,10 +65,11 @@ export function Hero({ upcomingEventCount, directoryTruckCount }: HeroProps) {
 
           <p className="mt-4 text-sm text-primary-foreground/55">
             <span className="font-medium text-primary-foreground/75 tabular-nums">{directoryTruckCount}</span>{" "}
-            trucks listed
+            local trucks
             <span className="mx-2 text-primary-foreground/30">·</span>
-            <span className="font-medium text-primary-foreground/75 tabular-nums">{upcomingEventCount}</span>{" "}
-            upcoming events
+            <span className="font-medium text-primary-foreground/75">35K+</span> community members
+            <span className="mx-2 text-primary-foreground/30">·</span>
+            No booking commission
           </p>
         </div>
       </div>
