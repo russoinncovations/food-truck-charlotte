@@ -1,6 +1,8 @@
 import { Header } from "@/components/header"
 import { Hero } from "@/components/hero"
 import { HowItWorks } from "@/components/how-it-works"
+import { HomepageTrust } from "@/components/homepage-trust"
+import { HomepageTestimonials } from "@/components/homepage-testimonials"
 import { HomepageUseCases } from "@/components/homepage-use-cases"
 import { FeaturedTrucks } from "@/components/featured-trucks"
 import { VendorCTA } from "@/components/vendor-cta"
@@ -38,6 +40,8 @@ export default async function Home() {
       <Header />
       <Hero upcomingEventCount={upcomingEventCount} directoryTruckCount={directoryTruckCount} />
       <HowItWorks />
+      <HomepageTrust />
+      <HomepageTestimonials />
       <HomepageUseCases />
       <FeaturedTrucks trucks={featuredTrucks} />
       <VendorCTA directoryTruckCount={directoryTruckCount} />
