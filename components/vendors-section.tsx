@@ -12,7 +12,7 @@ const hostBenefits = [
   "Browse Charlotte's best food trucks",
   "Filter by cuisine and availability",
   "Submit one inquiry, reach multiple trucks",
-  "No fees, just connections",
+  "No booking commission — connect directly",
 ]
 
 export function VendorsSection() {
