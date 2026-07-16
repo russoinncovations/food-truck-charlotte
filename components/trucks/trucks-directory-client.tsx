@@ -102,33 +102,33 @@ export function TrucksDirectoryClient({ trucks }: Props) {
   return (
     <>
       {/* Hero + trust + CTAs */}
-      <section className="relative border-b border-border/60 bg-gradient-to-b from-[#faf6f2] via-background to-background dark:from-primary/10 dark:via-background dark:to-background">
-        <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 sm:py-16 lg:px-8">
+      <section className="relative border-b border-border/60 bg-[#faf6f2]">
+        <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-12 lg:px-8">
           <p className="text-center text-sm font-medium text-muted-foreground">
-            Built from the 35K+ member Food Truck Charlotte community.
+            Profiles from Charlotte&apos;s food truck request network — built from a 35K+ member community.
           </p>
-          <h1 className="mt-4 text-center font-display text-4xl font-bold tracking-tight text-foreground sm:text-5xl text-balance">
-            Explore Charlotte Food Trucks
+          <h1 className="mx-auto mt-3 max-w-[17rem] text-center font-display text-[1.875rem] font-bold leading-[1.1] tracking-[-0.02em] text-foreground sm:max-w-none sm:text-4xl lg:text-5xl text-balance">
+            Browse trucks before you request
           </h1>
-          <p className="mx-auto mt-4 max-w-3xl text-center text-lg text-muted-foreground text-pretty leading-relaxed">
-            Browse local vendors, discover cuisines, and book Charlotte-area food trucks for private parties,
-            offices, schools, neighborhoods, breweries, festivals, and public events.
+          <p className="mx-auto mt-4 max-w-3xl text-center text-base leading-7 text-muted-foreground text-pretty md:text-lg">
+            Compare cuisine, photos, and service details, then submit one request so relevant local
+            trucks can respond. No booking commission — you connect and book directly.
           </p>
 
-          <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row sm:flex-wrap">
-            <Button size="lg" className="w-full min-w-[200px] sm:w-auto gap-2 rounded-full" asChild>
+          <div className="mt-7 flex flex-col items-center justify-center gap-3 sm:flex-row sm:flex-wrap">
+            <Button size="lg" className="w-full min-w-[200px] sm:w-auto gap-2" asChild>
               <Link href="/book-a-truck">
                 <CalendarPlus className="h-4 w-4" />
                 Book a Truck
               </Link>
             </Button>
-            <Button size="lg" variant="outline" className="w-full min-w-[200px] sm:w-auto gap-2 rounded-full" asChild>
+            <Button size="lg" variant="outline" className="w-full min-w-[200px] sm:w-auto gap-2" asChild>
               <Link href="/map">
                 <MapIcon className="h-4 w-4" />
                 View Map
               </Link>
             </Button>
-            <Button size="lg" variant="secondary" className="w-full min-w-[200px] sm:w-auto gap-2 rounded-full" asChild>
+            <Button size="lg" variant="secondary" className="w-full min-w-[200px] sm:w-auto gap-2" asChild>
               <Link href="/promote-event">
                 <Megaphone className="h-4 w-4" />
                 Post an Event
@@ -136,7 +136,7 @@ export function TrucksDirectoryClient({ trucks }: Props) {
             </Button>
           </div>
 
-          <p className="mx-auto mt-8 max-w-3xl text-center text-xs leading-relaxed text-muted-foreground">
+          <p className="mx-auto mt-6 max-w-3xl text-center text-xs leading-relaxed text-muted-foreground">
             FoodTruckCLT helps connect event hosts with local food truck vendors. Final pricing, availability,
             permits, insurance, and service details are confirmed directly with the vendor.
           </p>
@@ -144,9 +144,9 @@ export function TrucksDirectoryClient({ trucks }: Props) {
       </section>
 
       {/* Filters + search */}
-      <section className="border-b border-border/40 bg-muted/20">
-        <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-          <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+      <section className="border-b border-border/40 bg-background">
+        <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
             <div className="relative w-full lg:max-w-md">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
@@ -154,7 +154,7 @@ export function TrucksDirectoryClient({ trucks }: Props) {
                 placeholder="Search by truck name or cuisine…"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                className="h-11 rounded-full border-border/80 bg-background pl-10 pr-4 shadow-sm"
+                className="h-11 border-border/80 bg-background pl-10 pr-4 shadow-sm"
                 aria-label="Search trucks"
               />
             </div>
@@ -165,7 +165,7 @@ export function TrucksDirectoryClient({ trucks }: Props) {
                   type="button"
                   onClick={() => setChip(c.id)}
                   className={cn(
-                    "rounded-full border px-4 py-2 text-sm font-medium transition-all",
+                    "rounded-xl border px-3.5 py-2 text-sm font-medium transition-all",
                     chip === c.id
                       ? "border-primary bg-primary text-primary-foreground shadow-sm"
                       : "border-border/80 bg-background text-foreground hover:border-primary/40 hover:bg-primary/5"
@@ -189,7 +189,7 @@ export function TrucksDirectoryClient({ trucks }: Props) {
       </section>
 
       {/* Grid */}
-      <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
         {filtered.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-border bg-muted/30 px-6 py-16 text-center">
             <p className="font-display text-xl font-semibold text-foreground">
@@ -205,17 +205,16 @@ export function TrucksDirectoryClient({ trucks }: Props) {
                   setChip("all")
                 }}
                 variant="default"
-                className="rounded-full"
               >
                 Browse All Trucks
               </Button>
-              <Button asChild variant="outline" className="rounded-full">
+              <Button asChild variant="outline">
                 <Link href="/book-a-truck">Book a Truck</Link>
               </Button>
             </div>
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {filtered.map((truck) => (
               <TruckMarketplaceCard key={truck.id} truck={truck} />
             ))}
@@ -225,7 +224,7 @@ export function TrucksDirectoryClient({ trucks }: Props) {
 
       {/* Footer CTAs */}
       <section className="border-t border-border/60 bg-gradient-to-b from-muted/40 to-background">
-        <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
           <div className="rounded-2xl border border-border/80 bg-card p-8 shadow-sm md:p-12">
             <h2 className="font-display text-2xl font-bold text-foreground md:text-3xl">Planning an event?</h2>
             <p className="mt-4 max-w-2xl text-muted-foreground leading-relaxed">
@@ -329,10 +328,10 @@ function TruckMarketplaceCard({ truck }: { truck: DirectoryTruckRow }) {
         </p>
 
         <div className="mt-auto flex flex-col gap-2 pt-5">
-          <Button className="w-full rounded-full" asChild>
+          <Button className="w-full" asChild>
             <Link href={profileHref}>View Profile</Link>
           </Button>
-          <Button variant="outline" className="w-full rounded-full border-2" asChild>
+          <Button variant="outline" className="w-full border-2" asChild>
             <Link href={bookHref}>Book This Truck</Link>
           </Button>
         </div>

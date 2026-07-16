@@ -50,8 +50,8 @@ export function Footer() {
                 <BrandWordmark />
               </Link>
               <p className="mb-6 max-w-xs text-sm text-muted-foreground">
-                Find Charlotte food trucks. Request the right ones for your event. Connect
-                directly.
+                Charlotte&apos;s food truck request network — built from the city&apos;s largest food
+                truck community.
               </p>
               <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
                 {social.map((item) => (

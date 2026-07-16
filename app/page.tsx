@@ -36,7 +36,7 @@ export default async function Home() {
   return (
     <main className="min-h-screen bg-background">
       <Header />
-      <Hero directoryTruckCount={directoryTruckCount} />
+      <Hero />
       <HowItWorks />
       <HomepageTrust />
       <HomepageTestimonials />
