@@ -154,8 +154,8 @@ export default async function BookTrucksPage() {
             <div className="mt-6 pt-6 border-t border-border">
               <p className="text-sm text-muted-foreground">
                 Questions? Reach out to us at{" "}
-                <Link href="mailto:hello@foodtruckclt.com" className="text-primary hover:underline">
-                  hello@foodtruckclt.com
+                <Link href="mailto:nicole@foodtruckclt.com" className="text-primary hover:underline">
+                  nicole@foodtruckclt.com
                 </Link>{" "}
                 or in our{" "}
                 <Link href="https://facebook.com/groups/foodtruckclt" className="text-primary hover:underline" target="_blank">

@@ -1,5 +1,5 @@
 /** Preferred vendor booking sender when verified in Resend (set via env). */
-export const VENDOR_BOOKING_FROM_PREFERRED = "Nicole at FoodTruckCLT <hello@foodtruckclt.com>"
+export const VENDOR_BOOKING_FROM_PREFERRED = "Nicole at FoodTruckCLT <nicole@foodtruckclt.com>"
 
 const LEGACY_FALLBACK_FROM = "Food Truck CLT <noreply@foodtruckclt.com>"
 
@@ -12,7 +12,7 @@ function formatVendorFromAddress(raw: string): string {
 
 /**
  * From address for vendor booking lead emails.
- * 1. FOODTRUCKCLT_VENDOR_FROM_EMAIL (e.g. hello@ when verified)
+ * 1. FOODTRUCKCLT_VENDOR_FROM_EMAIL (e.g. nicole@ when verified)
  * 2. RESEND_FROM_EMAIL (existing verified sender)
  * 3. Legacy noreply fallback
  */

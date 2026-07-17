@@ -72,10 +72,10 @@ export default function PrivacyPage() {
                 <p>
                   Questions? Email us at{" "}
                   <a
-                    href="mailto:hello@foodtruckclt.com"
+                    href="mailto:nicole@foodtruckclt.com"
                     className="text-primary font-medium underline-offset-4 hover:underline"
                   >
-                    hello@foodtruckclt.com
+                    nicole@foodtruckclt.com
                   </a>
                   .
                 </p>

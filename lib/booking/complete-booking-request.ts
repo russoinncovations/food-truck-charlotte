@@ -9,8 +9,38 @@ import {
   BOOKING_START_TIME_REQUIRED_MESSAGE,
   isBookingStartTimePresent,
 } from "@/lib/booking/validate-booking-event-time"
+import { getConfiguredAdminKey } from "@/lib/admin/verify-admin-key"
 import { sendBookingVendorLeadEmails } from "@/lib/email/send-booking-vendor-lead-emails"
 import { createAdminSupabaseClient, getAdminSupabaseEnvDiagnostics, describeAdminClientInitFailure } from "@/lib/supabase/admin"
+
+const DEFAULT_PRODUCTION_SITE_BASE = "https://www.foodtruckclt.com"
+
+/** Canonical production-safe site base for server-generated admin notification links. */
+export function resolveProductionSiteBaseUrl(): string {
+  const base =
+    process.env.NEXT_PUBLIC_APP_URL?.trim() ||
+    process.env.NEXT_PUBLIC_SITE_URL?.trim() ||
+    process.env.PUBLIC_SITE_URL?.trim() ||
+    DEFAULT_PRODUCTION_SITE_BASE
+  return base.replace(/\/+$/, "")
+}
+
+/**
+ * Admin booking notification CTA — detail route with ADMIN_KEY when available,
+ * otherwise list route with key, otherwise list without key.
+ */
+export function buildAdminBookingNotificationUrl(bookingId: string): string {
+  const base = resolveProductionSiteBaseUrl()
+  const adminKey = getConfiguredAdminKey()
+  const id = bookingId.trim()
+  if (adminKey && id) {
+    return `${base}/admin/bookings/${id}?key=${encodeURIComponent(adminKey)}`
+  }
+  if (adminKey) {
+    return `${base}/admin/bookings?key=${encodeURIComponent(adminKey)}`
+  }
+  return `${base}/admin/bookings`
+}
 
 export { BOOKING_REQUEST_TYPE }
 export type { BookingRequestTypeValue }
@@ -207,6 +237,7 @@ export async function completeBookingRequest(
       .join("\n")
 
     const adminTo = adminInboxEmail()
+    const adminBookingUrl = buildAdminBookingNotificationUrl(id)
 
     try {
       if (adminTo) {
@@ -218,7 +249,7 @@ export async function completeBookingRequest(
           <h2>New booking request</h2>
           <p><strong>Request ID:</strong> ${id}</p>
           <ul>${summaryLines}</ul>
-          <p><a href="https://www.foodtruckclt.com/admin/bookings">Open admin bookings</a></p>
+          <p><a href="${adminBookingUrl}">Open admin booking</a></p>
           <p>— FoodTruck CLT</p>
         `,
         })
