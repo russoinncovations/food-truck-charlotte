@@ -1,18 +1,15 @@
 import type { BookingInsertRow } from "@/lib/booking/complete-booking-request"
 import { EVENT_TYPES } from "@/lib/booking-types"
-import { instagramHref, normalizeWebsiteUrl } from "@/lib/trucks/truck-profile-helpers"
 
 export type OrganizerHandoffTruck = {
   name: string
   slug: string | null
   cuisine: string | null
   cuisine_types: string[] | null
-  short_description: string | null
-  description: string | null
-  booking_email: string | null
-  booking_phone: string | null
-  website: string | null
-  instagram: string | null
+  /** Preferred public booking contact, then general truck email. */
+  contact_email: string | null
+  /** Preferred public booking phone, then general truck phone. */
+  contact_phone: string | null
 }
 
 function escapeHtml(s: string): string {
@@ -47,18 +44,10 @@ function formatEventTypeLabel(eventType: string | null | undefined): string {
   return EVENT_TYPES.find((t) => t.value === raw)?.label ?? raw
 }
 
-function cuisineLine(truck: OrganizerHandoffTruck): string {
+export function cuisineLine(truck: OrganizerHandoffTruck): string {
   const types = (truck.cuisine_types ?? []).map((c) => String(c).trim()).filter(Boolean)
   if (types.length > 0) return types.join(", ")
   return trimOrNull(truck.cuisine) ?? "Food truck"
-}
-
-function profileSummary(truck: OrganizerHandoffTruck): string {
-  return (
-    trimOrNull(truck.short_description) ??
-    trimOrNull(truck.description)?.slice(0, 280) ??
-    `${truck.name} is listed on FoodTruckCLT.`
-  )
 }
 
 export function buildOrganizerInterestedHandoffSubject(
@@ -67,7 +56,7 @@ export function buildOrganizerInterestedHandoffSubject(
 ): string {
   const eventLabel = formatEventTypeLabel(booking.event_type)
   const dateLabel = formatEventDateLabel(booking.event_date)
-  return `Interested food truck for your ${eventLabel} (${dateLabel}) — ${truckName}`
+  return `Good news: ${truckName} is interested in your ${eventLabel} (${dateLabel})`
 }
 
 export function buildOrganizerInterestedHandoffEmail(args: {
@@ -86,56 +75,64 @@ export function buildOrganizerInterestedHandoffEmail(args: {
     trimOrNull(booking.city) ||
     "Charlotte area"
   const cuisine = cuisineLine(truck)
-  const summary = profileSummary(truck)
-  const bookingEmail = trimOrNull(truck.booking_email)
-  const bookingPhone = trimOrNull(truck.booking_phone)
-  const website = trimOrNull(truck.website)
-  const instagram = trimOrNull(truck.instagram)
+  const contactEmail = trimOrNull(truck.contact_email)
+  const contactPhone = trimOrNull(truck.contact_phone)
+  const hostName = trimOrNull(booking.contact_name) ?? "there"
 
-  const contactLines: string[] = []
-  if (bookingEmail) contactLines.push(`Booking email: ${bookingEmail}`)
-  if (bookingPhone) contactLines.push(`Booking phone: ${bookingPhone}`)
-  if (website) contactLines.push(`Website: ${normalizeWebsiteUrl(website)}`)
-  if (instagram) contactLines.push(`Instagram: ${instagramHref(instagram)}`)
+  const detailLinesHtml: string[] = [
+    `<li><strong>Truck:</strong> ${escapeHtml(truck.name)}</li>`,
+    `<li><strong>Cuisine / category:</strong> ${escapeHtml(cuisine)}</li>`,
+  ]
+  const detailLinesText: string[] = [`Truck: ${truck.name}`, `Cuisine / category: ${cuisine}`]
 
-  const htmlContact = contactLines
-    .map((line) => `<li>${escapeHtml(line)}</li>`)
-    .join("\n")
+  if (contactEmail) {
+    detailLinesHtml.push(
+      `<li><strong>Contact email:</strong> <a href="mailto:${escapeHtml(contactEmail)}">${escapeHtml(contactEmail)}</a></li>`
+    )
+    detailLinesText.push(`Contact email: ${contactEmail}`)
+  }
+  if (contactPhone) {
+    detailLinesHtml.push(`<li><strong>Phone:</strong> ${escapeHtml(contactPhone)}</li>`)
+    detailLinesText.push(`Phone: ${contactPhone}`)
+  }
+  detailLinesHtml.push(
+    `<li><strong>Profile:</strong> <a href="${escapeHtml(profileUrl)}">${escapeHtml(profileUrl)}</a></li>`
+  )
+  detailLinesText.push(`Profile: ${profileUrl}`)
 
-  const textContact = contactLines.join("\n")
+  const disclaimer =
+    "FoodTruckCLT does not manage the final booking, pricing, contract, payment, or event logistics. Please confirm all details directly with the truck."
 
   const html = `
-    <p>Hi ${escapeHtml(trimOrNull(booking.contact_name) ?? "there")},</p>
+    <p>Hi ${escapeHtml(hostName)},</p>
+    <p><strong>Good news, a food truck is interested in your event.</strong></p>
     <p>
-      A local food truck marked <strong>Interested</strong> in your ${escapeHtml(eventLabel)} on ${escapeHtml(dateLabel)}
+      ${escapeHtml(truck.name)} marked interested in your ${escapeHtml(eventLabel)} on ${escapeHtml(dateLabel)}
       (${escapeHtml(location)}).
     </p>
     <p>
-      FoodTruckCLT connects organizers and vendors. Please contact the truck directly to confirm schedule, pricing,
-      and payment terms. FoodTruckCLT does not handle payment or contracting.
+      The truck may contact you directly using the event contact information you provided. You can also reach out to
+      them using the details below.
     </p>
-    <h2>${escapeHtml(truck.name)}</h2>
-    <p><strong>Cuisine:</strong> ${escapeHtml(cuisine)}</p>
-    <p>${escapeHtml(summary)}</p>
-    <ul>${htmlContact}</ul>
-    <p><a href="${escapeHtml(profileUrl)}">View FoodTruckCLT profile</a></p>
+    <ul>
+      ${detailLinesHtml.join("\n")}
+    </ul>
+    <p><em>${escapeHtml(disclaimer)}</em></p>
     <p>— FoodTruckCLT</p>
   `.trim()
 
   const text = [
-    `Hi ${trimOrNull(booking.contact_name) ?? "there"},`,
+    `Hi ${hostName},`,
     "",
-    `A local food truck marked Interested in your ${eventLabel} on ${dateLabel} (${location}).`,
+    "Good news, a food truck is interested in your event.",
     "",
-    "FoodTruckCLT connects organizers and vendors. Please contact the truck directly to confirm schedule, pricing, and payment terms. FoodTruckCLT does not handle payment or contracting.",
+    `${truck.name} marked interested in your ${eventLabel} on ${dateLabel} (${location}).`,
     "",
-    truck.name,
-    `Cuisine: ${cuisine}`,
-    summary,
+    "The truck may contact you directly using the event contact information you provided. You can also reach out to them using the details below.",
     "",
-    textContact,
+    ...detailLinesText,
     "",
-    `FoodTruckCLT profile: ${profileUrl}`,
+    disclaimer,
     "",
     "— FoodTruckCLT",
   ].join("\n")
