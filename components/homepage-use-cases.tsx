@@ -1,53 +1,53 @@
+import Image from "next/image"
 import Link from "next/link"
-import {
-  ArrowRight,
-  Beer,
-  Building2,
-  GraduationCap,
-  Home,
-  PartyPopper,
-  Users,
-} from "lucide-react"
+import { ArrowRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { HOMEPAGE_IMAGES } from "@/lib/homepage/homepage-images"
 
 const useCases = [
   {
-    icon: Building2,
     title: "Corporate events",
     description: "Office lunches, employee appreciation, and campus gatherings.",
+    image: HOMEPAGE_IMAGES.useCases.corporate,
+    imageAlt: "Wings and event food ready for a Charlotte gathering",
   },
   {
-    icon: GraduationCap,
     title: "Schools",
     description: "PTA nights, sports events, and end-of-year celebrations.",
+    image: HOMEPAGE_IMAGES.useCases.schools,
+    imageAlt: "Tacos and street food for school and family events",
   },
   {
-    icon: Home,
     title: "Neighborhoods",
     description: "HOA nights, block parties, and community meetups.",
+    image: HOMEPAGE_IMAGES.useCases.neighborhoods,
+    imageAlt: "Neighbors gathering around food trucks at dusk",
   },
   {
-    icon: Beer,
     title: "Breweries",
     description: "Regular service nights and special taproom events.",
+    image: HOMEPAGE_IMAGES.useCases.breweries,
+    imageAlt: "Fresh BBQ plated at a local food truck window",
   },
   {
-    icon: PartyPopper,
     title: "Private parties",
     description: "Birthdays, weddings, and backyard celebrations.",
+    image: HOMEPAGE_IMAGES.useCases.privateParties,
+    imageAlt: "Dessert cones and sweets from a Charlotte food truck",
   },
   {
-    icon: Users,
     title: "Community events",
     description: "Festivals, fundraisers, and public gatherings.",
+    image: HOMEPAGE_IMAGES.useCases.communityEvents,
+    imageAlt: "Crowd exploring a Charlotte food truck festival",
   },
 ]
 
 export function HomepageUseCases() {
   return (
-    <section className="bg-muted/40 py-14 md:py-20">
+    <section className="bg-muted/40 py-16 md:py-24">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="mb-10 flex flex-col gap-5 md:mb-12 md:flex-row md:items-end md:justify-between">
+        <div className="mb-10 flex flex-col gap-5 md:mb-14 md:flex-row md:items-end md:justify-between">
           <div className="max-w-2xl">
             <p className="text-sm font-semibold uppercase tracking-[0.22em] text-primary">
               Who requests trucks
@@ -68,17 +68,26 @@ export function HomepageUseCases() {
           </Button>
         </div>
 
-        <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {useCases.map((item) => (
-            <div key={item.title} className="flex gap-4">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-background text-primary shadow-sm ring-1 ring-border">
-                <item.icon className="h-5 w-5" aria-hidden />
+            <article
+              key={item.title}
+              className="group overflow-hidden rounded-2xl border border-border/70 bg-card shadow-sm transition duration-300 hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-md"
+            >
+              <div className="relative aspect-[16/10] overflow-hidden">
+                <Image
+                  src={item.image}
+                  alt={item.imageAlt}
+                  fill
+                  sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                  className="object-cover transition duration-500 group-hover:scale-[1.04]"
+                />
               </div>
-              <div>
+              <div className="px-5 py-5">
                 <h3 className="font-display text-lg font-semibold text-foreground">{item.title}</h3>
-                <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{item.description}</p>
+                <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{item.description}</p>
               </div>
-            </div>
+            </article>
           ))}
         </div>
       </div>
