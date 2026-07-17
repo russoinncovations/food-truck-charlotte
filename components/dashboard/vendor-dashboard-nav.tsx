@@ -30,7 +30,7 @@ const VENDOR_NAV: NavItem[] = [
   { type: "link", href: "/dashboard/schedule", label: "Weekly schedule", icon: Clock },
   { type: "link", href: "/dashboard/profile", label: "Truck Profile", icon: Truck },
   { type: "link", href: "/dashboard/events", label: "Events", icon: MapPin },
-  { type: "disabled", href: "#", label: "Analytics", icon: Eye, soon: true },
+  { type: "link", href: "/dashboard/analytics", label: "Analytics", icon: Eye },
   { type: "disabled", href: "#", label: "Messages", icon: MessageSquare, soon: true },
   { type: "link", href: "/dashboard/settings", label: "Settings", icon: Settings },
 ]
