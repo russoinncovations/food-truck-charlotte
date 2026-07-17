@@ -117,9 +117,9 @@ function MapPreviewContent({
   const previewHappening = mapPinEvents.slice(0, 4)
 
   return (
-    <section className="bg-foreground py-14 text-primary-foreground md:py-20">
+    <section className="bg-foreground py-16 text-primary-foreground md:py-24">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="mb-8 flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
+        <div className="mb-10 flex flex-col gap-5 md:mb-12 md:flex-row md:items-end md:justify-between">
           <div className="max-w-3xl">
             <p className="text-sm font-semibold uppercase tracking-[0.22em] text-primary">
               Live discovery
@@ -145,8 +145,8 @@ function MapPreviewContent({
         </div>
 
         <Card className="overflow-hidden border-primary-foreground/15 bg-background shadow-2xl shadow-black/25">
-          <div className="grid lg:grid-cols-3">
-            <div className="lg:col-span-2 group relative w-full aspect-[4/3] lg:aspect-auto lg:h-[500px] lg:min-h-[500px] bg-[#f2efe9]">
+          <div className="grid lg:grid-cols-12">
+            <div className="relative aspect-[4/3] w-full bg-[#f2efe9] group sm:aspect-[16/10] lg:col-span-8 lg:aspect-auto lg:h-[min(70vh,640px)] lg:min-h-[560px]">
               <div className="absolute inset-0 z-0 h-full w-full min-h-[inherit]">
                 <MapView
                   trucks={trucksOnMap}
@@ -189,7 +189,7 @@ function MapPreviewContent({
               </div>
             </div>
 
-            <div className="p-6 bg-background border-t lg:border-t-0 lg:border-l space-y-5 max-h-[min(80vh,560px)] lg:max-h-[500px] overflow-y-auto">
+            <div className="space-y-5 border-t bg-background p-6 max-h-[min(80vh,640px)] overflow-y-auto lg:col-span-4 lg:border-l lg:border-t-0 lg:max-h-[min(70vh,640px)]">
               <div className="rounded-2xl bg-muted/60 p-4">
                 <h3 className="font-semibold text-foreground text-sm">Live snapshot</h3>
                 <p className="text-sm text-muted-foreground mt-1">{statusBlurb}</p>
