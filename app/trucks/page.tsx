@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/server"
 import { countPublicDirectoryTrucks } from "@/lib/trucks/public-directory"
 import { PUBLIC_LISTED_TRUCK_EQ } from "@/lib/trucks/public-listed-truck-query"
 import {
-  isValidCuisineFilter,
+  resolveCuisineFilterParam,
   isValidVendorFormatFilter,
 } from "@/lib/trucks/directory-filters"
 import { TrucksDirectoryClient, type DirectoryTruckRow } from "@/components/trucks/trucks-directory-client"
@@ -59,7 +59,7 @@ export default async function TrucksPage({ searchParams }: { searchParams: Searc
   }))
 
   const initialQuery = typeof sp.q === "string" ? sp.q : ""
-  const initialCuisine = isValidCuisineFilter(sp.cuisine) ? sp.cuisine : ""
+  const initialCuisine = resolveCuisineFilterParam(typeof sp.cuisine === "string" ? sp.cuisine : "")
   const initialFormat = isValidVendorFormatFilter(sp.format) ? sp.format : ""
 
   return (
