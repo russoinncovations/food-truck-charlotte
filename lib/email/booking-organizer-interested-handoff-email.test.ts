@@ -1,22 +1,20 @@
 import assert from "node:assert/strict"
 import test from "node:test"
-import { BOOKING_REQUEST_TYPE } from "@/lib/booking/booking-request-constants"
 import {
   buildOrganizerInterestedHandoffEmail,
   buildOrganizerInterestedHandoffSubject,
 } from "@/lib/email/booking-organizer-interested-handoff-email"
 
-test("buildOrganizerInterestedHandoffSubject includes truck and event context", () => {
-  assert.match(
-    buildOrganizerInterestedHandoffSubject(
-      { event_type: "corporate", event_date: "2026-08-01" },
-      "Taco Truck CLT"
-    ),
-    /Taco Truck CLT/
+test("buildOrganizerInterestedHandoffSubject includes truck and good-news framing", () => {
+  const subject = buildOrganizerInterestedHandoffSubject(
+    { event_type: "corporate", event_date: "2026-08-01" },
+    "Taco Truck CLT"
   )
+  assert.match(subject, /Good news/i)
+  assert.match(subject, /Taco Truck CLT/)
 })
 
-test("buildOrganizerInterestedHandoffEmail includes truck contact details and direct communication disclaimer", () => {
+test("buildOrganizerInterestedHandoffEmail includes required host copy and truck contact details", () => {
   const { html, text } = buildOrganizerInterestedHandoffEmail({
     booking: {
       event_type: "corporate",
@@ -30,25 +28,30 @@ test("buildOrganizerInterestedHandoffEmail includes truck contact details and di
       slug: "taco-truck-clt",
       cuisine: "Mexican",
       cuisine_types: ["Mexican / Tacos"],
-      short_description: "Charlotte tacos for events.",
-      description: null,
-      booking_email: "book@tacotruckclt.com",
-      booking_phone: "704-555-1212",
-      website: "https://tacotruckclt.com",
-      instagram: "tacotruckclt",
+      contact_email: "book@tacotruckclt.com",
+      contact_phone: "704-555-1212",
     },
     profileUrl: "https://www.foodtruckclt.com/trucks/taco-truck-clt",
   })
 
+  assert.match(html, /Good news, a food truck is interested in your event/i)
+  assert.match(
+    text,
+    /The truck may contact you directly using the event contact information you provided/i
+  )
   assert.match(html, /book@tacotruckclt\.com/)
   assert.match(text, /704-555-1212/)
-  assert.match(html, /instagram\.com\/tacotruckclt/i)
-  assert.match(html, /does not handle payment or contracting/i)
-  assert.match(text, /FoodTruckCLT profile: https:\/\/www\.foodtruckclt\.com\/trucks\/taco-truck-clt/)
+  assert.match(html, /Mexican \/ Tacos/)
+  assert.match(html, /trucks\/taco-truck-clt/)
+  assert.match(
+    text,
+    /FoodTruckCLT does not manage the final booking, pricing, contract, payment, or event logistics/i
+  )
+  assert.doesNotMatch(html, /vendor\.foodtruckclt|\/dashboard/i)
 })
 
-test("buildOrganizerInterestedHandoffEmail uses cuisine types when available", () => {
-  const { text } = buildOrganizerInterestedHandoffEmail({
+test("buildOrganizerInterestedHandoffEmail omits missing email and phone lines", () => {
+  const { html, text } = buildOrganizerInterestedHandoffEmail({
     booking: {
       event_type: "wedding",
       event_date: "2026-09-10",
@@ -61,15 +64,14 @@ test("buildOrganizerInterestedHandoffEmail uses cuisine types when available", (
       slug: null,
       cuisine: "BBQ",
       cuisine_types: ["BBQ / Smokehouse"],
-      short_description: null,
-      description: "BBQ cart for private events.",
-      booking_email: null,
-      booking_phone: "704-555-3434",
-      website: null,
-      instagram: null,
+      contact_email: null,
+      contact_phone: null,
     },
     profileUrl: "https://www.foodtruckclt.com/trucks",
   })
 
-  assert.match(text, /Cuisine: BBQ \/ Smokehouse/)
+  assert.doesNotMatch(html, /Contact email:/i)
+  assert.doesNotMatch(text, /^Phone:/m)
+  assert.match(text, /Cuisine \/ category: BBQ \/ Smokehouse/)
+  assert.match(html, /Profile:/i)
 })
