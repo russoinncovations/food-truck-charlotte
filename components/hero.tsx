@@ -25,13 +25,14 @@ export function Hero() {
             </div>
 
             <h1 className="mt-5 font-display text-[2.15rem] font-bold leading-[1.08] tracking-tight text-foreground sm:text-4xl lg:text-[2.75rem] lg:leading-[1.05]">
-              Find the trucks that fit the event.
+              The right trucks for your event.
             </h1>
 
             <div className="mt-5 h-px w-12 bg-primary" aria-hidden />
 
             <p className="mt-5 max-w-md text-base leading-7 text-foreground/75 sm:text-[1.05rem] sm:leading-8">
-              Submit one request. Local trucks respond. You connect and book directly.
+              Submit one request. Interested local trucks respond. You connect and book
+              directly.
             </p>
 
             <div className="mt-9 flex flex-col items-start gap-5 sm:flex-row sm:items-center sm:gap-7">
@@ -47,7 +48,7 @@ export function Hero() {
                 href="/trucks"
                 className="group inline-flex items-center gap-1.5 text-sm font-medium text-foreground underline decoration-primary decoration-1 underline-offset-[0.35em] transition-colors hover:text-primary"
               >
-                Explore Charlotte Trucks
+                Browse Charlotte Trucks
                 <span
                   aria-hidden
                   className="translate-x-0 text-primary transition-transform group-hover:translate-x-0.5"

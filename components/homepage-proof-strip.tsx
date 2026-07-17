@@ -4,7 +4,7 @@
 export function HomepageProofStrip() {
   const strip = [
     { primary: "35K+", secondary: "local community members" },
-    { primary: "No", secondary: "booking commission" },
+    { primary: "No", secondary: "commission on bookings" },
     { primary: "Direct", secondary: "connection with local trucks" },
   ]
 
