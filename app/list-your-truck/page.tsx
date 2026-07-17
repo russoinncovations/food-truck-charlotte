@@ -15,9 +15,9 @@ import { isPlausibleVendorWebsiteInput } from "@/lib/validation/vendor-website"
 const features = [
   {
     icon: ClipboardList,
-    title: "Public Truck Profile",
+    title: "Public profile",
     description:
-      "Share your cuisine, story, service details, menu links, and contact information.",
+      "Show your cuisine, story, service details, menu links, and contact information.",
   },
   {
     icon: MapPin,
@@ -213,10 +213,11 @@ export default function ListYourTruckPage() {
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-10">
             <h2 className="font-display text-3xl md:text-4xl font-bold leading-tight text-foreground mb-3">
-              What you get today
+              Build your FoodTruckCLT profile
             </h2>
             <p className="text-muted-foreground max-w-2xl mx-auto">
-              Straightforward benefits—no hype, no roadmap promises.
+              Give Charlotte hosts and customers a clear place to learn about your truck, view your
+              details, and know how to reach you.
             </p>
           </div>
 
