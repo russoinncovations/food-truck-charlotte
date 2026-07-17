@@ -45,7 +45,7 @@ export function VendorCTA({ directoryTruckCount }: { directoryTruckCount: number
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <Button asChild size="lg">
                 <Link href="/list-your-truck" className="flex items-center justify-center gap-2">
-                  Claim Your Profile
+                  Create or claim your profile
                   <ArrowRight className="h-4 w-4" />
                 </Link>
               </Button>
