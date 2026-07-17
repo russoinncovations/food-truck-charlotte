@@ -4,7 +4,7 @@
  */
 export const HOMEPAGE_IMAGES = {
   /** Full-bleed hero — community gathering with Charlotte skyline. */
-  hero: "/images/event-festival.jpg",
+  hero: "/images/hero-charlotte-festival.png",
   /** Optional food-forward hero alternate. */
   heroFoodAlternate: "/images/hero-truck.jpg",
   /** Event-scene photos for homepage use-case tiles. */
