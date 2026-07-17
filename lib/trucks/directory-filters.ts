@@ -1,6 +1,11 @@
 /**
  * Client-safe filter helpers for the public /trucks directory.
  * Uses existing truck profile fields only — no schema changes.
+ *
+ * Cuisine matching priority:
+ * 1. High — cuisine_types labels + cuisine field
+ * 2. Medium — tagline / short_description / today_specials (only if structured is empty/unhelpful)
+ * 3. Low — description / full_description / name (only if structured + medium are empty)
  */
 
 export type DirectoryFilterTruck = {
@@ -68,49 +73,54 @@ const KNOWN_CUISINE_TYPE_CATEGORIES: Record<string, CuisineCategoryValue[]> = {
   "crepes / waffles": ["desserts", "breakfast"],
 }
 
-/** Keyword patterns for free-text cuisine / profile signals. */
+/** Strong beverage signals only — never match on bare "drinks" / "slush". */
+const COFFEE_STRONG_PATTERN =
+  /\bcoffee\b|\bespresso\b|\bcafe\b|\blatte\b|\bcold\s*brew\b|\bbeverages?\b|\blemonade\b|\bboba\b|\btea\b|\bsmoothies?\b|\bjuices?\b/
+
+/** Keyword patterns for free-text cuisine signals (after negative-guard preprocessing). */
 const CUISINE_PATTERNS: Record<CuisineCategoryValue, RegExp> = {
   american:
-    /\bamerican\b|\bcomfort\s*food\b|\bdiner\b|\bhot\s*dogs?\b|\bmac\s*(?:and|&)\s*cheese\b|\bcomfort\b/,
-  bbq: /\bbbq\b|\bbarbecue\b|\bbarbeque\b|\bsmokehouse\b|\bsmoked?\b|\bsmoked\s*meats?\b|\bbrisket\b|\bpulled\s*pork\b|\bribs?\b/,
+    /\bamerican\b|\bcomfort\s*food\b|\bdiner\b|\bhot\s*dogs?\b|\bmac\s*(?:and|&)\s*cheese\b/,
+  bbq: /\bbbq\b|\bbarbecue\b|\bbarbeque\b|\bsmokehouse\b|\bsmoked\s*meats?\b|\bbrisket\b|\bpulled\s*pork\b|\bribs?\b/,
   burgers:
     /\bburgers?\b|\bsandwiches?\b|\bsubs?\b|\bsmash\b|\bphilly\b|\bcheesesteaks?\b|\bwraps?\b/,
   chicken: /\bchickens?\b|\bwings?\b|\btenders?\b|\bnuggets?\b/,
   tacos:
     /\btacos?\b|\bmexican\b|\bburritos?\b|\bquesadillas?\b|\bnachos?\b|\belote\b|\bbirria\b|\btex[\s-]?mex\b/,
   latin:
-    /\blatin(?:o|a)?\b|\blatin\s*american\b|\bcuban\b|\bpuerto\s*rican\b|\bcolombian\b|\bvenezuelan\b|\bperuvian\b|\bbrazilian\b|\bargentin(?:a|ean|ian)?\b|\barepas?\b|\bempanadas?\b|\bpupusas?\b|\bsalvadoran\b|\bdominican\b/,
+    /\blatin(?:o|a)?\b|\blatin\s*american\b|\bcuban\b|\bpuerto\s*rican\b|\bcolombian\b|\bvenezuelan\b|\bperuvian\b|\bbrazilian\b|\bargentin(?:a|ean|ian)?\b|\barepas?\b|\bempanadas?\b|\bpupusas?\b|\bsalvadoran\b|\bdominican\b|\bchurros?\b/,
   caribbean:
     /\bcaribbean\b|\bjamaican\b|\bjamaica\b|\bjerk\b|\btrinidad(?:ian)?\b|\bhaitian\b|\bbajan\b|\bbarbados\b|\bisland\s*(?:cuisine|food|eats|flavou?r)/,
-  soul: /\bsoul\s*food\b|\bsoul\b|\bsouthern\b|\bcreole\b|\bcajun\b|\bgumbo\b|\bcollards?\b|\bfried\s*chicken\b/,
+  soul: /\bsoul\s*food\b|\bsouthern\b|\bcreole\b|\bcajun\b|\bgumbo\b|\bcollards?\b|\bfried\s*chicken\b/,
   seafood:
-    /\bseafood\b|\bfish\b|\bshrimp\b|\bcrab\b|\blobster\b|\boysters?\b|\bcrawfish\b|\bclam\b|\bpoke\b(?!\s*bowl)/,
+    /\bseafood\b|\bfish\b|\bshrimp\b|\bcrab\b|\blobster\b|\boysters?\b|\bcrawfish\b|\bclam\b/,
   asian:
-    /\basian\b|\bchinese\b|\bjapanese\b|\bkorean\b|\bthai\b|\bvietnamese\b|\bfilipino\b|\bsushi\b|\bramen\b|\bpho\b|\bteriyaki\b|\bbao\b|\bbubble\s*tea\b|\bpoke\s*bowl\b/,
+    /\basian\b|\bchinese\b|\bjapanese\b|\bkorean\b|\bthai\b|\bvietnamese\b|\bfilipino\b|\bsushi\b|\bramen\b|\bpho\b|\bteriyaki\b|\bbao\b|\bpoke\s*bowls?\b/,
   indian:
     /\bindian\b|\bcurry\b|\btikka\b|\bnaan\b|\btandoori\b|\bbiryani\b|\bmasala\b|\bdosa\b|\bsamosa\b|\bpakistani\b|\bsouth\s*asian\b/,
   mediterranean:
     /\bmediterranean\b|\bmiddle\s*east(?:ern)?\b|\bfalafel\b|\bgyros?\b|\bshawarma\b|\bhummus\b|\blebanese\b|\bgreek\b|\bturkish\b|\bhalal\b|\bkebab\b|\bpita\b/,
-  italian: /\bitalian\b|\bpizza\b|\bpasta\b|\bgelato\b|\bstromboli\b|\bcalzone\b/,
+  // "Italian" alone is allowed only when not "Italian ice" (stripped in preprocess).
+  italian: /\bpizza\b|\bpasta\b|\bstromboli\b|\bcalzone\b|\bitalian\b/,
   african:
     /\bafrican\b|\bethiopian\b|\bnigerian\b|\bghanaian\b|\bsenegalese\b|\bwest\s*african\b|\binjera\b|\bjollof\b/,
   breakfast:
-    /\bbreakfast\b|\bbrunch\b|\bpancakes?\b|\bwaffles?\b|\bomelets?\b|\bomelettes?\b|\bbiscuits?\b|\beggs?\b/,
-  coffee:
-    /\bcoffee\b|\bespresso\b|\bcafe\b|\blatte\b|\bcold\s*brew\b|\bbeverages?\b|\bdrinks?\b|\blemonade\b|\bboba\b|\btea\b|\bsmoothies?\b|\bjuice\b|\bslush(?:ie|y)?\b/,
+    /\bbreakfast\b|\bbrunch\b|\bpancakes?\b|\bwaffles?\b|\bomelets?\b|\bomelettes?\b|\bbiscuits?\b/,
+  coffee: COFFEE_STRONG_PATTERN,
   desserts:
-    /\bdesserts?\b|\bsweets?\b|\bice\s*cream\b|\bcookies?\b|\bcupcakes?\b|\bbrownies?\b|\bcrepes?\b|\bsnow\s*cones?\b|\bshaved\s*ice\b|\bdonuts?\b|\bdoughnuts?\b|\bbakery\b|\bpastr(?:y|ies)\b|\bcake\b|\bcandy\b/,
+    /\bdesserts?\b|\bsweets?\b|\bice\s*cream\b|\bitalian_ice_dessert\b|\bcannoli\b|\bchurros?\b|\bcookies?\b|\bcupcakes?\b|\bbrownies?\b|\bcrepes?\b|\bsnow\s*cones?\b|\bshaved\s*ice\b|\bslush(?:ie|y|ies)?\b|\bdonuts?\b|\bdoughnuts?\b|\bbakery\b|\bpastr(?:y|ies)\b|\bcakes?\b|\bcandy\b|\bgelato\b/,
   vegan_veg: /\bvegan\b|\bvegetarian\b|\bplant[\s-]?based\b/,
   healthy:
-    /\bhealthy\b|\bbowls?\b|\bsalads?\b|\bacai\b|\bsmoothie\s*bowls?\b|\bgrain\s*bowls?\b|\bpoke\s*bowls?\b|\bsmoothies?\b|\bjuice\b|\bfresh\s*juice\b/,
+    /\bhealthy\b|\bbowls?\b|\bsalads?\b|\bacai\b|\bsmoothie\s*bowls?\b|\bgrain\s*bowls?\b|\bpoke\s*bowls?\b|\bsmoothies?\b|\bjuices?\b|\bfresh\s*juice\b/,
 }
 
 const CATEGORY_VALUES = Object.keys(CUISINE_PATTERNS) as CuisineCategoryValue[]
 
+const UNHELPFUL_STRUCTURED = /^(other|food\s*truck|event\s*catering|catering|vendor|n\/?a|none|various|mixed)?$/
+
 /**
  * Vendor format options derived from existing `trucks.vendor_type` values only.
  * Signup / seed values: food_truck, food_trailer, cart_tent, truck.
- * Skipped (no reliable distinct values): coffee cart, dessert cart, beverage vendor, catering setup.
  */
 export const VENDOR_FORMAT_FILTER_OPTIONS = [
   { value: "food_truck", label: "Food truck" },
@@ -152,25 +162,41 @@ function knownTypeKey(raw: string): string {
   return raw.toLowerCase().replace(/\s+/g, " ").trim()
 }
 
-/**
- * Primary cuisine signals: structured cuisine fields.
- * Secondary: short profile copy / menu notes (helps when cuisine fields are sparse).
- * Full long descriptions are included only as a last-resort signal.
- */
-export function truckCuisineHaystack(t: DirectoryFilterTruck): string {
-  const primary = normalizeCuisineText(
-    [t.cuisine, ...(t.cuisine_types ?? [])].filter(Boolean).join(" ")
-  )
-  const secondary = normalizeCuisineText(
+function structuredCuisineText(t: DirectoryFilterTruck): string {
+  return normalizeCuisineText([t.cuisine, ...(t.cuisine_types ?? [])].filter(Boolean).join(" "))
+}
+
+function mediumCuisineText(t: DirectoryFilterTruck): string {
+  return normalizeCuisineText(
     [t.tagline, t.short_description, t.today_specials].filter(Boolean).join(" ")
   )
-  const combined = [primary, secondary].filter(Boolean).join(" ")
-  if (combined) return combined
+}
 
-  // Last resort when structured cuisine + short profile fields are empty.
+function lowCuisineText(t: DirectoryFilterTruck): string {
   return normalizeCuisineText(
     [t.description, t.full_description, t.name].filter(Boolean).join(" ")
   )
+}
+
+/**
+ * Text actually used for cuisine category matching (respects source priority).
+ * Prefer structured fields; short profile copy only when structured is empty/unhelpful;
+ * name/long description only as last resort.
+ */
+export function truckCuisineHaystack(t: DirectoryFilterTruck): string {
+  const structured = structuredCuisineText(t)
+  if (structured && !isUnhelpfulStructuredText(structured)) {
+    const fromStructured = categoriesFromText(structured)
+    if (fromStructured.size > 0 || categoriesFromKnownTypes(t.cuisine_types).size > 0) {
+      return structured
+    }
+  }
+  if (structured && categoriesFromKnownTypes(t.cuisine_types).size > 0) {
+    return structured
+  }
+  const medium = mediumCuisineText(t)
+  if (medium) return medium
+  return lowCuisineText(t)
 }
 
 /** Keyword search across name, descriptions, cuisine, and menu/service notes. */
@@ -207,34 +233,71 @@ function categoriesFromKnownTypes(types: string[] | null | undefined): Set<Cuisi
   return out
 }
 
-function categoriesFromPatterns(haystack: string): Set<CuisineCategoryValue> {
+function isUnhelpfulStructuredText(text: string): boolean {
+  if (!text.trim()) return true
+  // Entire structured blob is generic filler.
+  if (UNHELPFUL_STRUCTURED.test(text)) return true
+  // Only "other" tokens.
+  const tokens = text.split(/\s+/).filter(Boolean)
+  if (tokens.length > 0 && tokens.every((tok) => tok === "other")) return true
+  return false
+}
+
+/**
+ * Preprocess negative guards, then apply category patterns.
+ * - "Italian ice" → dessert marker, strip Italian signal
+ */
+function preprocessCuisineText(raw: string): string {
+  return normalizeCuisineText(raw)
+    // Italian ice / Italian ices / Italian ice cream → dessert, not Italian / Pizza.
+    .replace(/\bitalian\s+ices?(?:\s*cream)?\b/g, "italian_ice_dessert")
+}
+
+function categoriesFromText(raw: string): Set<CuisineCategoryValue> {
   const out = new Set<CuisineCategoryValue>()
-  if (!haystack.trim()) return out
+  const text = preprocessCuisineText(raw)
+  if (!text.trim()) return out
+
   for (const value of CATEGORY_VALUES) {
-    if (CUISINE_PATTERNS[value].test(haystack)) out.add(value)
+    if (CUISINE_PATTERNS[value].test(text)) out.add(value)
   }
   return out
 }
 
+function hasHelpfulStructuredCuisine(t: DirectoryFilterTruck): boolean {
+  if (categoriesFromKnownTypes(t.cuisine_types).size > 0) return true
+  const structured = structuredCuisineText(t)
+  if (!structured || isUnhelpfulStructuredText(structured)) return false
+  return categoriesFromText(structured).size > 0
+}
+
 /**
- * All cuisine categories a truck matches. A truck may match multiple.
+ * All cuisine categories a truck matches. A truck may match multiple when strong data supports it.
  * Empty set means no confident match → belongs under "Other".
  */
 export function getMatchingCuisineCategories(t: DirectoryFilterTruck): CuisineCategoryValue[] {
-  const fromKnown = categoriesFromKnownTypes(t.cuisine_types)
-  const hay = truckCuisineHaystack(t)
-  const fromPatterns = categoriesFromPatterns(hay)
+  const known = categoriesFromKnownTypes(t.cuisine_types)
+  const structured = structuredCuisineText(t)
+  const fromStructuredText = structured ? categoriesFromText(structured) : new Set<CuisineCategoryValue>()
 
-  // Also pattern-match raw cuisine string alone (covers free-text `cuisine` field).
-  const cuisineOnly = normalizeCuisineText(t.cuisine ?? "")
-  const fromCuisineField = categoriesFromPatterns(cuisineOnly)
+  const high = new Set<CuisineCategoryValue>([...known, ...fromStructuredText])
+  if (hasHelpfulStructuredCuisine(t)) {
+    return CATEGORY_VALUES.filter((c) => high.has(c))
+  }
 
-  const merged = new Set<CuisineCategoryValue>([
-    ...fromKnown,
-    ...fromPatterns,
-    ...fromCuisineField,
-  ])
-  return CATEGORY_VALUES.filter((c) => merged.has(c))
+  const medium = mediumCuisineText(t)
+  if (medium) {
+    const fromMedium = categoriesFromText(medium)
+    return CATEGORY_VALUES.filter((c) => fromMedium.has(c))
+  }
+
+  const low = lowCuisineText(t)
+  if (low) {
+    const fromLow = categoriesFromText(low)
+    return CATEGORY_VALUES.filter((c) => fromLow.has(c))
+  }
+
+  return []
 }
 
 export function matchesCuisineCategory(
