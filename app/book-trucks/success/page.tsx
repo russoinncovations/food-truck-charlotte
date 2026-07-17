@@ -112,8 +112,8 @@ export default async function BookingSuccessPage({
               <div className="mt-6 text-center">
                 <p className="text-sm text-muted-foreground">
                   Questions? Email us at{" "}
-                  <Link href="mailto:hello@foodtruckclt.com" className="text-primary hover:underline">
-                    hello@foodtruckclt.com
+                  <Link href="mailto:nicole@foodtruckclt.com" className="text-primary hover:underline">
+                    nicole@foodtruckclt.com
                   </Link>
                 </p>
               </div>

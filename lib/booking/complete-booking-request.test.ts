@@ -129,3 +129,12 @@ test("buildAdminBookingNotificationUrl does not embed raw admin key in path segm
     assert.equal(url.split("?key=")[0], `https://www.foodtruckclt.com/admin/bookings/${SAMPLE_BOOKING_ID}`)
   })
 })
+
+test("buildAdminBookingNotificationUrl uses list route with key when booking id is empty", () => {
+  withEnv({ ADMIN_KEY: "list-key-123" }, () => {
+    assert.equal(
+      buildAdminBookingNotificationUrl("   "),
+      "https://www.foodtruckclt.com/admin/bookings?key=list-key-123"
+    )
+  })
+})
