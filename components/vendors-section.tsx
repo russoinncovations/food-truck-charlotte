@@ -4,8 +4,8 @@ import { Truck, Users, ArrowRight, CheckCircle } from "lucide-react"
 const truckBenefits = [
   "Get seen by people actively looking for trucks",
   "Reach planners organizing real events",
-  "Free listing in our directory",
-  "Direct booking inquiries to you",
+  "Create or claim a public truck profile",
+  "Eligible trucks may receive relevant event opportunities as the request platform grows",
 ]
 
 const hostBenefits = [

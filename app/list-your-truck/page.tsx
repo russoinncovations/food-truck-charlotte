@@ -15,23 +15,27 @@ import { isPlausibleVendorWebsiteInput } from "@/lib/validation/vendor-website"
 const features = [
   {
     icon: ClipboardList,
-    title: "Free Truck Profile",
-    description: "List your truck with cuisine, story, and contact details—no paid tier required.",
+    title: "Public Truck Profile",
+    description:
+      "Share your cuisine, story, service details, menu links, and contact information.",
   },
   {
     icon: MapPin,
     title: "Live Location Visibility",
-    description: "When you mark yourself as serving, customers can see you on the live map.",
+    description:
+      "When you mark yourself as serving, customers can find you on the live map.",
   },
   {
     icon: Users,
     title: "Built-In Charlotte Audience",
-    description: "Get discovered by locals already browsing Charlotte food trucks and the directory.",
+    description:
+      "Get discovered by locals already browsing FoodTruckCLT and the Charlotte food truck community.",
   },
   {
     icon: Calendar,
-    title: "Event & Booking Exposure",
-    description: "Your profile links you to the wider site—events and booking inquiries visitors already use.",
+    title: "Booking Request Visibility",
+    description:
+      "Eligible trucks may receive relevant event opportunities as the request platform grows.",
   },
 ]
 
@@ -144,13 +148,13 @@ export default function ListYourTruckPage() {
               Claim your truck profile and get found by Charlotte event hosts.
             </h1>
             <p className="text-base leading-7 md:text-lg text-muted-foreground mb-7 max-w-2xl mx-auto">
-              Keep your profile current, promote upcoming stops, and receive relevant food truck
-              requests as the platform grows.
+              Create a public FoodTruckCLT profile, keep your details current, and make it easier for
+              Charlotte hosts and customers to find your truck.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button size="lg" className="gap-2" asChild>
                 <a href="#apply">
-                  Claim your truck profile
+                  Create or claim your profile
                   <ArrowRight className="h-4 w-4" />
                 </a>
               </Button>
@@ -236,21 +240,28 @@ export default function ListYourTruckPage() {
         </div>
       </section>
 
-      {/* Pricing — single free tier */}
+      {/* Public profile section */}
       <section className="py-14 md:py-20 bg-muted/30">
         <div className="mx-auto max-w-lg px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-8">
-            <h2 className="font-display text-3xl md:text-4xl font-bold text-foreground mb-2">Simple listing</h2>
-            <p className="text-muted-foreground text-sm">One option—the one we offer right now.</p>
+            <h2 className="font-display text-3xl md:text-4xl font-bold text-foreground mb-2">
+              Start with a public profile
+            </h2>
+            <p className="text-muted-foreground text-sm">
+              Create or claim your profile so hosts and customers can find accurate information about
+              your truck.
+            </p>
           </div>
           <Card className="border-2 border-primary/30 shadow-md">
             <CardContent className="p-8 text-left">
-              <h3 className="font-display text-2xl font-bold text-foreground mb-2">Free Truck Listing</h3>
-              <p className="text-sm text-muted-foreground mb-6">Everything below is included at no charge.</p>
+              <h3 className="font-display text-2xl font-bold text-foreground mb-2">Public Truck Profile</h3>
+              <p className="text-sm text-muted-foreground mb-6">
+                Your public profile helps hosts and customers learn more about your truck.
+              </p>
               <ul className="space-y-3 text-foreground text-sm mb-8">
                 <li className="flex gap-2">
                   <span className="text-primary font-bold shrink-0">·</span>
-                  <span>Truck profile</span>
+                  <span>Truck profile with cuisine, story, and contact details</span>
                 </li>
                 <li className="flex gap-2">
                   <span className="text-primary font-bold shrink-0">·</span>
@@ -262,12 +273,15 @@ export default function ListYourTruckPage() {
                 </li>
                 <li className="flex gap-2">
                   <span className="text-primary font-bold shrink-0">·</span>
-                  <span>Booking inquiry exposure</span>
+                  <span>
+                    Eligible trucks may receive relevant event opportunities as the request platform
+                    grows
+                  </span>
                 </li>
               </ul>
               <Button size="lg" className="w-full gap-2" asChild>
                 <a href="#apply">
-                  Claim your truck profile
+                  Create or claim your profile
                   <ArrowRight className="h-4 w-4" />
                 </a>
               </Button>
@@ -322,11 +336,12 @@ export default function ListYourTruckPage() {
             Ready to Grow Your Business?
           </h2>
           <p className="text-primary-foreground/80 mb-8 max-w-xl mx-auto">
-            List once, stay discoverable when you&apos;re out serving Charlotte.
+            Create or claim your public profile so Charlotte hosts and customers can find accurate
+            information about your truck.
           </p>
           <Button size="lg" variant="secondary" className="gap-2" asChild>
             <a href="#apply">
-              Claim your truck profile
+              Create or claim your profile
               <ArrowRight className="h-4 w-4" />
             </a>
           </Button>

@@ -8,7 +8,7 @@ const navigation = {
     { name: "Promote an Event", href: "/promote-event" },
   ],
   forVendors: [
-    { name: "Claim Your Profile", href: "/list-your-truck" },
+    { name: "Create or claim your profile", href: "/list-your-truck" },
     { name: "Vendor Dashboard", href: "/dashboard" },
     { name: "Resource Guide", href: "/resources" },
   ],
