@@ -4,6 +4,7 @@ import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
 import { BOOKING_REQUEST_TYPE } from "@/lib/booking/booking-request-constants"
 import { completeBookingRequest, type BookingRequestTypeValue } from "@/lib/booking/complete-booking-request"
+import { buildPublicBookingRequestInsertRow } from "@/lib/booking/build-public-booking-request-row"
 import { validatePublicBookingRequestInput } from "@/lib/booking/validate-public-booking-request"
 
 export type BookingRequestResult = {
@@ -116,36 +117,36 @@ export async function submitBookingRequest(
   const vendor_type =
     vendorTypeRaw && allowedVendorTypes.has(vendorTypeRaw) ? vendorTypeRaw : null
 
-  const insertData: Parameters<typeof completeBookingRequest>[1] = {
-    event_type: eventType,
-    event_date: eventDate,
-    start_time: startTime,
-    end_time: endTime,
-    guest_count: guestCountNum,
-    truck_count: trucksNeededNum,
-    venue_name: venueName || null,
-    street_address: streetAddress,
+  // Production booking_requests has no truck_count column — persist trucks needed in notes only.
+  const insertData = buildPublicBookingRequestInsertRow({
+    eventType,
+    eventDate,
+    startTime,
+    endTime,
+    guestCount: guestCountNum,
+    trucksNeeded: trucksNeededNum,
+    venueName: venueName || null,
+    streetAddress,
     city,
     state: state || "NC",
-    zip_code: zipCode,
+    zipCode,
     cuisines: cuisines.length > 0 ? cuisines : null,
-    dietary_requirements: dietaryRequirements.length > 0 ? dietaryRequirements : null,
-    budget_range: budgetRange || null,
-    contact_name: contactName,
-    contact_email: contactEmail,
-    contact_phone: contactPhone,
+    dietaryRequirements: dietaryRequirements.length > 0 ? dietaryRequirements : null,
+    budgetRange: budgetRange || null,
+    contactName,
+    contactEmail,
+    contactPhone,
     organization: organization || null,
-    additional_notes: additionalNotes || null,
-    status: "new",
-    request_type: requestType,
-    truck_id,
-    vendor_type:
+    additionalNotes: additionalNotes || null,
+    requestType,
+    truckId: truck_id,
+    vendorType:
       requestType === BOOKING_REQUEST_TYPE.CUISINE_MATCH ||
       requestType === BOOKING_REQUEST_TYPE.OPEN_REQUEST
         ? vendor_type
         : null,
-    preferred_trucks,
-  }
+    preferredTrucks: preferred_trucks,
+  })
 
   const result = await completeBookingRequest(supabase, insertData)
 
