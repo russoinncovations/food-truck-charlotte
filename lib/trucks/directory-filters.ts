@@ -6,6 +6,8 @@
  * 1. High — cuisine_types labels + cuisine field
  * 2. Medium — tagline / short_description / today_specials (only if structured is empty/unhelpful)
  * 3. Low — description / full_description / name (only if structured + medium are empty)
+ *
+ * Browse filters are intentionally broad — a truck may match multiple.
  */
 
 export type DirectoryFilterTruck = {
@@ -21,26 +23,21 @@ export type DirectoryFilterTruck = {
   catering?: boolean | null
 }
 
+/** Simplified host-facing cuisine filters for /trucks. */
 export const CUISINE_FILTER_OPTIONS = [
-  { value: "american", label: "American / Comfort Food" },
+  { value: "american", label: "American / Comfort" },
   { value: "bbq", label: "BBQ" },
-  { value: "burgers", label: "Burgers / Sandwiches" },
-  { value: "chicken", label: "Chicken / Wings" },
-  { value: "tacos", label: "Tacos / Mexican" },
-  { value: "latin", label: "Latin American" },
-  { value: "caribbean", label: "Jamaican / Caribbean" },
-  { value: "soul", label: "Soul Food / Southern" },
-  { value: "seafood", label: "Seafood" },
-  { value: "asian", label: "Asian" },
-  { value: "indian", label: "Indian" },
+  { value: "mexican_latin", label: "Mexican / Latin" },
+  { value: "caribbean", label: "Caribbean / Jamaican" },
+  { value: "asian_indian", label: "Asian / Indian" },
   { value: "mediterranean", label: "Mediterranean / Middle Eastern" },
-  { value: "italian", label: "Italian / Pizza" },
-  { value: "african", label: "African" },
+  { value: "italian", label: "Pizza / Italian" },
+  { value: "soul", label: "Southern / Soul Food" },
+  { value: "seafood", label: "Seafood" },
   { value: "breakfast", label: "Breakfast / Brunch" },
   { value: "coffee", label: "Coffee / Drinks" },
   { value: "desserts", label: "Desserts / Sweets" },
-  { value: "vegan_veg", label: "Vegan / Vegetarian" },
-  { value: "healthy", label: "Healthy / Bowls" },
+  { value: "vegan_healthy", label: "Vegan / Vegetarian / Healthy" },
   { value: "other", label: "Other" },
 ] as const
 
@@ -48,28 +45,45 @@ export type CuisineFilterValue = (typeof CUISINE_FILTER_OPTIONS)[number]["value"
 
 export type CuisineCategoryValue = Exclude<CuisineFilterValue, "other">
 
+/** Older URL param values → current broad filters. */
+const LEGACY_CUISINE_PARAM_ALIASES: Record<string, CuisineFilterValue> = {
+  burgers: "american",
+  chicken: "american",
+  tacos: "mexican_latin",
+  latin: "mexican_latin",
+  asian: "asian_indian",
+  indian: "asian_indian",
+  african: "other",
+  vegan_veg: "vegan_healthy",
+  healthy: "vegan_healthy",
+  "american-comfort": "american",
+  "mexican-latin": "mexican_latin",
+  "asian-indian": "asian_indian",
+  "vegan-healthy": "vegan_healthy",
+}
+
 /**
  * Exact vendor-profile / signup cuisine_types labels → filter categories.
  * These are the strings trucks actually store (see dashboard profile CUISINE_OPTIONS).
  */
 const KNOWN_CUISINE_TYPE_CATEGORIES: Record<string, CuisineCategoryValue[]> = {
-  "mexican / tacos": ["tacos"],
+  "mexican / tacos": ["mexican_latin"],
   "bbq / smokehouse": ["bbq"],
-  "american / burgers": ["american", "burgers"],
-  "asian fusion": ["asian"],
+  "american / burgers": ["american"],
+  "asian fusion": ["asian_indian"],
   "southern / soul food": ["soul"],
   "desserts / sweets": ["desserts"],
   pizza: ["italian"],
   seafood: ["seafood"],
   mediterranean: ["mediterranean"],
-  "vegetarian / vegan": ["vegan_veg"],
-  "indian / curry": ["indian"],
-  "latin / colombian": ["latin"],
+  "vegetarian / vegan": ["vegan_healthy"],
+  "indian / curry": ["asian_indian"],
+  "latin / colombian": ["mexican_latin"],
   caribbean: ["caribbean"],
-  "wings / chicken": ["chicken"],
-  "sandwiches / wraps": ["burgers"],
+  "wings / chicken": ["american"],
+  "sandwiches / wraps": ["american"],
   "snow cones / slushies": ["desserts"],
-  "juice / smoothies": ["healthy", "coffee"],
+  "juice / smoothies": ["coffee", "vegan_healthy"],
   "crepes / waffles": ["desserts", "breakfast"],
 }
 
@@ -80,41 +94,33 @@ const COFFEE_STRONG_PATTERN =
 /** Keyword patterns for free-text cuisine signals (after negative-guard preprocessing). */
 const CUISINE_PATTERNS: Record<CuisineCategoryValue, RegExp> = {
   american:
-    /\bamerican\b|\bcomfort\s*food\b|\bdiner\b|\bhot\s*dogs?\b|\bmac\s*(?:and|&)\s*cheese\b/,
+    /\bamerican\b|\bcomfort\s*food\b|\bdiner\b|\bhot\s*dogs?\b|\bmac\s*(?:and|&)\s*cheese\b|\bburgers?\b|\bsandwiches?\b|\bsubs?\b|\bsmash\b|\bphilly\b|\bcheesesteaks?\b|\bwraps?\b|\bchickens?\b|\bwings?\b|\btenders?\b|\bnuggets?\b/,
   bbq: /\bbbq\b|\bbarbecue\b|\bbarbeque\b|\bsmokehouse\b|\bsmoked\s*meats?\b|\bbrisket\b|\bpulled\s*pork\b|\bribs?\b/,
-  burgers:
-    /\bburgers?\b|\bsandwiches?\b|\bsubs?\b|\bsmash\b|\bphilly\b|\bcheesesteaks?\b|\bwraps?\b/,
-  chicken: /\bchickens?\b|\bwings?\b|\btenders?\b|\bnuggets?\b/,
-  tacos:
-    /\btacos?\b|\bmexican\b|\bburritos?\b|\bquesadillas?\b|\bnachos?\b|\belote\b|\bbirria\b|\btex[\s-]?mex\b/,
-  latin:
-    /\blatin(?:o|a)?\b|\blatin\s*american\b|\bcuban\b|\bpuerto\s*rican\b|\bcolombian\b|\bvenezuelan\b|\bperuvian\b|\bbrazilian\b|\bargentin(?:a|ean|ian)?\b|\barepas?\b|\bempanadas?\b|\bpupusas?\b|\bsalvadoran\b|\bdominican\b|\bchurros?\b/,
+  mexican_latin:
+    /\btacos?\b|\bmexican\b|\bburritos?\b|\bquesadillas?\b|\bnachos?\b|\belote\b|\bbirria\b|\btex[\s-]?mex\b|\blatin(?:o|a)?\b|\blatin\s*american\b|\bcuban\b|\bpuerto\s*rican\b|\bcolombian\b|\bvenezuelan\b|\bperuvian\b|\bbrazilian\b|\bargentin(?:a|ean|ian)?\b|\barepas?\b|\bempanadas?\b|\bpupusas?\b|\bsalvadoran\b|\bdominican\b|\bchurros?\b/,
   caribbean:
     /\bcaribbean\b|\bjamaican\b|\bjamaica\b|\bjerk\b|\btrinidad(?:ian)?\b|\bhaitian\b|\bbajan\b|\bbarbados\b|\bisland\s*(?:cuisine|food|eats|flavou?r)/,
-  soul: /\bsoul\s*food\b|\bsouthern\b|\bcreole\b|\bcajun\b|\bgumbo\b|\bcollards?\b|\bfried\s*chicken\b/,
-  seafood:
-    /\bseafood\b|\bfish\b|\bshrimp\b|\bcrab\b|\blobster\b|\boysters?\b|\bcrawfish\b|\bclam\b/,
-  asian:
-    /\basian\b|\bchinese\b|\bjapanese\b|\bkorean\b|\bthai\b|\bvietnamese\b|\bfilipino\b|\bsushi\b|\bramen\b|\bpho\b|\bteriyaki\b|\bbao\b|\bpoke\s*bowls?\b/,
-  indian:
-    /\bindian\b|\bcurry\b|\btikka\b|\bnaan\b|\btandoori\b|\bbiryani\b|\bmasala\b|\bdosa\b|\bsamosa\b|\bpakistani\b|\bsouth\s*asian\b/,
+  asian_indian:
+    /\basian\b|\bchinese\b|\bjapanese\b|\bkorean\b|\bthai\b|\bvietnamese\b|\bfilipino\b|\bsushi\b|\bramen\b|\bpho\b|\bteriyaki\b|\bbao\b|\bpoke\s*bowls?\b|\bindian\b|\bcurry\b|\btikka\b|\bnaan\b|\btandoori\b|\bbiryani\b|\bmasala\b|\bdosa\b|\bsamosa\b|\bpakistani\b|\bsouth\s*asian\b/,
   mediterranean:
     /\bmediterranean\b|\bmiddle\s*east(?:ern)?\b|\bfalafel\b|\bgyros?\b|\bshawarma\b|\bhummus\b|\blebanese\b|\bgreek\b|\bturkish\b|\bhalal\b|\bkebab\b|\bpita\b/,
   // "Italian" alone is allowed only when not "Italian ice" (stripped in preprocess).
   italian: /\bpizza\b|\bpasta\b|\bstromboli\b|\bcalzone\b|\bitalian\b/,
-  african:
-    /\bafrican\b|\bethiopian\b|\bnigerian\b|\bghanaian\b|\bsenegalese\b|\bwest\s*african\b|\binjera\b|\bjollof\b/,
+  soul: /\bsoul\s*food\b|\bsouthern\b|\bcreole\b|\bcajun\b|\bgumbo\b|\bcollards?\b|\bfried\s*chicken\b/,
+  seafood:
+    /\bseafood\b|\bfish\b|\bshrimp\b|\bcrab\b|\blobster\b|\boysters?\b|\bcrawfish\b|\bclam\b/,
   breakfast:
     /\bbreakfast\b|\bbrunch\b|\bpancakes?\b|\bwaffles?\b|\bomelets?\b|\bomelettes?\b|\bbiscuits?\b/,
   coffee: COFFEE_STRONG_PATTERN,
   desserts:
     /\bdesserts?\b|\bsweets?\b|\bice\s*cream\b|\bitalian_ice_dessert\b|\bcannoli\b|\bchurros?\b|\bcookies?\b|\bcupcakes?\b|\bbrownies?\b|\bcrepes?\b|\bsnow\s*cones?\b|\bshaved\s*ice\b|\bslush(?:ie|y|ies)?\b|\bdonuts?\b|\bdoughnuts?\b|\bbakery\b|\bpastr(?:y|ies)\b|\bcakes?\b|\bcandy\b|\bgelato\b/,
-  vegan_veg: /\bvegan\b|\bvegetarian\b|\bplant[\s-]?based\b/,
-  healthy:
-    /\bhealthy\b|\bbowls?\b|\bsalads?\b|\bacai\b|\bsmoothie\s*bowls?\b|\bgrain\s*bowls?\b|\bpoke\s*bowls?\b|\bsmoothies?\b|\bjuices?\b|\bfresh\s*juice\b/,
+  vegan_healthy:
+    /\bvegan\b|\bvegetarian\b|\bplant[\s-]?based\b|\bhealthy\b|\bbowls?\b|\bsalads?\b|\bacai\b|\bsmoothie\s*bowls?\b|\bgrain\s*bowls?\b|\bpoke\s*bowls?\b|\bsmoothies?\b|\bjuices?\b|\bfresh\s*juice\b/,
 }
 
-const CATEGORY_VALUES = Object.keys(CUISINE_PATTERNS) as CuisineCategoryValue[]
+const CATEGORY_VALUES = CUISINE_FILTER_OPTIONS.map((o) => o.value).filter(
+  (v): v is CuisineCategoryValue => v !== "other"
+)
 
 const UNHELPFUL_STRUCTURED = /^(other|food\s*truck|event\s*catering|catering|vendor|n\/?a|none|various|mixed)?$/
 
@@ -235,22 +241,54 @@ function categoriesFromKnownTypes(types: string[] | null | undefined): Set<Cuisi
 
 function isUnhelpfulStructuredText(text: string): boolean {
   if (!text.trim()) return true
-  // Entire structured blob is generic filler.
   if (UNHELPFUL_STRUCTURED.test(text)) return true
-  // Only "other" tokens.
   const tokens = text.split(/\s+/).filter(Boolean)
   if (tokens.length > 0 && tokens.every((tok) => tok === "other")) return true
   return false
 }
 
-/**
- * Preprocess negative guards, then apply category patterns.
- * - "Italian ice" → dessert marker, strip Italian signal
- */
 function preprocessCuisineText(raw: string): string {
   return normalizeCuisineText(raw)
-    // Italian ice / Italian ices / Italian ice cream → dessert, not Italian / Pizza.
+    // Italian ice / Italian ices / Italian ice cream → dessert, not Pizza / Italian.
     .replace(/\bitalian\s+ices?(?:\s*cream)?\b/g, "italian_ice_dessert")
+}
+
+/**
+ * Broad multi-filter expansions: hosts may reasonably search related categories.
+ */
+function expandBroadFilterCategories(cats: Set<CuisineCategoryValue>, raw: string): void {
+  const text = preprocessCuisineText(raw)
+  if (!text.trim()) return
+
+  // Donuts → Desserts + Breakfast
+  if (/\bdonuts?\b|\bdoughnuts?\b/.test(text)) {
+    cats.add("desserts")
+    cats.add("breakfast")
+  }
+
+  // Coffee / espresso (not lemonade/boba/tea alone) → Coffee + Breakfast
+  if (/\bcoffee\b|\bespresso\b|\bcafe\b|\blatte\b|\bcold\s*brew\b/.test(text)) {
+    cats.add("coffee")
+    cats.add("breakfast")
+  }
+
+  // Crepes / waffles → Breakfast + Desserts
+  if (/\bcrepes?\b|\bwaffles?\b/.test(text)) {
+    cats.add("breakfast")
+    cats.add("desserts")
+  }
+
+  // Smoothies / juice → Coffee / Drinks + Vegan / Vegetarian / Healthy
+  if (/\bsmoothies?\b|\bjuices?\b/.test(text)) {
+    cats.add("coffee")
+    cats.add("vegan_healthy")
+  }
+
+  // Churros → Desserts + Mexican / Latin
+  if (/\bchurros?\b/.test(text)) {
+    cats.add("desserts")
+    cats.add("mexican_latin")
+  }
 }
 
 function categoriesFromText(raw: string): Set<CuisineCategoryValue> {
@@ -261,6 +299,7 @@ function categoriesFromText(raw: string): Set<CuisineCategoryValue> {
   for (const value of CATEGORY_VALUES) {
     if (CUISINE_PATTERNS[value].test(text)) out.add(value)
   }
+  expandBroadFilterCategories(out, text)
   return out
 }
 
@@ -282,6 +321,7 @@ export function getMatchingCuisineCategories(t: DirectoryFilterTruck): CuisineCa
 
   const high = new Set<CuisineCategoryValue>([...known, ...fromStructuredText])
   if (hasHelpfulStructuredCuisine(t)) {
+    expandBroadFilterCategories(high, structured)
     return CATEGORY_VALUES.filter((c) => high.has(c))
   }
 
@@ -320,13 +360,21 @@ export function matchesVendorFormat(
   const aliases = VENDOR_FORMAT_ALIASES[format as VendorFormatFilterValue]
   if (!aliases) return true
   const normalized = normalizeVendorType(t.vendor_type)
-  // Schema default is truck; treat empty as food truck only when filtering that format.
   if (!normalized) return format === "food_truck"
   return aliases.has(normalized)
 }
 
 export function isValidCuisineFilter(value: string | null | undefined): value is CuisineFilterValue {
   return Boolean(value && CUISINE_FILTER_OPTIONS.some((o) => o.value === value))
+}
+
+/** Accept current filter values plus legacy URL params from earlier /trucks filter versions. */
+export function resolveCuisineFilterParam(
+  value: string | null | undefined
+): CuisineFilterValue | "" {
+  if (!value) return ""
+  if (isValidCuisineFilter(value)) return value
+  return LEGACY_CUISINE_PARAM_ALIASES[value] ?? ""
 }
 
 export function isValidVendorFormatFilter(
