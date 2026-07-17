@@ -18,43 +18,83 @@ export type PublicBookingRequestInput = {
   cuisines: string[]
 }
 
+export type PublicBookingValidationFailure = {
+  ok: false
+  error: string
+  /** Form field `name` / focus target id suffix (field-{name} or element id). */
+  field: string
+}
+
+export type PublicBookingValidationResult = { ok: true } | PublicBookingValidationFailure
+
+function missing(field: string, label: string): PublicBookingValidationFailure {
+  return { ok: false, field, error: `${label} is required.` }
+}
+
 export function validatePublicBookingRequestInput(
   input: PublicBookingRequestInput
-): { ok: true } | { ok: false; error: string } {
+): PublicBookingValidationResult {
   if (
     input.requestType !== BOOKING_REQUEST_TYPE.SPECIFIC_VENDOR &&
     input.requestType !== BOOKING_REQUEST_TYPE.CUISINE_MATCH &&
     input.requestType !== BOOKING_REQUEST_TYPE.OPEN_REQUEST
   ) {
-    return { ok: false, error: "Invalid request type" }
+    return {
+      ok: false,
+      field: "requestType",
+      error: "Please choose what you are looking for (specific vendor, cuisine, or open request).",
+    }
   }
 
-  if (
-    !input.eventType ||
-    !input.eventDate ||
-    !input.startTime ||
-    !input.endTime ||
-    !input.guestCount ||
-    !input.trucksNeeded
-  ) {
-    return { ok: false, error: "Missing required event details" }
+  if (!input.eventType?.trim()) return missing("eventType", "Event type")
+  if (!input.eventDate?.trim()) return missing("eventDate", "Event date")
+  if (!input.startTime?.trim()) return missing("startTime", "Start time")
+  if (!input.endTime?.trim()) return missing("endTime", "End time")
+
+  const guestCount = (input.guestCount ?? "").trim()
+  if (!guestCount) return missing("guestCount", "Expected guest count")
+  const guestCountNum = parseInt(guestCount, 10)
+  if (!Number.isFinite(guestCountNum) || guestCountNum < 1) {
+    return {
+      ok: false,
+      field: "guestCount",
+      error: "Expected guest count must be at least 1.",
+    }
   }
 
-  const trucksNeededNum = parseInt(input.trucksNeeded, 10)
+  const trucksNeeded = (input.trucksNeeded ?? "").trim()
+  if (!trucksNeeded) return missing("trucksNeeded", "Number of trucks needed")
+  const trucksNeededNum = parseInt(trucksNeeded, 10)
   if (!Number.isFinite(trucksNeededNum) || trucksNeededNum < 1) {
-    return { ok: false, error: "Invalid trucks needed" }
+    return {
+      ok: false,
+      field: "trucksNeeded",
+      error: "Number of trucks needed must be at least 1.",
+    }
   }
 
-  if (!input.streetAddress || !input.city || !input.zipCode) {
-    return { ok: false, error: "Missing location" }
-  }
+  if (!input.streetAddress?.trim()) return missing("streetAddress", "Street address")
+  if (!input.city?.trim()) return missing("city", "City")
+  if (!input.zipCode?.trim()) return missing("zipCode", "Zip code")
 
-  if (!input.contactName || !input.contactEmail || !input.contactPhone) {
-    return { ok: false, error: "Missing contact info" }
+  if (!input.contactName?.trim()) return missing("contactName", "Your name")
+  if (!input.contactEmail?.trim()) return missing("contactEmail", "Email")
+  if (!input.contactPhone?.trim()) return missing("contactPhone", "Phone")
+
+  if (input.requestType === BOOKING_REQUEST_TYPE.SPECIFIC_VENDOR && !input.truckId?.trim()) {
+    return {
+      ok: false,
+      field: "truckId",
+      error: "Please select a food truck from the list.",
+    }
   }
 
   if (input.requestType === BOOKING_REQUEST_TYPE.CUISINE_MATCH && input.cuisines.length === 0) {
-    return { ok: false, error: "Missing cuisines" }
+    return {
+      ok: false,
+      field: "cuisines",
+      error: "Please select at least one cuisine for a cuisine-based request.",
+    }
   }
 
   return { ok: true }

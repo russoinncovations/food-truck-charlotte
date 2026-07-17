@@ -1,12 +1,26 @@
 "use client"
 
-import { useActionState, useState } from "react"
+import { useActionState, useEffect, useState } from "react"
 import { submitBookingRequest, type BookingRequestResult } from "@/app/actions/submitBookingRequest"
 import { FormField } from "@/components/forms/form-field"
 import { SubmitButton } from "@/components/forms/submit-button"
 import { AlertCircle } from "lucide-react"
 import { BOOKING_REQUEST_TYPE, VENDOR_TYPE_OPTIONS } from "@/lib/booking/booking-request-constants"
 import { cn } from "@/lib/utils"
+
+function focusBookingField(field: string) {
+  const candidates = [
+    document.getElementById(`field-${field}`),
+    document.getElementById(field),
+    document.querySelector<HTMLElement>(`[name="${field}"]`),
+  ]
+  const el = candidates.find(Boolean)
+  if (!el) return
+  el.scrollIntoView({ behavior: "smooth", block: "center" })
+  if ("focus" in el && typeof el.focus === "function") {
+    window.setTimeout(() => el.focus(), 150)
+  }
+}
 
 type DirectoryTruck = { id: string; name: string }
 
@@ -89,11 +103,20 @@ export function BookingRequestForm({
       ? preselectedTruckId
       : ""
 
+  const fieldError = (name: string) => (state?.field === name ? state.error : null)
+
+  useEffect(() => {
+    if (state?.field) focusBookingField(state.field)
+  }, [state?.field, state?.error])
+
   return (
-    <form action={formAction} className="space-y-8">
+    <form action={formAction} className="space-y-8" noValidate>
       {/* Error Display */}
       {state?.error && (
-        <div className="p-4 rounded-lg bg-destructive/10 border border-destructive/20 flex items-start gap-3">
+        <div
+          role="alert"
+          className="p-4 rounded-lg bg-destructive/10 border border-destructive/20 flex items-start gap-3"
+        >
           <AlertCircle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
           <div>
             <p className="font-medium text-destructive">Submission Failed</p>
@@ -102,24 +125,29 @@ export function BookingRequestForm({
         </div>
       )}
 
-      <input type="hidden" name="requestType" value={requestType} />
-
       {/* What are you looking for? — first visible section */}
       <section
+        id="field-requestType"
         aria-labelledby="booking-path-heading"
-        className="rounded-xl border-2 border-primary/20 bg-muted/40 p-5 md:p-6 space-y-5 shadow-sm"
+        className={cn(
+          "rounded-xl border-2 bg-muted/40 p-5 md:p-6 space-y-5 shadow-sm",
+          fieldError("requestType") ? "border-destructive" : "border-primary/20"
+        )}
       >
         <div>
           <h2 id="booking-path-heading" className="text-xl font-semibold text-foreground tracking-tight">
-            What are you looking for?
+            What are you looking for? <span className="text-destructive">*</span>
           </h2>
           <p className="text-sm text-muted-foreground mt-1">
             Choose one path. You can fill out the rest of the form below.
           </p>
+          {fieldError("requestType") ? (
+            <p className="text-sm text-destructive mt-2">{fieldError("requestType")}</p>
+          ) : null}
         </div>
 
         <fieldset className="space-y-4 border-0 p-0 m-0">
-          <legend className="sr-only">Booking request type</legend>
+          <legend className="sr-only">Booking request type (required)</legend>
           <div className="grid gap-3">
             {REQUEST_MODE_OPTIONS.map((opt) => (
               <label
@@ -133,6 +161,9 @@ export function BookingRequestForm({
               >
                 <input
                   type="radio"
+                  name="requestType"
+                  value={opt.value}
+                  required
                   className="mt-1 h-4 w-4 shrink-0 text-primary"
                   checked={requestType === opt.value}
                   onChange={() => setRequestType(opt.value)}
@@ -158,7 +189,11 @@ export function BookingRequestForm({
                 name="truckId"
                 required
                 key={truckSelectDefault || "no-truck"}
-                className="w-full h-11 rounded-md border border-input bg-background px-3 text-sm"
+                aria-invalid={Boolean(fieldError("truckId"))}
+                className={cn(
+                  "w-full h-11 rounded-md border bg-background px-3 text-sm",
+                  fieldError("truckId") ? "border-destructive" : "border-input"
+                )}
                 defaultValue={truckSelectDefault}
               >
                 <option value="" disabled>
@@ -170,7 +205,9 @@ export function BookingRequestForm({
                   </option>
                 ))}
               </select>
-              {directoryTrucks.length === 0 ? (
+              {fieldError("truckId") ? (
+                <p className="text-sm text-destructive">{fieldError("truckId")}</p>
+              ) : directoryTrucks.length === 0 ? (
                 <p className="text-sm text-destructive">
                   No trucks in the directory right now — try again later or choose another option above.
                 </p>
@@ -217,6 +254,7 @@ export function BookingRequestForm({
           name="eventType"
           as="select"
           required
+          error={fieldError("eventType")}
         >
           <option value="">Select event type...</option>
           {eventTypes.map((type) => (
@@ -231,28 +269,43 @@ export function BookingRequestForm({
             name="eventDate"
             type="date"
             required
+            error={fieldError("eventDate")}
           />
           <FormField
             label="Start Time"
             name="startTime"
             type="time"
             required
+            error={fieldError("startTime")}
           />
           <FormField
             label="End Time"
             name="endTime"
             type="time"
             required
+            error={fieldError("endTime")}
           />
         </div>
-        <FormField
-          label="Expected Guest Count"
-          name="guestCount"
-          type="number"
-          required
-          placeholder="e.g., 100"
-          min={1}
-        />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <FormField
+            label="Expected Guest Count"
+            name="guestCount"
+            type="number"
+            required
+            placeholder="e.g., 100"
+            min={1}
+            error={fieldError("guestCount")}
+          />
+          <FormField
+            label="Number of Trucks Needed"
+            name="trucksNeeded"
+            type="number"
+            required
+            placeholder="e.g., 1"
+            min={1}
+            error={fieldError("trucksNeeded")}
+          />
+        </div>
       </fieldset>
 
       {/* Location */}
@@ -270,6 +323,7 @@ export function BookingRequestForm({
           name="streetAddress"
           required
           placeholder="123 Main St"
+          error={fieldError("streetAddress")}
         />
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div className="col-span-2">
@@ -278,12 +332,14 @@ export function BookingRequestForm({
               name="city"
               required
               placeholder="Charlotte"
+              error={fieldError("city")}
             />
           </div>
           <FormField
             label="State"
             name="state"
             as="select"
+            defaultValue="NC"
           >
             <option value="NC">NC</option>
             <option value="SC">SC</option>
@@ -293,13 +349,14 @@ export function BookingRequestForm({
             name="zipCode"
             required
             placeholder="28202"
+            error={fieldError("zipCode")}
           />
         </div>
       </fieldset>
 
       {/* Preferences — cuisines not used for specific-vendor path */}
       {requestType !== BOOKING_REQUEST_TYPE.SPECIFIC_VENDOR && (
-      <fieldset className="space-y-4">
+      <fieldset id="field-cuisines" className="space-y-4">
         <legend className="text-lg font-semibold text-foreground">
           {requestType === BOOKING_REQUEST_TYPE.CUISINE_MATCH ? "Cuisines / categories *" : "Food preferences (optional)"}
         </legend>
@@ -310,6 +367,9 @@ export function BookingRequestForm({
             Optional — share what you like if it helps us match you.
           </p>
         )}
+        {fieldError("cuisines") ? (
+          <p className="text-sm text-destructive">{fieldError("cuisines")}</p>
+        ) : null}
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
           {cuisineOptions.map((cuisine) => (
             <label
@@ -378,6 +438,7 @@ export function BookingRequestForm({
             name="contactName"
             required
             placeholder="Full name"
+            error={fieldError("contactName")}
           />
           <FormField
             label="Organization / Company"
@@ -392,6 +453,7 @@ export function BookingRequestForm({
             type="email"
             required
             placeholder="you@example.com"
+            error={fieldError("contactEmail")}
           />
           <FormField
             label="Phone"
@@ -399,6 +461,7 @@ export function BookingRequestForm({
             type="tel"
             required
             placeholder="(704) 555-1234"
+            error={fieldError("contactPhone")}
           />
         </div>
       </fieldset>
