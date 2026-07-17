@@ -11,6 +11,7 @@ interface BaseFormFieldProps {
   className?: string
   description?: string
   autoComplete?: string
+  error?: string | null
 }
 
 interface InputFormFieldProps extends BaseFormFieldProps {
@@ -44,18 +45,21 @@ export function FormField(props: FormFieldProps) {
     className,
     description,
     autoComplete,
+    error,
     as = "input",
   } = props
 
   const inputId = `field-${name}`
-  
+  const describedBy = error ? `${inputId}-error` : undefined
+  const invalidClass = error ? "border-destructive focus-visible:ring-destructive" : undefined
+
   return (
     <div className={cn("space-y-2", className)}>
       <Label htmlFor={inputId} className="text-sm font-medium">
         {label}
         {required && <span className="text-destructive ml-1">*</span>}
       </Label>
-      
+
       {as === "textarea" ? (
         <Textarea
           id={inputId}
@@ -65,16 +69,23 @@ export function FormField(props: FormFieldProps) {
           defaultValue={defaultValue}
           autoComplete={autoComplete}
           rows={(props as InputFormFieldProps).rows ?? 4}
-          className="resize-none"
+          aria-invalid={Boolean(error)}
+          aria-describedby={describedBy}
+          className={cn("resize-none", invalidClass)}
         />
       ) : as === "select" ? (
         <select
           id={inputId}
           name={name}
           required={required}
-          defaultValue={defaultValue}
+          defaultValue={defaultValue ?? ""}
           autoComplete={autoComplete}
-          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+          aria-invalid={Boolean(error)}
+          aria-describedby={describedBy}
+          className={cn(
+            "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
+            invalidClass
+          )}
         >
           {(props as SelectFormFieldProps).children}
         </select>
@@ -89,12 +100,19 @@ export function FormField(props: FormFieldProps) {
           autoComplete={autoComplete}
           min={(props as InputFormFieldProps).min}
           max={(props as InputFormFieldProps).max}
+          aria-invalid={Boolean(error)}
+          aria-describedby={describedBy}
+          className={invalidClass}
         />
       )}
-      
-      {description && (
+
+      {error ? (
+        <p id={`${inputId}-error`} className="text-xs text-destructive">
+          {error}
+        </p>
+      ) : description ? (
         <p className="text-xs text-muted-foreground">{description}</p>
-      )}
+      ) : null}
     </div>
   )
 }

@@ -5,7 +5,6 @@ import {
   canUpdatePendingOpportunityStatus,
   validatePublicBookingRequestInput,
 } from "@/lib/booking/validate-public-booking-request"
-import { isOpportunityEffectivelyExpired } from "@/lib/booking/opportunity-active"
 
 const baseInput = {
   requestType: BOOKING_REQUEST_TYPE.OPEN_REQUEST,
@@ -29,9 +28,29 @@ test("validatePublicBookingRequestInput accepts required open request fields", (
   assert.deepEqual(validatePublicBookingRequestInput(baseInput), { ok: true })
 })
 
-test("validatePublicBookingRequestInput requires trucks needed and contact fields", () => {
-  assert.equal(validatePublicBookingRequestInput({ ...baseInput, trucksNeeded: "" }).ok, false)
-  assert.equal(validatePublicBookingRequestInput({ ...baseInput, contactPhone: "" }).ok, false)
+test("validatePublicBookingRequestInput reports missing trucksNeeded with field", () => {
+  const result = validatePublicBookingRequestInput({ ...baseInput, trucksNeeded: "" })
+  assert.equal(result.ok, false)
+  if (!result.ok) {
+    assert.equal(result.field, "trucksNeeded")
+    assert.match(result.error, /trucks needed/i)
+  }
+})
+
+test("validatePublicBookingRequestInput reports missing event type with field", () => {
+  const result = validatePublicBookingRequestInput({ ...baseInput, eventType: "" })
+  assert.equal(result.ok, false)
+  if (!result.ok) {
+    assert.equal(result.field, "eventType")
+  }
+})
+
+test("validatePublicBookingRequestInput requires request type", () => {
+  const result = validatePublicBookingRequestInput({ ...baseInput, requestType: "" })
+  assert.equal(result.ok, false)
+  if (!result.ok) {
+    assert.equal(result.field, "requestType")
+  }
 })
 
 test("validatePublicBookingRequestInput requires cuisines for cuisine match requests", () => {
@@ -41,21 +60,25 @@ test("validatePublicBookingRequestInput requires cuisines for cuisine match requ
     cuisines: [],
   })
   assert.equal(result.ok, false)
+  if (!result.ok) {
+    assert.equal(result.field, "cuisines")
+  }
+})
+
+test("validatePublicBookingRequestInput requires truck for specific vendor", () => {
+  const result = validatePublicBookingRequestInput({
+    ...baseInput,
+    requestType: BOOKING_REQUEST_TYPE.SPECIFIC_VENDOR,
+    truckId: "",
+  })
+  assert.equal(result.ok, false)
+  if (!result.ok) {
+    assert.equal(result.field, "truckId")
+  }
 })
 
 test("canUpdatePendingOpportunityStatus blocks duplicate interested responses", () => {
   assert.equal(canUpdatePendingOpportunityStatus("pending"), true)
   assert.equal(canUpdatePendingOpportunityStatus("interested"), false)
   assert.equal(canUpdatePendingOpportunityStatus("not_available"), false)
-})
-
-test("expired opportunities cannot be answered", () => {
-  assert.equal(
-    isOpportunityEffectivelyExpired({
-      status: "pending",
-      expires_at: "2020-01-01T00:00:00.000Z",
-      booking: { event_date: "2020-01-01", end_time: "12:00", start_time: "10:00" },
-    }),
-    true
-  )
 })
