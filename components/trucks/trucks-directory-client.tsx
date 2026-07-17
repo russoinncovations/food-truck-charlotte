@@ -1,14 +1,23 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
-import { Search, MapPin, CalendarPlus, Map as MapIcon, Megaphone, ArrowRight } from "lucide-react"
+import { usePathname, useRouter } from "next/navigation"
+import { Search, MapPin, CalendarPlus, Map as MapIcon, Megaphone, ArrowRight, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { cn } from "@/lib/utils"
 import { getTruckDisplayImage } from "@/lib/trucks/truck-display-image"
+import {
+  CUISINE_FILTER_OPTIONS,
+  VENDOR_FORMAT_FILTER_OPTIONS,
+  matchesCuisineCategory,
+  matchesKeyword,
+  matchesVendorFormat,
+} from "@/lib/trucks/directory-filters"
 
 export type DirectoryTruckRow = {
   id: string
@@ -20,52 +29,12 @@ export type DirectoryTruckRow = {
   today_location: string | null
   photo_url: string | null
   catering: boolean | null
-}
-
-type FilterChipId =
-  | "all"
-  | "booking"
-  | "tacos"
-  | "bbq"
-  | "dessert"
-  | "coffee"
-  | "out_now"
-
-const FILTER_CHIPS: { id: FilterChipId; label: string }[] = [
-  { id: "all", label: "All" },
-  { id: "booking", label: "Available for Booking" },
-  { id: "tacos", label: "Tacos" },
-  { id: "bbq", label: "BBQ" },
-  { id: "dessert", label: "Dessert" },
-  { id: "coffee", label: "Coffee" },
-  { id: "out_now", label: "Out Now" },
-]
-
-function truckHaystack(t: DirectoryTruckRow): string {
-  const types = (t.cuisine_types ?? []).join(" ")
-  return `${t.name} ${t.cuisine ?? ""} ${types}`.toLowerCase()
-}
-
-function matchesChip(t: DirectoryTruckRow, chip: FilterChipId): boolean {
-  const h = truckHaystack(t)
-  switch (chip) {
-    case "all":
-      return true
-    case "booking":
-      return Boolean(t.catering)
-    case "tacos":
-      return /taco|mexican|burrito|latin|colombian/.test(h)
-    case "bbq":
-      return /bbq|barbecue|smoke|smokehouse/.test(h)
-    case "dessert":
-      return /dessert|sweet|waffle|crepe|sno cone|slush|smoothie|juice\/smooth/.test(h)
-    case "coffee":
-      return /coffee|espresso|cafe|latte/.test(h)
-    case "out_now":
-      return Boolean(t.serving_today)
-    default:
-      return true
-  }
+  vendor_type: string | null
+  description: string | null
+  short_description: string | null
+  full_description: string | null
+  today_specials: string | null
+  tagline: string | null
 }
 
 function cuisineTagsForCard(t: DirectoryTruckRow): string[] {
@@ -84,20 +53,56 @@ function cuisineTagsForCard(t: DirectoryTruckRow): string[] {
 
 type Props = {
   trucks: DirectoryTruckRow[]
+  initialQuery?: string
+  initialCuisine?: string
+  initialFormat?: string
 }
 
-export function TrucksDirectoryClient({ trucks }: Props) {
-  const [query, setQuery] = useState("")
-  const [chip, setChip] = useState<FilterChipId>("all")
+export function TrucksDirectoryClient({
+  trucks,
+  initialQuery = "",
+  initialCuisine = "",
+  initialFormat = "",
+}: Props) {
+  const router = useRouter()
+  const pathname = usePathname()
+  const [query, setQuery] = useState(initialQuery)
+  const [cuisine, setCuisine] = useState(initialCuisine)
+  const [format, setFormat] = useState(initialFormat)
+
+  const hasActiveFilters = Boolean(query.trim() || cuisine || format)
+
+  const syncUrl = useCallback(
+    (next: { q: string; cuisine: string; format: string }) => {
+      const params = new URLSearchParams()
+      const q = next.q.trim()
+      if (q) params.set("q", q)
+      if (next.cuisine) params.set("cuisine", next.cuisine)
+      if (next.format) params.set("format", next.format)
+      const qs = params.toString()
+      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false })
+    },
+    [pathname, router]
+  )
+
+  useEffect(() => {
+    syncUrl({ q: query, cuisine, format })
+  }, [query, cuisine, format, syncUrl])
+
+  const clearFilters = () => {
+    setQuery("")
+    setCuisine("")
+    setFormat("")
+  }
 
   const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase()
     return trucks.filter((t) => {
-      if (!matchesChip(t, chip)) return false
-      if (!q) return true
-      return truckHaystack(t).includes(q)
+      if (!matchesKeyword(t, query)) return false
+      if (!matchesCuisineCategory(t, cuisine || null)) return false
+      if (!matchesVendorFormat(t, format || null)) return false
+      return true
     })
-  }, [trucks, query, chip])
+  }, [trucks, query, cuisine, format])
 
   return (
     <>
@@ -107,12 +112,11 @@ export function TrucksDirectoryClient({ trucks }: Props) {
           <p className="text-center text-sm font-medium text-muted-foreground">
             Profiles from Charlotte&apos;s food truck request network — built from a 35K+ member community.
           </p>
-          <h1 className="mx-auto mt-3 max-w-[17rem] text-center font-display text-[1.875rem] font-bold leading-[1.1] tracking-[-0.02em] text-foreground sm:max-w-none sm:text-4xl lg:text-5xl text-balance">
-            Browse trucks before you request
+          <h1 className="mx-auto mt-3 max-w-[20rem] text-center font-display text-[1.875rem] font-bold leading-[1.1] tracking-[-0.02em] text-foreground sm:max-w-none sm:text-4xl lg:text-5xl text-balance">
+            Browse Charlotte food trucks
           </h1>
           <p className="mx-auto mt-4 max-w-3xl text-center text-base leading-7 text-muted-foreground text-pretty md:text-lg">
-            Compare cuisine, photos, and service details, then submit one request so relevant local
-            trucks can respond. No booking commission — you connect and book directly.
+            Filter by cuisine, keyword, and vendor setup to find trucks that may fit your event.
           </p>
 
           <div className="mt-7 flex flex-col items-center justify-center gap-3 sm:flex-row sm:flex-wrap">
@@ -146,44 +150,87 @@ export function TrucksDirectoryClient({ trucks }: Props) {
       {/* Filters + search */}
       <section className="border-b border-border/40 bg-background">
         <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-          <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-            <div className="relative w-full lg:max-w-md">
+          <div className="flex flex-col gap-4">
+            <div className="relative w-full">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 type="search"
-                placeholder="Search by truck name or cuisine…"
+                placeholder="Search by truck name, food type, or keyword"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 className="h-11 border-border/80 bg-background pl-10 pr-4 shadow-sm"
                 aria-label="Search trucks"
               />
             </div>
-            <div className="flex flex-1 flex-wrap gap-2 lg:justify-end">
-              {FILTER_CHIPS.map((c) => (
-                <button
-                  key={c.id}
-                  type="button"
-                  onClick={() => setChip(c.id)}
+
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_auto] lg:items-end">
+              <div className="space-y-1.5">
+                <Label htmlFor="filter-cuisine" className="text-xs font-medium text-muted-foreground">
+                  Cuisine / category
+                </Label>
+                <select
+                  id="filter-cuisine"
+                  value={cuisine}
+                  onChange={(e) => setCuisine(e.target.value)}
                   className={cn(
-                    "rounded-xl border px-3.5 py-2 text-sm font-medium transition-all",
-                    chip === c.id
-                      ? "border-primary bg-primary text-primary-foreground shadow-sm"
-                      : "border-border/80 bg-background text-foreground hover:border-primary/40 hover:bg-primary/5"
+                    "flex h-11 w-full rounded-md border border-border/80 bg-background px-3 text-sm shadow-sm",
+                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   )}
                 >
-                  {c.label}
-                </button>
-              ))}
+                  <option value="">All cuisines</option>
+                  {CUISINE_FILTER_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="filter-format" className="text-xs font-medium text-muted-foreground">
+                  Vendor setup
+                </Label>
+                <select
+                  id="filter-format"
+                  value={format}
+                  onChange={(e) => setFormat(e.target.value)}
+                  className={cn(
+                    "flex h-11 w-full rounded-md border border-border/80 bg-background px-3 text-sm shadow-sm",
+                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  )}
+                >
+                  <option value="">All setups</option>
+                  {VENDOR_FORMAT_FILTER_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex sm:col-span-2 lg:col-span-1">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-11 w-full lg:w-auto"
+                  onClick={clearFilters}
+                  disabled={!hasActiveFilters}
+                >
+                  <X className="mr-1.5 h-4 w-4" />
+                  Clear filters
+                </Button>
+              </div>
             </div>
           </div>
-          <p className="mt-4 text-xs text-muted-foreground">
+
+          <p className="mt-4 text-sm text-muted-foreground">
             <span className="font-medium text-foreground">{filtered.length}</span>{" "}
             {filtered.length === 1 ? "truck" : "trucks"}
-            {query.trim() || chip !== "all" ? " match your filters" : " listed"}
+            {hasActiveFilters ? " match your filters" : " listed"}
           </p>
-          <p className="mt-2 text-xs text-muted-foreground max-w-3xl">
-            Planning for a weekend or public event? Use search (e.g. brewery, school, or festival) or start with{" "}
-            <strong className="text-foreground">Available for Booking</strong> for vendors who take event inquiries.
+          <p className="mt-2 max-w-3xl text-xs leading-relaxed text-muted-foreground">
+            Cuisine and setup filters use information from each truck&apos;s profile. Confirm details
+            directly with the vendor before booking.
           </p>
         </div>
       </section>
@@ -193,20 +240,14 @@ export function TrucksDirectoryClient({ trucks }: Props) {
         {filtered.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-border bg-muted/30 px-6 py-16 text-center">
             <p className="font-display text-xl font-semibold text-foreground">
-              No trucks match that search yet.
+              No trucks match those filters.
             </p>
             <p className="mt-2 text-muted-foreground">
-              Try another category or browse all Charlotte-area vendors.
+              Try a different search, cuisine, or vendor setup — or clear filters to browse everyone.
             </p>
             <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-              <Button
-                onClick={() => {
-                  setQuery("")
-                  setChip("all")
-                }}
-                variant="default"
-              >
-                Browse All Trucks
+              <Button onClick={clearFilters} variant="default">
+                Clear filters
               </Button>
               <Button asChild variant="outline">
                 <Link href="/book-a-truck">Book a Truck</Link>
