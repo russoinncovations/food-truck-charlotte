@@ -41,28 +41,71 @@ export const CUISINE_FILTER_OPTIONS = [
 
 export type CuisineFilterValue = (typeof CUISINE_FILTER_OPTIONS)[number]["value"]
 
-/** Patterns matched against cuisine + cuisine_types (and keyword haystack fallback). */
-const CUISINE_PATTERNS: Record<Exclude<CuisineFilterValue, "other">, RegExp> = {
-  american: /\bamerican\b|comfort\s*food|diner|hot\s*dog|mac\s*and\s*cheese|comfort/,
-  bbq: /\bbbq\b|barbecue|barbeque|smokehouse|\bsmoke\b|brisket|pulled\s*pork/,
-  burgers: /\bburger|\bsandwich|smash|philly|cheesesteak/,
-  chicken: /\bchicken\b|\bwings?\b|tenders?|nugget/,
-  tacos: /\btacos?\b|mexican|burrito|quesadilla|nachos?|elote|birria/,
-  latin: /\blatin\b|colombian|venezuelan|peruvian|brazilian|argentin|arepa|empanada|pupusa/,
-  caribbean: /\bcaribbean\b|jamaican|\bjerk\b|island|trinidad|haitian|cuban/,
-  soul: /\bsoul\b|southern|creole|cajun|gumbo|collard|fried\s*chicken/,
-  seafood: /\bseafood\b|\bfish\b|shrimp|crab|lobster|oyster|poke/,
-  asian: /\basian\b|chinese|japanese|korean|thai|vietnamese|filipino|sushi|ramen|pho|teriyaki|bao/,
-  indian: /\bindian\b|curry|tikka|naan|tandoori|biryani/,
-  mediterranean: /\bmediterranean\b|middle\s*east|falafel|gyro|shawarma|hummus|lebanese|greek|turkish/,
-  italian: /\bitalian\b|\bpizza\b|pasta|gelato/,
-  african: /\bafrican\b|ethiopian|nigerian|ghanaian|senegalese|west\s*african/,
-  breakfast: /\bbreakfast\b|\bbrunch\b|pancake|waffle|omelet|biscuit/,
-  coffee: /\bcoffee\b|espresso|\bcafe\b|latte|cold\s*brew|beverage|drinks?/,
-  desserts: /\bdesserts?\b|\bsweets?\b|ice\s*cream|cookie|cupcake|brownie|crepe|sno\s*cone|slush|smoothie|bakery/,
-  vegan_veg: /\bvegan\b|vegetarian|plant[\s-]?based/,
-  healthy: /\bhealthy\b|\bbowls?\b|salad|acai|smoothie\s*bowl|grain\s*bowl|poke\s*bowl/,
+export type CuisineCategoryValue = Exclude<CuisineFilterValue, "other">
+
+/**
+ * Exact vendor-profile / signup cuisine_types labels → filter categories.
+ * These are the strings trucks actually store (see dashboard profile CUISINE_OPTIONS).
+ */
+const KNOWN_CUISINE_TYPE_CATEGORIES: Record<string, CuisineCategoryValue[]> = {
+  "mexican / tacos": ["tacos"],
+  "bbq / smokehouse": ["bbq"],
+  "american / burgers": ["american", "burgers"],
+  "asian fusion": ["asian"],
+  "southern / soul food": ["soul"],
+  "desserts / sweets": ["desserts"],
+  pizza: ["italian"],
+  seafood: ["seafood"],
+  mediterranean: ["mediterranean"],
+  "vegetarian / vegan": ["vegan_veg"],
+  "indian / curry": ["indian"],
+  "latin / colombian": ["latin"],
+  caribbean: ["caribbean"],
+  "wings / chicken": ["chicken"],
+  "sandwiches / wraps": ["burgers"],
+  "snow cones / slushies": ["desserts"],
+  "juice / smoothies": ["healthy", "coffee"],
+  "crepes / waffles": ["desserts", "breakfast"],
 }
+
+/** Keyword patterns for free-text cuisine / profile signals. */
+const CUISINE_PATTERNS: Record<CuisineCategoryValue, RegExp> = {
+  american:
+    /\bamerican\b|\bcomfort\s*food\b|\bdiner\b|\bhot\s*dogs?\b|\bmac\s*(?:and|&)\s*cheese\b|\bcomfort\b/,
+  bbq: /\bbbq\b|\bbarbecue\b|\bbarbeque\b|\bsmokehouse\b|\bsmoked?\b|\bsmoked\s*meats?\b|\bbrisket\b|\bpulled\s*pork\b|\bribs?\b/,
+  burgers:
+    /\bburgers?\b|\bsandwiches?\b|\bsubs?\b|\bsmash\b|\bphilly\b|\bcheesesteaks?\b|\bwraps?\b/,
+  chicken: /\bchickens?\b|\bwings?\b|\btenders?\b|\bnuggets?\b/,
+  tacos:
+    /\btacos?\b|\bmexican\b|\bburritos?\b|\bquesadillas?\b|\bnachos?\b|\belote\b|\bbirria\b|\btex[\s-]?mex\b/,
+  latin:
+    /\blatin(?:o|a)?\b|\blatin\s*american\b|\bcuban\b|\bpuerto\s*rican\b|\bcolombian\b|\bvenezuelan\b|\bperuvian\b|\bbrazilian\b|\bargentin(?:a|ean|ian)?\b|\barepas?\b|\bempanadas?\b|\bpupusas?\b|\bsalvadoran\b|\bdominican\b/,
+  caribbean:
+    /\bcaribbean\b|\bjamaican\b|\bjamaica\b|\bjerk\b|\btrinidad(?:ian)?\b|\bhaitian\b|\bbajan\b|\bbarbados\b|\bisland\s*(?:cuisine|food|eats|flavou?r)/,
+  soul: /\bsoul\s*food\b|\bsoul\b|\bsouthern\b|\bcreole\b|\bcajun\b|\bgumbo\b|\bcollards?\b|\bfried\s*chicken\b/,
+  seafood:
+    /\bseafood\b|\bfish\b|\bshrimp\b|\bcrab\b|\blobster\b|\boysters?\b|\bcrawfish\b|\bclam\b|\bpoke\b(?!\s*bowl)/,
+  asian:
+    /\basian\b|\bchinese\b|\bjapanese\b|\bkorean\b|\bthai\b|\bvietnamese\b|\bfilipino\b|\bsushi\b|\bramen\b|\bpho\b|\bteriyaki\b|\bbao\b|\bbubble\s*tea\b|\bpoke\s*bowl\b/,
+  indian:
+    /\bindian\b|\bcurry\b|\btikka\b|\bnaan\b|\btandoori\b|\bbiryani\b|\bmasala\b|\bdosa\b|\bsamosa\b|\bpakistani\b|\bsouth\s*asian\b/,
+  mediterranean:
+    /\bmediterranean\b|\bmiddle\s*east(?:ern)?\b|\bfalafel\b|\bgyros?\b|\bshawarma\b|\bhummus\b|\blebanese\b|\bgreek\b|\bturkish\b|\bhalal\b|\bkebab\b|\bpita\b/,
+  italian: /\bitalian\b|\bpizza\b|\bpasta\b|\bgelato\b|\bstromboli\b|\bcalzone\b/,
+  african:
+    /\bafrican\b|\bethiopian\b|\bnigerian\b|\bghanaian\b|\bsenegalese\b|\bwest\s*african\b|\binjera\b|\bjollof\b/,
+  breakfast:
+    /\bbreakfast\b|\bbrunch\b|\bpancakes?\b|\bwaffles?\b|\bomelets?\b|\bomelettes?\b|\bbiscuits?\b|\beggs?\b/,
+  coffee:
+    /\bcoffee\b|\bespresso\b|\bcafe\b|\blatte\b|\bcold\s*brew\b|\bbeverages?\b|\bdrinks?\b|\blemonade\b|\bboba\b|\btea\b|\bsmoothies?\b|\bjuice\b|\bslush(?:ie|y)?\b/,
+  desserts:
+    /\bdesserts?\b|\bsweets?\b|\bice\s*cream\b|\bcookies?\b|\bcupcakes?\b|\bbrownies?\b|\bcrepes?\b|\bsnow\s*cones?\b|\bshaved\s*ice\b|\bdonuts?\b|\bdoughnuts?\b|\bbakery\b|\bpastr(?:y|ies)\b|\bcake\b|\bcandy\b/,
+  vegan_veg: /\bvegan\b|\bvegetarian\b|\bplant[\s-]?based\b/,
+  healthy:
+    /\bhealthy\b|\bbowls?\b|\bsalads?\b|\bacai\b|\bsmoothie\s*bowls?\b|\bgrain\s*bowls?\b|\bpoke\s*bowls?\b|\bsmoothies?\b|\bjuice\b|\bfresh\s*juice\b/,
+}
+
+const CATEGORY_VALUES = Object.keys(CUISINE_PATTERNS) as CuisineCategoryValue[]
 
 /**
  * Vendor format options derived from existing `trucks.vendor_type` values only.
@@ -95,32 +138,103 @@ export function normalizeVendorType(raw: string | null | undefined): string {
   return (raw ?? "").trim().toLowerCase().replace(/\s+/g, "_")
 }
 
+/** Normalize free text for keyword matching (lowercase, unify separators). */
+export function normalizeCuisineText(raw: string): string {
+  return raw
+    .toLowerCase()
+    .replace(/[_]+/g, " ")
+    .replace(/[\/|,;&]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+}
+
+function knownTypeKey(raw: string): string {
+  return raw.toLowerCase().replace(/\s+/g, " ").trim()
+}
+
+/**
+ * Primary cuisine signals: structured cuisine fields.
+ * Secondary: short profile copy / menu notes (helps when cuisine fields are sparse).
+ * Full long descriptions are included only as a last-resort signal.
+ */
 export function truckCuisineHaystack(t: DirectoryFilterTruck): string {
-  const types = (t.cuisine_types ?? []).join(" ")
-  return `${t.cuisine ?? ""} ${types}`.toLowerCase()
+  const primary = normalizeCuisineText(
+    [t.cuisine, ...(t.cuisine_types ?? [])].filter(Boolean).join(" ")
+  )
+  const secondary = normalizeCuisineText(
+    [t.tagline, t.short_description, t.today_specials].filter(Boolean).join(" ")
+  )
+  const combined = [primary, secondary].filter(Boolean).join(" ")
+  if (combined) return combined
+
+  // Last resort when structured cuisine + short profile fields are empty.
+  return normalizeCuisineText(
+    [t.description, t.full_description, t.name].filter(Boolean).join(" ")
+  )
 }
 
 /** Keyword search across name, descriptions, cuisine, and menu/service notes. */
 export function truckKeywordHaystack(t: DirectoryFilterTruck): string {
-  return [
-    t.name,
-    t.tagline,
-    t.cuisine,
-    ...(t.cuisine_types ?? []),
-    t.description,
-    t.short_description,
-    t.full_description,
-    t.today_specials,
-  ]
-    .filter(Boolean)
-    .join(" ")
-    .toLowerCase()
+  return normalizeCuisineText(
+    [
+      t.name,
+      t.tagline,
+      t.cuisine,
+      ...(t.cuisine_types ?? []),
+      t.description,
+      t.short_description,
+      t.full_description,
+      t.today_specials,
+    ]
+      .filter(Boolean)
+      .join(" ")
+  )
 }
 
 export function matchesKeyword(t: DirectoryFilterTruck, query: string): boolean {
-  const q = query.trim().toLowerCase()
+  const q = normalizeCuisineText(query)
   if (!q) return true
   return truckKeywordHaystack(t).includes(q)
+}
+
+function categoriesFromKnownTypes(types: string[] | null | undefined): Set<CuisineCategoryValue> {
+  const out = new Set<CuisineCategoryValue>()
+  for (const raw of types ?? []) {
+    const mapped = KNOWN_CUISINE_TYPE_CATEGORIES[knownTypeKey(String(raw))]
+    if (!mapped) continue
+    for (const c of mapped) out.add(c)
+  }
+  return out
+}
+
+function categoriesFromPatterns(haystack: string): Set<CuisineCategoryValue> {
+  const out = new Set<CuisineCategoryValue>()
+  if (!haystack.trim()) return out
+  for (const value of CATEGORY_VALUES) {
+    if (CUISINE_PATTERNS[value].test(haystack)) out.add(value)
+  }
+  return out
+}
+
+/**
+ * All cuisine categories a truck matches. A truck may match multiple.
+ * Empty set means no confident match → belongs under "Other".
+ */
+export function getMatchingCuisineCategories(t: DirectoryFilterTruck): CuisineCategoryValue[] {
+  const fromKnown = categoriesFromKnownTypes(t.cuisine_types)
+  const hay = truckCuisineHaystack(t)
+  const fromPatterns = categoriesFromPatterns(hay)
+
+  // Also pattern-match raw cuisine string alone (covers free-text `cuisine` field).
+  const cuisineOnly = normalizeCuisineText(t.cuisine ?? "")
+  const fromCuisineField = categoriesFromPatterns(cuisineOnly)
+
+  const merged = new Set<CuisineCategoryValue>([
+    ...fromKnown,
+    ...fromPatterns,
+    ...fromCuisineField,
+  ])
+  return CATEGORY_VALUES.filter((c) => merged.has(c))
 }
 
 export function matchesCuisineCategory(
@@ -128,17 +242,11 @@ export function matchesCuisineCategory(
   cuisine: string | null | undefined
 ): boolean {
   if (!cuisine) return true
-  const hay = truckCuisineHaystack(t)
-  if (!hay.trim()) {
-    // No cuisine data: only show under "Other" when that filter is selected.
-    return cuisine === "other"
-  }
+  const matched = getMatchingCuisineCategories(t)
   if (cuisine === "other") {
-    return !Object.values(CUISINE_PATTERNS).some((re) => re.test(hay))
+    return matched.length === 0
   }
-  const pattern = CUISINE_PATTERNS[cuisine as Exclude<CuisineFilterValue, "other">]
-  if (!pattern) return true
-  return pattern.test(hay)
+  return matched.includes(cuisine as CuisineCategoryValue)
 }
 
 export function matchesVendorFormat(
