@@ -11,27 +11,16 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { TruckPhotoUploadField } from "@/components/trucks/truck-photo-upload-field"
 import { TruckGalleryManager } from "@/components/trucks/truck-gallery-manager"
 import { createClient } from "@/lib/supabase/server"
-
-const CUISINE_OPTIONS = [
-  "Mexican / Tacos",
-  "BBQ / Smokehouse",
-  "American / Burgers",
-  "Asian Fusion",
-  "Southern / Soul Food",
-  "Desserts / Sweets",
-  "Pizza",
-  "Seafood",
-  "Mediterranean",
-  "Vegetarian / Vegan",
-  "Indian / Curry",
-  "Latin / Colombian",
-  "Caribbean",
-  "Wings / Chicken",
-  "Sandwiches / Wraps",
-  "Snow Cones / Slushies",
-  "Juice / Smoothies",
-  "Crepes / Waffles",
-]
+import {
+  BROWSE_CUISINE_LABEL_WITH_OTHER,
+  BROWSE_CUISINE_LABELS,
+  VENDOR_SETUP_EDIT_OPTIONS,
+  browseLabelsFromStoredCuisine,
+  isValidBrowseCuisineLabel,
+  isValidVendorSetupEditValue,
+  normalizeLabelKey,
+  resolveVendorSetupForEdit,
+} from "@/lib/trucks/truck-classification"
 
 export const metadata: Metadata = {
   title: "Truck Profile | FoodTruck CLT",
@@ -54,7 +43,13 @@ async function updateTruckProfile(formData: FormData) {
   }
 
   const name = (formData.get("name") as string | null) ?? ""
-  const cuisineTypes = formData.getAll("cuisine_types") as string[]
+  const primaryRaw = ((formData.get("primary_cuisine") as string | null) ?? "").trim()
+  const additional = formData
+    .getAll("additional_cuisines")
+    .map(String)
+    .map((s) => s.trim())
+    .filter((s) => BROWSE_CUISINE_LABELS.some((l) => normalizeLabelKey(l) === normalizeLabelKey(s)))
+  const vendorTypeRaw = ((formData.get("vendor_type") as string | null) ?? "").trim()
   const description = (formData.get("description") as string | null) ?? ""
   const website = (formData.get("website") as string | null) ?? ""
   const instagram = (formData.get("instagram") as string | null) ?? ""
@@ -64,11 +59,26 @@ async function updateTruckProfile(formData: FormData) {
   const service_areas = (formData.get("service_areas") as string | null) ?? ""
   const today_specials = (formData.get("today_specials") as string | null) ?? ""
 
+  const primary =
+    primaryRaw && isValidBrowseCuisineLabel(primaryRaw)
+      ? BROWSE_CUISINE_LABEL_WITH_OTHER.find((l) => normalizeLabelKey(l) === normalizeLabelKey(primaryRaw)) ??
+        null
+      : null
+
+  const cuisineTypes = [
+    ...(primary && primary !== "Other" ? [primary] : []),
+    ...additional.filter((l) => !primary || normalizeLabelKey(l) !== normalizeLabelKey(primary)),
+  ]
+
+  const vendor_type = isValidVendorSetupEditValue(vendorTypeRaw) ? vendorTypeRaw : null
+
   await supabase
     .from("trucks")
     .update({
       name: name.trim(),
+      cuisine: primary && primary !== "Other" ? primary : primary === "Other" ? "Other" : null,
       cuisine_types: cuisineTypes,
+      vendor_type,
       description: description.trim() || null,
       website: website.trim() || null,
       instagram: instagram.trim() || null,
@@ -98,7 +108,9 @@ export default async function DashboardProfilePage() {
 
   const { data: truck } = await supabase
     .from("trucks")
-    .select("id, name, cuisine_types, description, website, instagram, facebook, photo_url, hero_photo_url, phone, tagline, service_areas, today_specials")
+    .select(
+      "id, name, cuisine, cuisine_types, vendor_type, description, website, instagram, facebook, photo_url, hero_photo_url, phone, tagline, service_areas, today_specials"
+    )
     .eq("email", user.email)
     .single()
 
@@ -109,6 +121,12 @@ export default async function DashboardProfilePage() {
         .eq("truck_id", truck.id)
         .order("sort_order", { ascending: true })
     : { data: null }
+
+  const cuisineDefaults = browseLabelsFromStoredCuisine(
+    (truck?.cuisine as string | null) ?? null,
+    (truck?.cuisine_types as string[] | null) ?? null
+  )
+  const vendorSetupDefault = resolveVendorSetupForEdit((truck?.vendor_type as string | null) ?? null)
 
   return (
     <main className="min-h-screen bg-muted/30">
@@ -151,7 +169,8 @@ export default async function DashboardProfilePage() {
               <CardHeader>
                 <CardTitle>Edit your listing</CardTitle>
                 <CardDescription>
-                  Changes apply to your public directory profile and dashboard.
+                  Changes apply to your public directory profile and dashboard. Cuisine and vendor
+                  setup control how hosts find you on Browse Trucks.
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -170,31 +189,83 @@ export default async function DashboardProfilePage() {
                     />
                   </div>
 
-                  <div className="space-y-2">
-                    <Label>Cuisine Types (select all that apply) *</Label>
-                    <div className="grid grid-cols-2 gap-2">
-                      {CUISINE_OPTIONS.map((option) => {
-                        const checked = (truck.cuisine_types ?? []).includes(option)
-                        return (
+                  <div className="space-y-4 rounded-lg border border-border bg-muted/20 p-4">
+                    <div>
+                      <h3 className="text-sm font-medium text-foreground">Browse classification</h3>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Set these accurately so hosts can filter your truck. Manual categories
+                        override automatic text matching on /trucks.
+                      </p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="primary_cuisine">Primary cuisine / category *</Label>
+                      <select
+                        id="primary_cuisine"
+                        name="primary_cuisine"
+                        required
+                        defaultValue={cuisineDefaults.primary || ""}
+                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                      >
+                        <option value="" disabled>
+                          Select primary category
+                        </option>
+                        {BROWSE_CUISINE_LABEL_WITH_OTHER.map((label) => (
+                          <option key={label} value={label}>
+                            {label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <fieldset className="space-y-2">
+                      <legend className="text-sm font-medium text-foreground">
+                        Additional cuisine tags
+                      </legend>
+                      <p className="text-xs text-muted-foreground">
+                        Optional — select other categories where hosts should also find you.
+                      </p>
+                      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                        {BROWSE_CUISINE_LABELS.map((label) => (
                           <label
-                            key={option}
+                            key={label}
                             className="flex items-start gap-2 text-sm text-foreground cursor-pointer"
                           >
                             <input
                               type="checkbox"
-                              name="cuisine_types"
-                              value={option}
-                              defaultChecked={checked}
+                              name="additional_cuisines"
+                              value={label}
+                              defaultChecked={cuisineDefaults.additional.includes(label)}
                               className="mt-1 rounded border-input size-4 shrink-0"
                             />
-                            <span>{option}</span>
+                            <span>{label}</span>
                           </label>
-                        )
-                      })}
+                        ))}
+                      </div>
+                    </fieldset>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="vendor_type">Vendor setup *</Label>
+                      <select
+                        id="vendor_type"
+                        name="vendor_type"
+                        required
+                        defaultValue={vendorSetupDefault || ""}
+                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                      >
+                        <option value="" disabled>
+                          Select setup type
+                        </option>
+                        {VENDOR_SETUP_EDIT_OPTIONS.map((opt) => (
+                          <option key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </option>
+                        ))}
+                      </select>
+                      <p className="text-xs text-muted-foreground">
+                        Used for the public vendor setup filter (food truck, trailer, cart/tent, etc.).
+                      </p>
                     </div>
-                    <p className="text-xs text-muted-foreground">
-                      Required — used to match you with relevant booking requests
-                    </p>
                   </div>
 
                   <div className="space-y-2">

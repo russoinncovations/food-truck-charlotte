@@ -252,3 +252,38 @@ test("resolveCuisineFilterParam accepts current and legacy URL values", () => {
   assert.equal(resolveCuisineFilterParam("burgers"), "american")
   assert.equal(resolveCuisineFilterParam("nope"), "")
 })
+
+test("manual primary cuisine overrides loose description text", () => {
+  const truck = {
+    name: "Corrected Truck",
+    cuisine: "Desserts / Sweets",
+    cuisine_types: ["Desserts / Sweets"],
+    full_description: "We also serve pizza, pasta, espresso, and lemonade",
+    tagline: "Italian pizza nights",
+  }
+  const cats = getMatchingCuisineCategories(truck)
+  assert.ok(cats.includes("desserts"))
+  assert.equal(cats.includes("italian"), false)
+  assert.equal(cats.includes("coffee"), false)
+})
+
+test("manual additional tags allow multiple browse filters", () => {
+  const truck = {
+    name: "Multi Tag",
+    cuisine: "Mexican / Latin",
+    cuisine_types: ["Mexican / Latin", "Vegan / Vegetarian / Healthy"],
+  }
+  const cats = getMatchingCuisineCategories(truck)
+  assert.ok(cats.includes("mexican_latin"))
+  assert.ok(cats.includes("vegan_healthy"))
+})
+
+test("unclean trucks still use automatic fallback matching", () => {
+  const truck = {
+    name: "Legacy",
+    cuisine: null,
+    cuisine_types: null,
+    short_description: "Authentic jerk chicken and Caribbean sides",
+  }
+  assert.ok(getMatchingCuisineCategories(truck).includes("caribbean"))
+})

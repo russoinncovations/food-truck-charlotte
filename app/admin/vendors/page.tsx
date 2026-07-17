@@ -20,7 +20,14 @@ import { VendorProfileReminderTestSend } from "@/components/admin/vendor-profile
 import { VendorProfileReminderBulkSend } from "@/components/admin/vendor-profile-reminder-bulk-send"
 import { VendorScheduleReminderRetryFailures } from "@/components/admin/vendor-schedule-reminder-retry"
 import { AdminTruckPhotosPanel } from "@/components/admin/admin-truck-photos-panel"
+import { AdminTruckClassificationForm } from "@/components/admin/admin-truck-classification-form"
 import { checkAdminPageAccess, verifyAdminKey } from "@/lib/admin/verify-admin-key"
+import {
+  BROWSE_CUISINE_LABEL_WITH_OTHER,
+  isValidBrowseCuisineLabel,
+  isValidVendorSetupEditValue,
+  normalizeLabelKey,
+} from "@/lib/trucks/truck-classification"
 
 export const metadata: Metadata = {
   title: "Vendor Applications | Admin | Food Truck CLT",
@@ -45,6 +52,52 @@ function escapeHtml(s: string): string {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
+}
+
+async function updateTruckClassification(formData: FormData) {
+  "use server"
+  const adminKey = ((formData.get("adminKey") as string | null) ?? "").trim()
+  if (!verifyAdminKey(adminKey)) return
+
+  const truckId = ((formData.get("truckId") as string | null) ?? "").trim()
+  if (!truckId) return
+
+  const primaryRaw = ((formData.get("primary_cuisine") as string | null) ?? "").trim()
+  const additional = formData
+    .getAll("additional_cuisines")
+    .map(String)
+    .map((s) => s.trim())
+    .filter((s) => BROWSE_CUISINE_LABEL_WITH_OTHER.some((l) => normalizeLabelKey(l) === normalizeLabelKey(s)))
+  const vendorTypeRaw = ((formData.get("vendor_type") as string | null) ?? "").trim()
+
+  const primary =
+    primaryRaw && isValidBrowseCuisineLabel(primaryRaw)
+      ? BROWSE_CUISINE_LABEL_WITH_OTHER.find((l) => normalizeLabelKey(l) === normalizeLabelKey(primaryRaw)) ??
+        null
+      : null
+
+  const cuisineTypes = [
+    ...(primary && primary !== "Other" ? [primary] : []),
+    ...additional.filter((l) => !primary || normalizeLabelKey(l) !== normalizeLabelKey(primary)),
+  ]
+
+  const vendor_type = isValidVendorSetupEditValue(vendorTypeRaw) ? vendorTypeRaw : null
+
+  const adminDb = createAdminSupabaseClient()
+  if (!adminDb) return
+
+  await adminDb
+    .from("trucks")
+    .update({
+      cuisine: primary && primary !== "Other" ? primary : primary === "Other" ? "Other" : null,
+      cuisine_types: cuisineTypes,
+      vendor_type,
+    })
+    .eq("id", truckId)
+
+  revalidatePath("/admin/vendors")
+  revalidatePath("/trucks")
+  redirect(`/admin/vendors?key=${encodeURIComponent(adminKey)}#truck-photo-${truckId}`)
 }
 
 async function approveVendor(formData: FormData) {
@@ -333,7 +386,7 @@ export default async function AdminVendorsPage({
 
   const { data: directoryTrucks } = await supabase
     .from("trucks")
-    .select("id, name, slug, photo_url, hero_photo_url")
+    .select("id, name, slug, photo_url, hero_photo_url, cuisine, cuisine_types, vendor_type")
     .eq("show_in_directory", true)
     .eq("status", "active")
     .eq("is_active", true)
@@ -367,6 +420,9 @@ export default async function AdminVendorsPage({
     slug: string | null
     photo_url: string | null
     hero_photo_url: string | null
+    cuisine: string | null
+    cuisine_types: string[] | null
+    vendor_type: string | null
   }[]
 
   const list = (applications ?? []) as Record<string, unknown>[]
@@ -635,9 +691,9 @@ export default async function AdminVendorsPage({
             <CardHeader>
               <CardTitle className="text-lg">Directory listing photos</CardTitle>
               <CardDescription>
-                Upload listing, hero, and gallery photos for live directory trucks. Stored URLs update{" "}
-                <code className="text-xs">photo_url</code>, <code className="text-xs">hero_photo_url</code>, and{" "}
-                <code className="text-xs">truck_photos</code> — vendors can manage the same fields from their dashboard.
+                Upload photos and correct browse classification (primary cuisine, additional tags, vendor
+                setup) for live directory trucks. Vendors can edit the same classification fields from
+                their dashboard profile.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -679,14 +735,24 @@ export default async function AdminVendorsPage({
                             </td>
                             <td className="p-3">
                               {key ? (
-                                <AdminTruckPhotosPanel
-                                  adminKey={key}
-                                  truckId={id}
-                                  photoUrl={t.photo_url}
-                                  heroPhotoUrl={t.hero_photo_url}
-                                  galleryPhotos={galleryByTruck.get(id) ?? []}
-                                  uploadsEnabled={hasServiceRole}
-                                />
+                                <>
+                                  <AdminTruckPhotosPanel
+                                    adminKey={key}
+                                    truckId={id}
+                                    photoUrl={t.photo_url}
+                                    heroPhotoUrl={t.hero_photo_url}
+                                    galleryPhotos={galleryByTruck.get(id) ?? []}
+                                    uploadsEnabled={hasServiceRole}
+                                  />
+                                  <AdminTruckClassificationForm
+                                    adminKey={key}
+                                    truckId={id}
+                                    cuisine={t.cuisine}
+                                    cuisineTypes={t.cuisine_types}
+                                    vendorType={t.vendor_type}
+                                    updateAction={updateTruckClassification}
+                                  />
+                                </>
                               ) : null}
                             </td>
                           </tr>
