@@ -2,9 +2,12 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { deleteBookingRequest } from "@/lib/admin/booking-requests-queries"
+import { useToast } from "@/hooks/use-toast"
 import {
   Table,
   TableBody,
@@ -75,9 +78,11 @@ function defaultMetrics(): BookingOpportunityMetrics {
     hasNoNotificationSent: false,
     hasDeliveredNoResponse: false,
     hasBouncedOrFailed: false,
+    hasSendFailed: false,
     hasActiveDeliveredNoResponse: false,
     hasMissingVendorEmail: false,
     isDashboardOnly: false,
+    hasUnconfirmedLeadEmail: false,
     hasActiveNoVendorResponse: false,
   }
 }
@@ -101,12 +106,16 @@ function passesDashboardFilter(
       return metrics.totalOpportunities > 0 && metrics.hasNoNotificationSent
     case "delivered-no-response":
       return metrics.hasActiveDeliveredNoResponse
+    case "send-failed":
+      return metrics.hasSendFailed
     case "bounced-failed":
       return metrics.hasBouncedOrFailed
     case "missing-vendor-email":
       return metrics.hasMissingVendorEmail
     case "dashboard-only":
       return metrics.isDashboardOnly
+    case "unconfirmed-lead-email":
+      return metrics.hasUnconfirmedLeadEmail
     default:
       return true
   }
@@ -136,11 +145,14 @@ export function BookingsTable({
   opportunityMetricsByBookingId,
   dashboardFilter,
 }: BookingsTableProps) {
+  const router = useRouter()
+  const { toast } = useToast()
   const [rows, setRows] = useState<BookingRequest[]>(bookings)
   const [searchQuery, setSearchQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState<string>("all")
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null)
   const [deleteLoading, setDeleteLoading] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
 
   useEffect(() => {
     setRows(bookings)
@@ -167,14 +179,25 @@ export function BookingsTable({
   async function confirmDelete() {
     if (!deleteTargetId) return
     setDeleteLoading(true)
+    setDeleteError(null)
     try {
       const result = await deleteBookingRequest(deleteTargetId, adminKey)
       if (result.ok) {
-        setRows((prev) => prev.filter((b) => b.id !== deleteTargetId))
+        const removedId = deleteTargetId
+        setRows((prev) => prev.filter((b) => b.id !== removedId))
         setDeleteTargetId(null)
+        toast({
+          title: "Booking request deleted",
+          description: "The request and related vendor opportunities were removed.",
+        })
+        // Refresh server props; URL (including ?key=) stays as-is.
+        router.refresh()
       } else {
-        window.alert(result.error ?? "Could not delete booking")
+        setDeleteError(result.error ?? "Could not delete booking request")
       }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Could not delete booking request"
+      setDeleteError(message)
     } finally {
       setDeleteLoading(false)
     }
@@ -194,7 +217,15 @@ export function BookingsTable({
 
   return (
     <div className="space-y-4">
-      <AlertDialog open={deleteTargetId !== null} onOpenChange={(open) => !open && !deleteLoading && setDeleteTargetId(null)}>
+      <AlertDialog
+        open={deleteTargetId !== null}
+        onOpenChange={(open) => {
+          if (!open && !deleteLoading) {
+            setDeleteTargetId(null)
+            setDeleteError(null)
+          }
+        }}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete booking request</AlertDialogTitle>
@@ -202,6 +233,11 @@ export function BookingsTable({
               Are you sure you want to delete this booking request?
             </AlertDialogDescription>
           </AlertDialogHeader>
+          {deleteError ? (
+            <p className="text-sm text-destructive" role="alert">
+              {deleteError}
+            </p>
+          ) : null}
           <AlertDialogFooter>
             <AlertDialogCancel disabled={deleteLoading}>Cancel</AlertDialogCancel>
             <Button
@@ -374,7 +410,10 @@ export function BookingsTable({
                         size="sm"
                         className="text-destructive border-destructive/30 hover:bg-destructive/10"
                         disabled={deleteLoading}
-                        onClick={() => setDeleteTargetId(booking.id)}
+                        onClick={() => {
+                          setDeleteError(null)
+                          setDeleteTargetId(booking.id)
+                        }}
                       >
                         <Trash2 className="h-4 w-4 sm:mr-1" />
                         <span className="hidden sm:inline">Delete</span>
