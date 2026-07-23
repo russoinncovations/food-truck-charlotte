@@ -4,7 +4,7 @@ import { ArrowRight } from "lucide-react"
 
 const stats = [
   { value: "35,700+", label: "Community members" },
-  { value: "102,000+", label: "Post views in the last 28 days" },
+  { value: "200,000+", label: "Average monthly community post views" },
   { value: "100+", label: "Local trucks listed" },
 ] as const
 
@@ -54,8 +54,8 @@ export function HomepageCommunityProof() {
         </ul>
 
         <p className="mt-5 max-w-3xl text-xs leading-relaxed text-muted-foreground sm:text-[0.8rem]">
-          Community data from Food Truck Charlotte Facebook Group Insights, June 25–July 22, 2026.
-          Platform totals are updated periodically.
+          Community statistics from Food Truck Charlotte Facebook Group Insights. Totals are updated
+          periodically.
         </p>
 
         <div className="mt-8 flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:gap-6">
