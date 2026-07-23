@@ -6,12 +6,10 @@ const stats = [
   { value: "35,700+", label: "Community members" },
   { value: "102,000+", label: "Post views in the last 28 days" },
   { value: "100+", label: "Local trucks listed" },
-  { value: "35+", label: "Events connected through the platform" },
 ] as const
 
 /**
  * Editorial community social proof — placed directly under the hero.
- * Uses Facebook Group Insights + platform totals; understated, not a SaaS stats strip.
  */
 export function HomepageCommunityProof() {
   return (
@@ -21,29 +19,25 @@ export function HomepageCommunityProof() {
     >
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="max-w-2xl">
-          <div className="flex items-center gap-3">
-            <span className="h-px w-8 bg-primary" aria-hidden />
-            <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-primary">
-              Built from Charlotte&apos;s food truck community
-            </p>
+          <div className="flex items-start gap-3">
+            <span className="mt-3 hidden h-8 w-px shrink-0 bg-primary sm:block" aria-hidden />
+            <h2
+              id="community-proof-heading"
+              className="font-display text-3xl font-bold tracking-tight text-foreground md:text-4xl"
+            >
+              Built from Charlotte&apos;s food truck community.
+            </h2>
           </div>
 
-          <h2
-            id="community-proof-heading"
-            className="mt-4 font-display text-3xl font-bold tracking-tight text-foreground md:text-4xl"
-          >
-            Real local demand. Organized in one place.
-          </h2>
-
           <p className="mt-4 text-base leading-7 text-muted-foreground md:text-lg md:leading-8">
-            FoodTruckCLT grew from a 35,000+ member local community where booking requests are among
-            the most active conversations. The platform gives hosts and local trucks a clearer, more
-            organized way to connect.
+            FoodTruckCLT started as a Facebook group created to support local food trucks. Today,
+            that community includes 35,000+ members and 100+ listed trucks, giving hosts a more
+            organized way to request vendors and helping trucks discover new opportunities.
           </p>
         </div>
 
         <ul
-          className="mt-10 grid grid-cols-2 gap-px overflow-hidden border border-border/60 bg-border/60 md:mt-12 lg:grid-cols-4"
+          className="mt-10 grid grid-cols-1 gap-px overflow-hidden border border-border/60 bg-border/60 sm:grid-cols-3 md:mt-12"
           aria-label="Community and platform highlights"
         >
           {stats.map((stat) => (
@@ -67,7 +61,7 @@ export function HomepageCommunityProof() {
         <div className="mt-8 flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:gap-6">
           <Button asChild size="lg" className="h-12 rounded-sm px-7">
             <Link href="/book-a-truck" className="flex items-center gap-2">
-              Book a Truck
+              Request Food Trucks
               <ArrowRight className="h-4 w-4" aria-hidden />
             </Link>
           </Button>
