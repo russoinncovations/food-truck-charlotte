@@ -1,5 +1,6 @@
 import { Header } from "@/components/header"
 import { Hero } from "@/components/hero"
+import { HomepageCommunityProof } from "@/components/homepage-community-proof"
 import { HomepageProofStrip } from "@/components/homepage-proof-strip"
 import { HowItWorks } from "@/components/how-it-works"
 import { FeaturedTrucks } from "@/components/featured-trucks"
@@ -35,6 +36,7 @@ export default async function Home() {
     <main className="min-h-screen bg-background">
       <Header />
       <Hero />
+      <HomepageCommunityProof />
       <HomepageProofStrip />
       <HowItWorks />
       <FeaturedTrucks trucks={featuredTrucks} />
