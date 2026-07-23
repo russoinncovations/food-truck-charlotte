@@ -1,5 +1,6 @@
 import { Header } from "@/components/header"
 import { Hero } from "@/components/hero"
+import { HomepageCommunityProof } from "@/components/homepage-community-proof"
 import { FeaturedTrucks } from "@/components/featured-trucks"
 import { MapPreviewClient } from "@/components/map-preview-client"
 import { EventsSection } from "@/components/events-section"
@@ -34,6 +35,7 @@ export default async function Home() {
     <main className="min-h-screen bg-background">
       <Header />
       <Hero upcomingEventCount={upcomingEventCount} directoryTruckCount={directoryTruckCount} />
+      <HomepageCommunityProof />
       <VendorCTA directoryTruckCount={directoryTruckCount} />
       <FeaturedTrucks trucks={featuredTrucks} />
       <MapPreviewClient
