@@ -49,7 +49,7 @@ function AuthErrorContent() {
         </p>
       )}
       <Link href={loginHref} className="text-primary underline">
-        Request a new login link
+        Back to vendor login
       </Link>
     </div>
   )
