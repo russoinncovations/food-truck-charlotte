@@ -10,20 +10,33 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { createClient } from "@/lib/supabase/client"
 import { getRoleSubdomainFromHost } from "@/lib/subdomain-routing"
 import { resolveVendorLoginCallbackNext } from "@/lib/dashboard/vendor-dashboard-opportunity-link"
-import { cn } from "@/lib/utils"
 
 type AuthMode = "password" | "signup" | "magic" | "forgot"
 
-function modeDescription(mode: AuthMode): string {
+function modeHeading(mode: AuthMode): { title: string; description: string } {
   switch (mode) {
     case "password":
-      return "Sign in with your email and password to stay logged in on this device."
+      return {
+        title: "Vendor Login",
+        description:
+          "Sign in to view requests, respond to opportunities, and manage your truck profile.",
+      }
     case "signup":
-      return "Create a password account so you can return without requesting a new magic link."
+      return {
+        title: "Create account",
+        description: "Create a password account so you can return without requesting a new magic link.",
+      }
     case "magic":
-      return "Prefer email? We’ll send a one-time magic link as a backup option."
+      return {
+        title: "Send magic link",
+        description: "We’ll send a one-time login link to your email.",
+      }
     case "forgot":
-      return "Enter the email you use for FoodTruckCLT. We’ll send a link to set or reset your password."
+      return {
+        title: "Set a password",
+        description:
+          "Enter the email you use for FoodTruckCLT. We’ll send a link to set or reset your password.",
+      }
   }
 }
 
@@ -160,6 +173,7 @@ function VendorLoginForm() {
 
   const showPassword = mode === "password" || mode === "signup"
   const showConfirm = mode === "signup"
+  const heading = modeHeading(mode)
 
   return (
     <Card className="w-full max-w-md shadow-md">
@@ -170,35 +184,10 @@ function VendorLoginForm() {
         >
           <Truck className="h-6 w-6 text-primary-foreground" />
         </Link>
-        <CardTitle className="font-display text-2xl">FoodTruck CLT</CardTitle>
-        <CardDescription>{modeDescription(mode)}</CardDescription>
+        <CardTitle className="font-display text-2xl">{heading.title}</CardTitle>
+        <CardDescription>{heading.description}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="grid grid-cols-2 gap-2 rounded-md border border-border/70 bg-muted/40 p-1">
-          {(
-            [
-              ["password", "Password"],
-              ["signup", "Create account"],
-              ["magic", "Magic link"],
-              ["forgot", "Forgot password"],
-            ] as const
-          ).map(([key, label]) => (
-            <button
-              key={key}
-              type="button"
-              onClick={() => switchMode(key)}
-              className={cn(
-                "rounded px-2 py-1.5 text-xs font-medium transition-colors sm:text-sm",
-                mode === key
-                  ? "bg-background text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground"
-              )}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <label htmlFor="vendor-email" className="text-sm font-medium text-foreground">
@@ -287,37 +276,74 @@ function VendorLoginForm() {
                   ? "Create account"
                   : mode === "magic"
                     ? "Send login link"
-                    : "Send reset link"}
+                    : "Send password link"}
           </Button>
         </form>
 
         {mode === "password" ? (
-          <p className="text-center text-xs text-muted-foreground">
-            Already use FoodTruckCLT with magic link? Use{" "}
-            <button
-              type="button"
-              className="underline underline-offset-2 hover:text-foreground"
-              onClick={() => switchMode("forgot")}
-            >
-              Forgot password
-            </button>{" "}
-            to set a password for your existing account.
-          </p>
-        ) : null}
+          <div className="space-y-4">
+            <p className="text-center text-sm text-muted-foreground">
+              Already received FoodTruckCLT request emails?
+              <br />
+              <button
+                type="button"
+                className="font-medium text-foreground underline underline-offset-2 hover:text-foreground/80"
+                onClick={() => switchMode("forgot")}
+              >
+                Set a password
+              </button>{" "}
+              for your existing account.
+            </p>
 
-        {mode === "signup" ? (
-          <p className="text-center text-xs text-muted-foreground">
-            Already received FoodTruckCLT request emails? Use{" "}
-            <button
-              type="button"
-              className="underline underline-offset-2 hover:text-foreground"
-              onClick={() => switchMode("forgot")}
-            >
-              Forgot password
-            </button>{" "}
-            instead of creating a new account.
-          </p>
-        ) : null}
+            <div className="space-y-2 border-t border-border/60 pt-4 text-center text-sm text-muted-foreground">
+              <p>
+                New to FoodTruckCLT?{" "}
+                <button
+                  type="button"
+                  className="font-medium text-foreground underline underline-offset-2 hover:text-foreground/80"
+                  onClick={() => switchMode("signup")}
+                >
+                  Create account
+                </button>
+              </p>
+              <p className="text-xs">
+                Prefer email login?{" "}
+                <button
+                  type="button"
+                  className="underline underline-offset-2 hover:text-foreground"
+                  onClick={() => switchMode("magic")}
+                >
+                  Send magic link
+                </button>
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-3 text-center text-sm text-muted-foreground">
+            {mode === "signup" ? (
+              <p>
+                Already received FoodTruckCLT request emails?{" "}
+                <button
+                  type="button"
+                  className="font-medium text-foreground underline underline-offset-2 hover:text-foreground/80"
+                  onClick={() => switchMode("forgot")}
+                >
+                  Set a password
+                </button>{" "}
+                for your existing account.
+              </p>
+            ) : null}
+            <p>
+              <button
+                type="button"
+                className="underline underline-offset-2 hover:text-foreground"
+                onClick={() => switchMode("password")}
+              >
+                Back to sign in
+              </button>
+            </p>
+          </div>
+        )}
       </CardContent>
     </Card>
   )
