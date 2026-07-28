@@ -23,7 +23,7 @@ function modeDescription(mode: AuthMode): string {
     case "magic":
       return "Prefer email? We’ll send a one-time magic link as a backup option."
     case "forgot":
-      return "We’ll email a secure link so you can set or reset your password."
+      return "Enter the email you use for FoodTruckCLT. We’ll send a link to set or reset your password."
   }
 }
 
@@ -137,7 +137,7 @@ function VendorLoginForm() {
       return
     }
     setSuccess(
-      "If an account exists for that email, you’ll receive a password reset link shortly. Open it on this device to set a new password."
+      "If an account exists for that email, you’ll receive a password reset link shortly. Open the newest link to set or reset your password."
     )
   }
 
@@ -293,7 +293,7 @@ function VendorLoginForm() {
 
         {mode === "password" ? (
           <p className="text-center text-xs text-muted-foreground">
-            Existing magic-link vendors can use{" "}
+            Already use FoodTruckCLT with magic link? Use{" "}
             <button
               type="button"
               className="underline underline-offset-2 hover:text-foreground"
@@ -301,7 +301,21 @@ function VendorLoginForm() {
             >
               Forgot password
             </button>{" "}
-            to set a password for this device.
+            to set a password for your existing account.
+          </p>
+        ) : null}
+
+        {mode === "signup" ? (
+          <p className="text-center text-xs text-muted-foreground">
+            Already received FoodTruckCLT request emails? Use{" "}
+            <button
+              type="button"
+              className="underline underline-offset-2 hover:text-foreground"
+              onClick={() => switchMode("forgot")}
+            >
+              Forgot password
+            </button>{" "}
+            instead of creating a new account.
           </p>
         ) : null}
       </CardContent>
