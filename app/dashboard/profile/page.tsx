@@ -2,8 +2,11 @@ import { Metadata } from "next"
 import Link from "next/link"
 import { redirect } from "next/navigation"
 import { revalidatePath } from "next/cache"
-import { Header } from "@/components/header"
 import { Button } from "@/components/ui/button"
+import { VendorDashboardHeader } from "@/components/dashboard/vendor-dashboard-header"
+import { VendorNavLinks } from "@/components/dashboard/vendor-dashboard-nav"
+import { resolveVendorTruckForDashboard } from "@/lib/dashboard/vendor-booking-opportunities"
+import { countVendorActivePendingBookingOpportunities } from "@/lib/dashboard/vendor-pending-opportunities"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
@@ -106,6 +109,11 @@ export default async function DashboardProfilePage() {
     redirect("/vendor-login")
   }
 
+  const { truck: dashboardTruck } = await resolveVendorTruckForDashboard(supabase, user.email)
+  const pendingRequestCount = dashboardTruck?.id
+    ? await countVendorActivePendingBookingOpportunities(supabase, dashboardTruck)
+    : 0
+
   const { data: truck } = await supabase
     .from("trucks")
     .select(
@@ -129,25 +137,32 @@ export default async function DashboardProfilePage() {
   const vendorSetupDefault = resolveVendorSetupForEdit((truck?.vendor_type as string | null) ?? null)
 
   return (
-    <main className="min-h-screen bg-muted/30">
-      <Header />
+    <div className="min-h-screen bg-muted/30">
+      <VendorDashboardHeader
+        truckNameInitial={truck?.name?.[0] ?? dashboardTruck?.name?.[0] ?? "T"}
+        pendingRequestCount={pendingRequestCount}
+      />
 
-      <div className="pt-24 pb-16">
-        <div className="mx-auto max-w-2xl px-4 sm:px-6 lg:px-8">
-          <div className="mb-8">
-            <Link
-              href="/dashboard"
-              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-            >
-              ← Back to dashboard
-            </Link>
-            <h1 className="font-display text-3xl font-bold text-foreground mt-4">
-              Truck profile
-            </h1>
-            <p className="text-muted-foreground mt-2">
-              Update how your truck appears in the FoodTruck CLT directory.
+      <div className="flex">
+        <aside className="hidden md:flex flex-col w-64 bg-background border-r min-h-[calc(100vh-4rem)]">
+          <div className="flex-1 p-4">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide px-3 mb-2">
+              Vendor
             </p>
+            <VendorNavLinks pendingRequestCount={pendingRequestCount} />
           </div>
+        </aside>
+
+        <main className="flex-1 p-4 md:p-6 pb-24 md:pb-6">
+          <div className="mx-auto max-w-2xl">
+            <div className="mb-8">
+              <h1 className="font-display text-2xl md:text-3xl font-bold text-foreground">
+                Truck profile
+              </h1>
+              <p className="text-muted-foreground mt-2">
+                Update how your truck appears in the FoodTruck CLT directory.
+              </p>
+            </div>
 
           {!truck ? (
             <Card>
@@ -398,8 +413,9 @@ export default async function DashboardProfilePage() {
               </CardContent>
             </Card>
           )}
-        </div>
+          </div>
+        </main>
       </div>
-    </main>
+    </div>
   )
 }

@@ -25,7 +25,7 @@ type NavItem =
 const VENDOR_NAV: NavItem[] = [
   { type: "link", href: "/dashboard", label: "Overview", icon: TrendingUp },
   { type: "link", href: "/dashboard/live", label: "Go Live Page", icon: Radio },
-  { type: "link", href: "/dashboard#vendor-requests-to-confirm", label: "Booking Requests", icon: Inbox },
+  { type: "link", href: "/dashboard#vendor-requests-to-confirm", label: "Requests", icon: Inbox },
   { type: "link", href: "/dashboard/scheduled-stops", label: "Scheduled stops", icon: Calendar },
   { type: "link", href: "/dashboard/schedule", label: "Weekly schedule", icon: Clock },
   { type: "link", href: "/dashboard/profile", label: "Truck Profile", icon: Truck },
@@ -50,7 +50,15 @@ function isActiveForPathname(pathname: string | null, itemHref: string) {
   return pathname === base || pathname.startsWith(base + "/")
 }
 
-export function VendorNavLinks({ onNavigate, className }: { onNavigate?: () => void; className?: string }) {
+export function VendorNavLinks({
+  onNavigate,
+  className,
+  pendingRequestCount = 0,
+}: {
+  onNavigate?: () => void
+  className?: string
+  pendingRequestCount?: number
+}) {
   const pathname = usePathname()
 
   return (
@@ -78,6 +86,13 @@ export function VendorNavLinks({ onNavigate, className }: { onNavigate?: () => v
           )
         }
         const active = isActiveForPathname(pathname, item.href)
+        const isRequests = item.label === "Requests"
+        const badge =
+          isRequests && pendingRequestCount > 0
+            ? pendingRequestCount > 9
+              ? "9+"
+              : String(pendingRequestCount)
+            : null
         return (
           <Link
             key={item.href + item.label}
@@ -91,7 +106,14 @@ export function VendorNavLinks({ onNavigate, className }: { onNavigate?: () => v
             )}
           >
             <item.icon className="h-5 w-5 shrink-0" />
-            {item.label}
+            <span className="flex items-center gap-2 min-w-0">
+              {item.label}
+              {badge ? (
+                <Badge className="h-5 min-w-5 justify-center rounded-full px-1.5 text-[10px] font-semibold">
+                  {badge}
+                </Badge>
+              ) : null}
+            </span>
           </Link>
         )
       })}

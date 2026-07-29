@@ -226,19 +226,17 @@ function OpportunityActions({
 
   return (
     <div className={cn("space-y-2 pt-1", className)} onClick={(e) => e.stopPropagation()}>
-      <p className="text-xs font-medium text-foreground">I’m interested / Not available</p>
       <p className="text-xs text-muted-foreground leading-relaxed">
-        If you&apos;re interested, please contact the organizer directly using the details shown after you respond.
-        The host also receives your truck contact info so either of you can reach out.
+        If you&apos;re interested, contact the organizer using the details shown after you respond. The host also
+        receives your truck contact info.
       </p>
-      <div className="flex gap-2">
+      <div className="flex flex-col gap-2 sm:flex-row">
         <form action={onAction} className="flex-1">
           <input type="hidden" name="opportunityId" value={opp.id} />
           <input type="hidden" name="status" value="interested" />
           <Button
             type="submit"
-            size="sm"
-            className="w-full"
+            className="h-11 min-h-11 w-full text-base"
             disabled={!!busy || interestRecorded}
           >
             {busy && submitting === "interested"
@@ -251,7 +249,12 @@ function OpportunityActions({
         <form action={onAction} className="flex-1">
           <input type="hidden" name="opportunityId" value={opp.id} />
           <input type="hidden" name="status" value="not_available" />
-          <Button type="submit" variant="outline" size="sm" className="w-full" disabled={!!busy || interestRecorded}>
+          <Button
+            type="submit"
+            variant="outline"
+            className="h-11 min-h-11 w-full text-base"
+            disabled={!!busy || interestRecorded}
+          >
             {busy && submitting === "not_available" ? "Saving…" : "Not available"}
           </Button>
         </form>
@@ -358,15 +361,17 @@ export function DashboardEventOpportunities({
   recentResponseOpportunities = [],
   pastOpportunities = [],
   truckContext,
-  siteBaseUrl,
+  siteBaseUrl = "",
   supportEmail,
+  initialOpportunityId = null,
 }: {
   opportunities: DashboardOpportunity[]
   recentResponseOpportunities?: DashboardOpportunity[]
   pastOpportunities?: DashboardOpportunity[]
   truckContext: TruckContext | null
-  siteBaseUrl: string
+  siteBaseUrl?: string
   supportEmail: string
+  initialOpportunityId?: string | null
 }) {
   const router = useRouter()
   const [submitting, setSubmitting] = useState<"interested" | "not_available" | null>(null)
@@ -374,6 +379,7 @@ export function DashboardEventOpportunities({
   const [interestSentIds, setInterestSentIds] = useState<Record<string, true>>({})
   const [detailOpp, setDetailOpp] = useState<DashboardOpportunity | null>(null)
   const busyRef = useRef(false)
+  const deepLinkHandledRef = useRef<string | null>(null)
 
   useEffect(() => {
     const inActive = opportunities.some((o) => o.id === detailOpp?.id)
@@ -383,6 +389,31 @@ export function DashboardEventOpportunities({
       setDetailOpp(null)
     }
   }, [opportunities, recentResponseOpportunities, pastOpportunities, detailOpp])
+
+  useEffect(() => {
+    const id = (initialOpportunityId ?? "").trim()
+    if (!id || deepLinkHandledRef.current === id) return
+
+    const match =
+      opportunities.find((o) => o.id === id) ??
+      recentResponseOpportunities.find((o) => o.id === id) ??
+      pastOpportunities.find((o) => o.id === id)
+
+    if (!match) return
+
+    deepLinkHandledRef.current = id
+    setDetailOpp(match)
+
+    const scrollToRequests = () => {
+      document.getElementById("vendor-requests-to-confirm")?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      })
+    }
+    scrollToRequests()
+    const t = window.setTimeout(scrollToRequests, 150)
+    return () => window.clearTimeout(t)
+  }, [initialOpportunityId, opportunities, recentResponseOpportunities, pastOpportunities])
 
   async function handleAction(formData: FormData) {
     if (busyRef.current) return
@@ -436,7 +467,7 @@ export function DashboardEventOpportunities({
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Calendar className="h-5 w-5 text-primary" />
-            Requests to Confirm
+            Requests
           </CardTitle>
           <CardDescription>
             Requests from customers looking to book a food truck, cart, or tent — not public calendar listings.
@@ -461,7 +492,7 @@ export function DashboardEventOpportunities({
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Calendar className="h-5 w-5 text-primary" />
-          Requests to Confirm
+          Requests
         </CardTitle>
         <CardDescription>
           Tap a request for full details. Mark <span className="font-medium text-foreground">I&apos;m interested</span>{" "}
@@ -469,8 +500,7 @@ export function DashboardEventOpportunities({
           organizer directly using the details below.
         </CardDescription>
         <p className="text-xs text-muted-foreground pt-1">
-          FoodTruckCLT shares opportunities from customers. Agreements, pricing, and payments are between you and the
-          host.
+          FoodTruckCLT shares requests from customers. Agreements, pricing, and payments are between you and the host.
         </p>
       </CardHeader>
       <CardContent>
@@ -557,7 +587,7 @@ export function DashboardEventOpportunities({
             <div>
               <p className="text-sm font-medium text-foreground">Your recent responses</p>
               <p className="text-xs text-muted-foreground leading-relaxed">
-                Opportunities you&apos;ve already marked. For interested requests, contact the organizer directly.
+                Requests you&apos;ve already marked. For interested requests, contact the organizer directly.
               </p>
             </div>
             <div className="space-y-4">
@@ -636,7 +666,7 @@ export function DashboardEventOpportunities({
         {pastOpportunities.length > 0 ? (
           <div className="mt-8 space-y-3">
             <div>
-              <p className="text-sm font-medium text-foreground">Past opportunities</p>
+              <p className="text-sm font-medium text-foreground">Past requests</p>
               <p className="text-xs text-muted-foreground leading-relaxed">
                 Requests that expired before you responded. These are no longer actionable.
               </p>
