@@ -29,13 +29,13 @@ import {
   parseDashboardOpportunityId,
   resolvePendingDeepLinkOpportunity,
 } from "@/lib/dashboard/vendor-dashboard-opportunity-link"
+import { cn } from "@/lib/utils"
 
 export const metadata: Metadata = {
   title: "Vendor Dashboard | FoodTruck CLT",
   description: "Manage your food truck profile, schedule, and connect with the Charlotte community.",
 }
 
-// Mock vendor data - in production this would come from auth/database
 export default async function DashboardPage({
   searchParams,
 }: {
@@ -63,6 +63,7 @@ export default async function DashboardPage({
   )
 
   const supportEmail = process.env.NEXT_PUBLIC_SUPPORT_EMAIL ?? "support@foodtruckclt.com"
+  const siteBaseUrl = (process.env.NEXT_PUBLIC_SITE_URL ?? "").replace(/\/$/, "")
 
   const truckContext =
     truckData != null
@@ -124,23 +125,36 @@ export default async function DashboardPage({
     }
   }
 
-  const initialOpportunityId =
-    resolvePendingDeepLinkOpportunity(opportunityCards, requestedOpportunityId)?.id ?? null
+  const initialOpportunityId = (() => {
+    if (!requestedOpportunityId) return null
+    const pendingMatch = resolvePendingDeepLinkOpportunity(opportunityCards, requestedOpportunityId)
+    if (pendingMatch) return pendingMatch.id
+    const fromHistory = historyOpportunityCards.find((o) => o.id === requestedOpportunityId)
+    if (fromHistory) return fromHistory.id
+    const fromPast = pastOpportunityCards.find((o) => o.id === requestedOpportunityId)
+    if (fromPast) return fromPast.id
+    return null
+  })()
+
+  const prioritizeRequestsOnMobile =
+    pendingCount > 0 || requestedOpportunityId != null || initialOpportunityId != null
 
   return (
     <div className="min-h-screen bg-muted/30">
-      <VendorDashboardHeader truckNameInitial={truckData?.name?.[0] ?? "T"} />
+      <VendorDashboardHeader
+        truckNameInitial={truckData?.name?.[0] ?? "T"}
+        pendingRequestCount={pendingCount}
+      />
 
       <div className="flex">
         <aside className="hidden md:flex flex-col w-64 bg-background border-r min-h-[calc(100vh-4rem)]">
           <div className="flex-1 p-4">
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide px-3 mb-2">Vendor</p>
-            <VendorNavLinks />
+            <VendorNavLinks pendingRequestCount={pendingCount} />
           </div>
         </aside>
 
-        {/* Main Content */}
-        <main className="flex-1 p-4 md:p-6 space-y-6">
+        <main className="flex-1 p-4 md:p-6 pb-24 md:pb-6 space-y-6">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
               <h1 className="font-display text-2xl md:text-3xl font-bold text-foreground">
@@ -166,133 +180,127 @@ export default async function DashboardPage({
             </div>
           </div>
 
-          {truckData?.id ? (
-            <Card className="border-2 border-primary/45 bg-gradient-to-br from-primary/14 via-background to-background shadow-md">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-lg md:text-xl font-display flex flex-wrap items-center gap-2 gap-y-1 text-foreground">
-                  <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/15 text-primary">
-                    <MapPin className="h-5 w-5" aria-hidden />
-                  </span>
-                  Turn your location on or off
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <p className="text-sm text-muted-foreground">
-                  Open your Go Live page to set your pin, start or stop serving, and update where you appear for
-                  customers.
-                </p>
-                <Button size="lg" className="w-full sm:w-auto font-semibold" asChild>
-                  <Link href="/dashboard/live">Open Go Live Page</Link>
-                </Button>
-                <p className="text-xs text-muted-foreground">
-                  <span className="text-foreground font-medium">Customers see you on the public map.</span>{" "}
-                  <Link href="/map" className="underline-offset-2 hover:underline text-primary">
-                    View public live map
-                  </Link>
-                </p>
-                <p className="text-xs text-muted-foreground leading-relaxed pt-1 border-t border-primary/15">
-                  Open the Go Live page on your phone, then tap Share → Add to Home Screen to save it as a shortcut.
-                </p>
-              </CardContent>
-            </Card>
-          ) : null}
-
-          {truckData?.id ? (
-            <Card className="border-primary/20 bg-primary/[0.04]">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <Smartphone className="h-4 w-4 text-primary shrink-0" />
-                  Add Go Live to your phone
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3 text-sm text-muted-foreground">
-                <p>
-                  Open this page on your phone, then tap Share → Add to Home Screen. This shortcut should open directly
-                  to your Go Live page.
-                </p>
-                <div>
-                  <Button variant="outline" size="sm" asChild className="w-full sm:w-auto bg-background">
-                    <Link href="/dashboard/live">Open Go Live Page</Link>
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ) : null}
-
-          {truckData?.id && (
-            <Card>
-              <CardContent className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 py-4">
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center shrink-0">
-                    <Calendar className="h-5 w-5 text-primary" />
+          {truckData?.id && pendingCount > 0 ? (
+            <Card className="border-primary/25 bg-primary/5">
+              <CardContent className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 py-4">
+                <div className="flex gap-3 min-w-0">
+                  <div className="h-10 w-10 rounded-lg bg-primary/15 flex items-center justify-center shrink-0">
+                    <Inbox className="h-5 w-5 text-primary" />
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-foreground">Your Submitted Events</p>
-                    <p className="text-xs text-muted-foreground">
-                      Events you submitted to FoodTruckCLT. Manage them on the Events page — separate from booking
-                      requests and from the public events calendar.
+                    <h2 className="font-medium text-foreground">Requests</h2>
+                    <p className="text-sm text-muted-foreground">
+                      {pendingCount} request{pendingCount === 1 ? "" : "s"} need a response.
                     </p>
                   </div>
                 </div>
-                <div className="flex items-center gap-3 sm:shrink-0">
-                  <span className="text-2xl font-semibold tabular-nums" aria-live="polite">
-                    {upcomingEventsCount}
-                  </span>
-                  <Button variant="outline" size="sm" asChild>
-                    <Link href="/dashboard/events">Manage events</Link>
-                  </Button>
-                </div>
+                <Button variant="default" asChild>
+                  <a href="#vendor-requests-to-confirm" className="shrink-0">
+                    View requests
+                  </a>
+                </Button>
               </CardContent>
             </Card>
-          )}
+          ) : null}
 
-          <div className="space-y-4">
-            {truckData?.id && pendingCount > 0 && (
-              <Card className="border-primary/25 bg-primary/5">
-                <CardContent className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 py-4">
-                  <div className="flex gap-3 min-w-0">
-                    <div className="h-10 w-10 rounded-lg bg-primary/15 flex items-center justify-center shrink-0">
-                      <Inbox className="h-5 w-5 text-primary" />
-                    </div>
-                    <div>
-                      <h2 className="font-medium text-foreground">Requests to confirm</h2>
-                      <p className="text-sm text-muted-foreground">
-                        {pendingCount} booking opportunit{pendingCount === 1 ? "y" : "ies"} need a response. Open{" "}
-                        <span className="font-medium text-foreground">Requests to Confirm</span> in the right column —
-                        not the public events calendar.
-                      </p>
-                    </div>
-                  </div>
-                  <Button variant="default" asChild>
-                    <a href="#vendor-requests-to-confirm" className="shrink-0">
-                      View requests
-                    </a>
-                  </Button>
-                </CardContent>
-              </Card>
-            )}
-            {truckData?.id && pendingCount === 0 && (
-              <p className="text-sm text-muted-foreground">
-                <Link
-                  href="/dashboard#vendor-requests-to-confirm"
-                  className="text-foreground font-medium underline-offset-2 hover:underline"
-                >
-                  Requests to Confirm
-                </Link>{" "}
-                (right column) lists host booking opportunities with I&apos;m interested / Not available / email — separate
-                from <span className="font-medium text-foreground">Public Events</span> below.
-              </p>
-            )}
-          </div>
+          {/*
+            Single Requests instance. On mobile with pending (or deep link), Requests sorts above
+            Go Live / schedule via order-*. Desktop keeps schedule left, Requests right.
+          */}
+          <div className="flex flex-col gap-6 lg:grid lg:grid-cols-3">
+            <div
+              className={cn(
+                "space-y-6 lg:col-span-2",
+                prioritizeRequestsOnMobile ? "order-2 lg:order-1" : "order-1"
+              )}
+            >
+              {truckData?.id ? (
+                <Card className="border-2 border-primary/45 bg-gradient-to-br from-primary/14 via-background to-background shadow-md">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-lg md:text-xl font-display flex flex-wrap items-center gap-2 gap-y-1 text-foreground">
+                      <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/15 text-primary">
+                        <MapPin className="h-5 w-5" aria-hidden />
+                      </span>
+                      Turn your location on or off
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <p className="text-sm text-muted-foreground">
+                      Open your Go Live page to set your pin, start or stop serving, and update where you appear for
+                      customers.
+                    </p>
+                    <Button size="lg" className="w-full sm:w-auto font-semibold" asChild>
+                      <Link href="/dashboard/live">Open Go Live Page</Link>
+                    </Button>
+                    <p className="text-xs text-muted-foreground">
+                      <span className="text-foreground font-medium">Customers see you on the public map.</span>{" "}
+                      <Link href="/map" className="underline-offset-2 hover:underline text-primary">
+                        View public live map
+                      </Link>
+                    </p>
+                  </CardContent>
+                </Card>
+              ) : null}
 
-          <div className="grid lg:grid-cols-3 gap-6">
-            {/* Left Column - Schedule & Profile */}
-            <div className="lg:col-span-2 space-y-6">
+              {truckData?.id ? (
+                <Card className="border-primary/20 bg-primary/[0.04]">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <Smartphone className="h-4 w-4 text-primary shrink-0" />
+                      Quick access on your phone
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="text-sm text-muted-foreground">
+                    <p>Add FoodTruckCLT to your phone home screen for quick access to requests.</p>
+                  </CardContent>
+                </Card>
+              ) : null}
+
+              {truckData?.id ? (
+                <Card>
+                  <CardContent className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 py-4">
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center shrink-0">
+                        <Calendar className="h-5 w-5 text-primary" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-foreground">Your Submitted Events</p>
+                        <p className="text-xs text-muted-foreground">
+                          Events you submitted to FoodTruckCLT. Manage them on the Events page — separate from Requests
+                          and from the public events calendar.
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3 sm:shrink-0">
+                      <span className="text-2xl font-semibold tabular-nums" aria-live="polite">
+                        {upcomingEventsCount}
+                      </span>
+                      <Button variant="outline" size="sm" asChild>
+                        <Link href="/dashboard/events">Manage events</Link>
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ) : null}
+
+              {truckData?.id && pendingCount === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  <Link
+                    href="/dashboard#vendor-requests-to-confirm"
+                    className="text-foreground font-medium underline-offset-2 hover:underline"
+                  >
+                    Requests
+                  </Link>{" "}
+                  lists host booking inquiries with I&apos;m interested / Not available — separate from{" "}
+                  <span className="font-medium text-foreground">Public Events</span> below.
+                </p>
+              ) : null}
+
               <p className="text-sm text-muted-foreground rounded-lg border border-dashed border-border bg-muted/20 px-4 py-3">
-                Your schedule helps customers know where you plan to be. Your live location only updates when you
-                start serving or manually update your pin.
+                Your schedule helps customers know where you plan to be. Your live location only updates when you start
+                serving or manually update your pin.
               </p>
-              {/* Today's Status */}
+
               <Card>
                 <CardHeader className="pb-4">
                   <CardTitle className="flex items-center gap-2">
@@ -308,7 +316,8 @@ export default async function DashboardPage({
                       truck={{
                         id: truckData.id,
                         serving_today: truckData.serving_today,
-                        serving_started_at: (truckData as { serving_started_at?: string | null }).serving_started_at ?? null,
+                        serving_started_at:
+                          (truckData as { serving_started_at?: string | null }).serving_started_at ?? null,
                         today_location: truckData.today_location,
                         street_address: (truckData as { street_address?: string | null }).street_address ?? null,
                         latitude: (truckData as { latitude?: number | string | null }).latitude ?? null,
@@ -326,7 +335,13 @@ export default async function DashboardPage({
               </Card>
             </div>
 
-            <div className="space-y-6" aria-label="Requests to confirm and tips">
+            <div
+              className={cn(
+                "space-y-6",
+                prioritizeRequestsOnMobile ? "order-1 lg:order-2" : "order-2"
+              )}
+              aria-label="Requests"
+            >
               {opportunityDiagnostics ? (
                 <VendorDashboardOpportunityDiagnostics {...opportunityDiagnostics} />
               ) : null}
@@ -337,11 +352,11 @@ export default async function DashboardPage({
                   pastOpportunities={pastOpportunityCards}
                   truckContext={truckContext}
                   supportEmail={supportEmail}
+                  siteBaseUrl={siteBaseUrl}
                   initialOpportunityId={initialOpportunityId}
                 />
               </Card>
 
-              {/* Tips Card */}
               <Card className="bg-accent/5 border-accent/20">
                 <CardHeader>
                   <CardTitle className="text-lg">Boost Your Visibility</CardTitle>
@@ -349,15 +364,21 @@ export default async function DashboardPage({
                 <CardContent>
                   <ul className="space-y-3 text-sm">
                     <li className="flex items-start gap-2">
-                      <span className="h-5 w-5 rounded-full bg-accent/20 text-accent flex items-center justify-center shrink-0 text-xs font-bold">1</span>
+                      <span className="h-5 w-5 rounded-full bg-accent/20 text-accent flex items-center justify-center shrink-0 text-xs font-bold">
+                        1
+                      </span>
                       <span className="text-muted-foreground">Post your schedule at least 24 hours ahead</span>
                     </li>
                     <li className="flex items-start gap-2">
-                      <span className="h-5 w-5 rounded-full bg-accent/20 text-accent flex items-center justify-center shrink-0 text-xs font-bold">2</span>
+                      <span className="h-5 w-5 rounded-full bg-accent/20 text-accent flex items-center justify-center shrink-0 text-xs font-bold">
+                        2
+                      </span>
                       <span className="text-muted-foreground">Add high-quality photos of your best dishes</span>
                     </li>
                     <li className="flex items-start gap-2">
-                      <span className="h-5 w-5 rounded-full bg-accent/20 text-accent flex items-center justify-center shrink-0 text-xs font-bold">3</span>
+                      <span className="h-5 w-5 rounded-full bg-accent/20 text-accent flex items-center justify-center shrink-0 text-xs font-bold">
+                        3
+                      </span>
                       <span className="text-muted-foreground">Respond to inquiries within 24 hours</span>
                     </li>
                   </ul>
