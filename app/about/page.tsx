@@ -85,7 +85,7 @@ export default function AboutPage() {
               <Card className="border-primary/15 bg-primary/5">
                 <CardContent className="p-6 text-center">
                   <p className="font-display text-2xl md:text-3xl font-bold text-foreground">
-                    Free to Use
+                    No Booking Commission
                   </p>
                 </CardContent>
               </Card>
@@ -98,7 +98,7 @@ export default function AboutPage() {
               Do you run a Charlotte food truck?
             </h2>
             <p className="mt-4 text-muted-foreground leading-relaxed max-w-xl mx-auto">
-              List yourself free on the site — I want every single one here.
+              Create or claim your FoodTruckCLT profile so local hosts can find your truck.
             </p>
             <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
               <Button
