@@ -1,8 +1,14 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 import { PUBLIC_LISTED_TRUCK_EQ } from "@/lib/trucks/public-listed-truck-query"
+import {
+  parseVendorNeedValue,
+  truckPassesSpecialtyRoutingGate,
+  type VendorNeedValue,
+} from "@/lib/booking/vendor-need"
 
 export type DirectoryTruckRow = {
   id: string
+  name?: string | null
   vendor_type: string | null
   cuisine_types: string[] | null
   cuisine: string | null
@@ -64,21 +70,57 @@ export function truckMatchesBookingCuisines(
   return false
 }
 
+export type BroadcastEligibilityOpts = {
+  requestType: "open_request" | "cuisine_match"
+  cuisines: string[] | null | undefined
+  vendorType: string | null | undefined
+  /** Structured host vendor-need; null/undefined treated as "multiple" for specialty protection. */
+  vendorNeed?: VendorNeedValue | string | null
+  /** Host notes / free text used for specialty keyword matching. */
+  requestText?: string | null
+}
+
+/**
+ * Pure filter used by fetchEligibleTruckIdsForBroadcast (and unit tests).
+ */
+export function filterEligibleTrucksForBroadcast(
+  rows: DirectoryTruckRow[],
+  opts: BroadcastEligibilityOpts
+): DirectoryTruckRow[] {
+  const vendorNeed = parseVendorNeedValue(opts.vendorNeed ?? null)
+  const signals = {
+    vendorNeed,
+    cuisines: opts.cuisines,
+    requestText: opts.requestText ?? null,
+  }
+
+  return rows.filter((t) => {
+    if (!truckMatchesBookingVendorType(t.vendor_type, opts.vendorType)) return false
+
+    let passedCuisineTokenMatch = false
+    if (opts.requestType === "cuisine_match") {
+      passedCuisineTokenMatch = truckMatchesBookingCuisines(t, opts.cuisines)
+      if (!passedCuisineTokenMatch) return false
+    }
+
+    return truckPassesSpecialtyRoutingGate(t, signals, {
+      requestType: opts.requestType,
+      passedCuisineTokenMatch,
+    })
+  })
+}
+
 /**
  * Loads public-listed trucks and returns IDs eligible for open / cuisine broadcast opportunities.
  * Does not email vendors — only scopes which trucks get a dashboard row.
  */
 export async function fetchEligibleTruckIdsForBroadcast(
   supabase: SupabaseClient,
-  opts: {
-    requestType: "open_request" | "cuisine_match"
-    cuisines: string[] | null | undefined
-    vendorType: string | null | undefined
-  }
+  opts: BroadcastEligibilityOpts
 ): Promise<string[]> {
   const { data: trucks, error } = await supabase
     .from("trucks")
-    .select("id, vendor_type, cuisine_types, cuisine")
+    .select("id, name, vendor_type, cuisine_types, cuisine")
     .eq("show_in_directory", PUBLIC_LISTED_TRUCK_EQ.show_in_directory)
     .eq("is_active", PUBLIC_LISTED_TRUCK_EQ.is_active)
     .eq("status", PUBLIC_LISTED_TRUCK_EQ.status)
@@ -89,13 +131,5 @@ export async function fetchEligibleTruckIdsForBroadcast(
   }
 
   const rows = (trucks ?? []) as DirectoryTruckRow[]
-  const filtered = rows.filter((t) => {
-    if (!truckMatchesBookingVendorType(t.vendor_type, opts.vendorType)) return false
-    if (opts.requestType === "cuisine_match") {
-      return truckMatchesBookingCuisines(t, opts.cuisines)
-    }
-    return true
-  })
-
-  return filtered.map((t) => t.id as string)
+  return filterEligibleTrucksForBroadcast(rows, opts).map((t) => t.id as string)
 }

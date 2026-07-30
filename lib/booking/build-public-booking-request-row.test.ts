@@ -44,12 +44,16 @@ test("buildPublicBookingRequestInsertRow does not include truck_count", () => {
     truckId: null,
     vendorType: "any",
     preferredTrucks: null,
+    vendorNeed: "dessert",
   })
 
   const asRecord = row as unknown as Record<string, unknown>
   assert.equal(bookingInsertRowHasTruckCount(asRecord), false)
   assert.equal("truck_count" in asRecord, false)
-  assert.equal(asRecord.additional_notes, "Hello\n\nTrucks needed: 2")
+  assert.equal(
+    asRecord.additional_notes,
+    "Hello\n\nVendor need: Dessert / ice cream / sweet treats\n\nTrucks needed: 2"
+  )
   assert.equal(asRecord.guest_count, 100)
   assert.equal(asRecord.request_type, BOOKING_REQUEST_TYPE.OPEN_REQUEST)
 })

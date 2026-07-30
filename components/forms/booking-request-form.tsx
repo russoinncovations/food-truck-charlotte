@@ -6,6 +6,7 @@ import { FormField } from "@/components/forms/form-field"
 import { SubmitButton } from "@/components/forms/submit-button"
 import { AlertCircle } from "lucide-react"
 import { BOOKING_REQUEST_TYPE, VENDOR_TYPE_OPTIONS } from "@/lib/booking/booking-request-constants"
+import { VENDOR_NEED_OPTIONS } from "@/lib/booking/vendor-need"
 import { cn } from "@/lib/utils"
 
 function focusBookingField(field: string) {
@@ -353,6 +354,44 @@ export function BookingRequestForm({
           />
         </div>
       </fieldset>
+
+      {/* Vendor need — required for routing specialty vs meal trucks */}
+      {requestType !== BOOKING_REQUEST_TYPE.SPECIFIC_VENDOR && (
+        <fieldset
+          id="field-vendorNeed"
+          className={cn(
+            "space-y-4 rounded-xl border p-5",
+            fieldError("vendorNeed") ? "border-destructive" : "border-border"
+          )}
+        >
+          <legend className="text-lg font-semibold text-foreground px-1">
+            What type of food truck or vendor do you need? <span className="text-destructive">*</span>
+          </legend>
+          <p className="text-sm text-muted-foreground">
+            Choose the kind of vendor you’re looking for so the request goes to the right trucks.
+          </p>
+          {fieldError("vendorNeed") ? (
+            <p className="text-sm text-destructive">{fieldError("vendorNeed")}</p>
+          ) : null}
+          <div className="grid gap-3">
+            {VENDOR_NEED_OPTIONS.map((opt) => (
+              <label
+                key={opt.value}
+                className="flex items-start gap-3 p-3 rounded-lg border border-border bg-card hover:border-primary/50 cursor-pointer transition-colors has-[:checked]:border-primary has-[:checked]:bg-primary/5"
+              >
+                <input
+                  type="radio"
+                  name="vendorNeed"
+                  value={opt.value}
+                  required
+                  className="mt-1 h-4 w-4 shrink-0 text-primary"
+                />
+                <span className="text-sm font-medium text-foreground">{opt.label}</span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
+      )}
 
       {/* Preferences — cuisines not used for specific-vendor path */}
       {requestType !== BOOKING_REQUEST_TYPE.SPECIFIC_VENDOR && (

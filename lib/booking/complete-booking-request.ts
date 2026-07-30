@@ -4,6 +4,7 @@ import {
   type BookingRequestTypeValue,
 } from "@/lib/booking/booking-request-constants"
 import { fetchEligibleTruckIdsForBroadcast } from "@/lib/booking/eligible-trucks-for-opportunities"
+import { parseVendorNeedValue, type VendorNeedValue } from "@/lib/booking/vendor-need"
 import { bookingOpportunityExpiresAt } from "@/lib/booking/opportunity-expiration"
 import {
   BOOKING_START_TIME_REQUIRED_MESSAGE,
@@ -78,6 +79,11 @@ type CompleteResult = { ok: true; id: string } | { ok: false; error: string }
 export type CompleteBookingRequestOptions = {
   /** Admin internal-test open requests: fan-out only to these truck IDs (no public listed trucks). */
   broadcastTruckIds?: string[]
+  /**
+   * Structured host vendor-need for specialty routing (not a DB column).
+   * When omitted, specialty protection still applies as "Open to multiple types".
+   */
+  vendorNeed?: VendorNeedValue | null
 }
 
 function adminInboxEmail(): string | null {
@@ -174,6 +180,8 @@ export async function completeBookingRequest(
             requestType,
             cuisines: row.cuisines,
             vendorType: row.vendor_type,
+            vendorNeed: parseVendorNeedValue(opts?.vendorNeed ?? null),
+            requestText: row.additional_notes,
           })
 
     const rows = truckIds.map((truckId) => ({
