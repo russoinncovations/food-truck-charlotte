@@ -397,13 +397,13 @@ export function BookingRequestForm({
       {requestType !== BOOKING_REQUEST_TYPE.SPECIFIC_VENDOR && (
       <fieldset id="field-cuisines" className="space-y-4">
         <legend className="text-lg font-semibold text-foreground">
-          {requestType === BOOKING_REQUEST_TYPE.CUISINE_MATCH ? "Cuisines / categories *" : "Food preferences (optional)"}
+          {requestType === BOOKING_REQUEST_TYPE.CUISINE_MATCH ? "Cuisines / categories *" : "Cuisine or category preferences (optional)"}
         </legend>
         {requestType === BOOKING_REQUEST_TYPE.CUISINE_MATCH ? (
           <p className="text-sm text-muted-foreground">Select at least one — required for a cuisine-based request.</p>
         ) : (
           <p className="text-sm text-muted-foreground">
-            Optional — share what you like if it helps us match you.
+            Select any that apply.
           </p>
         )}
         {fieldError("cuisines") ? (
