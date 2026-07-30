@@ -22,6 +22,7 @@ const baseInput = {
   contactEmail: "organizer@example.com",
   contactPhone: "704-555-0100",
   cuisines: [] as string[],
+  vendorNeed: "meal",
 }
 
 test("validatePublicBookingRequestInput accepts required open request fields", () => {
@@ -70,11 +71,30 @@ test("validatePublicBookingRequestInput requires truck for specific vendor", () 
     ...baseInput,
     requestType: BOOKING_REQUEST_TYPE.SPECIFIC_VENDOR,
     truckId: "",
+    vendorNeed: "",
   })
   assert.equal(result.ok, false)
   if (!result.ok) {
     assert.equal(result.field, "truckId")
   }
+})
+
+test("validatePublicBookingRequestInput requires vendorNeed for open requests", () => {
+  const result = validatePublicBookingRequestInput({ ...baseInput, vendorNeed: "" })
+  assert.equal(result.ok, false)
+  if (!result.ok) {
+    assert.equal(result.field, "vendorNeed")
+  }
+})
+
+test("validatePublicBookingRequestInput skips vendorNeed for specific vendor", () => {
+  const result = validatePublicBookingRequestInput({
+    ...baseInput,
+    requestType: BOOKING_REQUEST_TYPE.SPECIFIC_VENDOR,
+    truckId: "11111111-1111-4111-8111-111111111111",
+    vendorNeed: "",
+  })
+  assert.deepEqual(result, { ok: true })
 })
 
 test("canUpdatePendingOpportunityStatus blocks duplicate interested responses", () => {

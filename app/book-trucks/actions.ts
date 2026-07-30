@@ -4,6 +4,11 @@ import { createClient } from "@/lib/supabase/server"
 import type { BookingFormData } from "@/lib/booking-types"
 import { BOOKING_REQUEST_TYPE } from "@/lib/booking/booking-request-constants"
 import { completeBookingRequest, type BookingRequestTypeValue } from "@/lib/booking/complete-booking-request"
+import {
+  mergeVendorNeedIntoNotes,
+  parseVendorNeedValue,
+  VENDOR_NEED,
+} from "@/lib/booking/vendor-need"
 
 export interface BookingResult {
   success: boolean
@@ -74,6 +79,16 @@ export async function submitBookingRequest(data: BookingFormData): Promise<Booki
           : null
         : null
 
+    const vendorNeed =
+      parseVendorNeedValue(
+        typeof (data as { vendor_need?: string }).vendor_need === "string"
+          ? (data as { vendor_need?: string }).vendor_need
+          : null
+      ) ?? VENDOR_NEED.MULTIPLE
+
+    const notesBase = data.additional_notes || null
+    const additional_notes = mergeVendorNeedIntoNotes(notesBase, vendorNeed)
+
     const insertData = {
       event_type: data.event_type,
       event_date: data.event_date,
@@ -92,7 +107,7 @@ export async function submitBookingRequest(data: BookingFormData): Promise<Booki
       contact_email: data.contact_email,
       contact_phone: data.contact_phone || "",
       organization: data.organization_name || null,
-      additional_notes: data.additional_notes || null,
+      additional_notes,
       how_heard_about_us: data.how_heard_about_us || null,
       status: "new",
       request_type: requestType,
@@ -101,7 +116,7 @@ export async function submitBookingRequest(data: BookingFormData): Promise<Booki
       preferred_trucks,
     }
 
-    const result = await completeBookingRequest(supabase, insertData)
+    const result = await completeBookingRequest(supabase, insertData, { vendorNeed })
 
     if (!result.ok) {
       return { success: false, error: result.error }

@@ -6,6 +6,7 @@ import { BOOKING_REQUEST_TYPE } from "@/lib/booking/booking-request-constants"
 import { completeBookingRequest, type BookingRequestTypeValue } from "@/lib/booking/complete-booking-request"
 import { buildPublicBookingRequestInsertRow } from "@/lib/booking/build-public-booking-request-row"
 import { validatePublicBookingRequestInput } from "@/lib/booking/validate-public-booking-request"
+import { parseVendorNeedValue } from "@/lib/booking/vendor-need"
 
 export type BookingRequestResult = {
   success: boolean
@@ -53,6 +54,7 @@ export async function submitBookingRequest(
   const requestTypeRaw = str(formData, "requestType")
   const truckIdRaw = str(formData, "truckId")
   const vendorTypeRaw = str(formData, "vendorType")
+  const vendorNeedRaw = str(formData, "vendorNeed")
 
   const validation = validatePublicBookingRequestInput({
     requestType: requestTypeRaw,
@@ -70,6 +72,7 @@ export async function submitBookingRequest(
     contactEmail,
     contactPhone,
     cuisines,
+    vendorNeed: vendorNeedRaw,
   })
 
   if (!validation.ok) {
@@ -83,6 +86,17 @@ export async function submitBookingRequest(
   const requestType = requestTypeRaw as BookingRequestTypeValue
   const trucksNeededNum = parseInt(trucksNeeded, 10)
   const guestCountNum = parseInt(guestCount, 10)
+  const vendorNeed =
+    requestType === BOOKING_REQUEST_TYPE.SPECIFIC_VENDOR
+      ? null
+      : parseVendorNeedValue(vendorNeedRaw)
+  if (requestType !== BOOKING_REQUEST_TYPE.SPECIFIC_VENDOR && !vendorNeed) {
+    return {
+      success: false,
+      error: "Please choose what type of food truck or vendor you need.",
+      field: "vendorNeed",
+    }
+  }
 
   let truck_id: string | null = null
   let preferred_trucks: string | null = null
@@ -146,9 +160,10 @@ export async function submitBookingRequest(
         ? vendor_type
         : null,
     preferredTrucks: preferred_trucks,
+    vendorNeed,
   })
 
-  const result = await completeBookingRequest(supabase, insertData)
+  const result = await completeBookingRequest(supabase, insertData, { vendorNeed })
 
   if (!result.ok) {
     return {

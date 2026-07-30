@@ -1,4 +1,5 @@
 import { BOOKING_REQUEST_TYPE } from "@/lib/booking/booking-request-constants"
+import { isVendorNeedValue } from "@/lib/booking/vendor-need"
 
 export type PublicBookingRequestInput = {
   requestType: string
@@ -16,6 +17,7 @@ export type PublicBookingRequestInput = {
   contactEmail: string
   contactPhone: string
   cuisines: string[]
+  vendorNeed: string
 }
 
 export type PublicBookingValidationFailure = {
@@ -94,6 +96,17 @@ export function validatePublicBookingRequestInput(
       ok: false,
       field: "cuisines",
       error: "Please select at least one cuisine for a cuisine-based request.",
+    }
+  }
+
+  if (
+    input.requestType !== BOOKING_REQUEST_TYPE.SPECIFIC_VENDOR &&
+    !isVendorNeedValue(input.vendorNeed?.trim())
+  ) {
+    return {
+      ok: false,
+      field: "vendorNeed",
+      error: "Please choose what type of food truck or vendor you need.",
     }
   }
 

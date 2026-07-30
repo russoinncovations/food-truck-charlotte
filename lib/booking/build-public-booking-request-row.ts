@@ -1,5 +1,9 @@
 import type { BookingInsertRow } from "@/lib/booking/complete-booking-request"
 import type { BookingRequestTypeValue } from "@/lib/booking/booking-request-constants"
+import {
+  mergeVendorNeedIntoNotes,
+  type VendorNeedValue,
+} from "@/lib/booking/vendor-need"
 
 /**
  * Merge validated trucks-needed into notes. Production `booking_requests` has no
@@ -11,6 +15,9 @@ export function mergeTrucksNeededIntoNotes(
 ): string {
   const line = `Trucks needed: ${trucksNeeded}`
   const base = (additionalNotes ?? "").trim()
+  if (base.includes("Trucks needed:")) {
+    return base
+  }
   return base ? `${base}\n\n${line}` : line
 }
 
@@ -38,12 +45,16 @@ export type PublicBookingPersistInput = {
   truckId: string | null
   vendorType: string | null
   preferredTrucks: string | null
+  vendorNeed?: VendorNeedValue | null
 }
 
 /** Build the booking_requests insert row — never includes `truck_count`. */
 export function buildPublicBookingRequestInsertRow(
   input: PublicBookingPersistInput
 ): BookingInsertRow {
+  const withVendorNeed = input.vendorNeed
+    ? mergeVendorNeedIntoNotes(input.additionalNotes, input.vendorNeed)
+    : (input.additionalNotes ?? "").trim() || null
   const row: BookingInsertRow = {
     event_type: input.eventType,
     event_date: input.eventDate,
@@ -62,7 +73,7 @@ export function buildPublicBookingRequestInsertRow(
     contact_email: input.contactEmail,
     contact_phone: input.contactPhone,
     organization: input.organization,
-    additional_notes: mergeTrucksNeededIntoNotes(input.additionalNotes, input.trucksNeeded),
+    additional_notes: mergeTrucksNeededIntoNotes(withVendorNeed, input.trucksNeeded),
     status: "new",
     request_type: input.requestType,
     truck_id: input.truckId,
